@@ -80,7 +80,9 @@ Server-side session value 保存：
 - user token expiry
 - session expiry
 
-`createPrivateSiteApp({ sessionStore })` 可注入 session store；介面必須提供 async `create/get/delete`。目前內建 `createMemorySessionStore` 是 process-local reference implementation：process restart 會讓所有 session 安全失效，但不適合需要跨 instance / serverless request 共享 session 的部署。這類正式部署必須注入共享、可撤銷的 server-side store。
+`createPrivateSiteApp({ sessionStore })` 可注入 session store；介面必須提供 async `create/get/delete`。內建 `createMemorySessionStore` 是 process-local reference implementation：process restart 會讓所有 session 安全失效，但不適合需要跨 instance / serverless request 共享 session 的部署。
+
+Engine 另提供 `createRestSessionStore`，使用 Redis-compatible REST command endpoint 保存 TTL-bound server sessions。它需要 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN`，session key 使用 `kc:session:` namespace。REST backend 無法讀寫或回傳 malformed value 時，session operation fail closed。
 
 ## 每次請求重新驗資格
 
@@ -233,6 +235,13 @@ KC_WORKSPACE_OWNER
 KC_WORKSPACE_REPO
 ```
 
+Serverless / multi-instance deployment另外需要：
+
+```text
+KC_SESSION_STORE_REST_URL
+KC_SESSION_STORE_REST_TOKEN
+```
+
 可選：
 
 ```text
@@ -260,6 +269,14 @@ npm run site:serve
 
 Node adapter 可以放在 TLS reverse proxy 後方；正式 browser origin 仍以 `KC_PUBLIC_URL` 的 HTTPS origin 為準。
 
+## Vercel deployment
+
+Repository root 的 `vercel.json` 會把公開 request rewrite 到 `api/site.js` Node Function。此 adapter 直接重用 `createPrivateSiteApp`，不另建一套 authorization 邏輯。
+
+Vercel adapter **不允許 process-local memory session fallback**：只有同時存在 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN` 時，才把完整 environment 交給 private site。缺少 shared session store 時，`GET /api/health` 會顯示 `configured: false`，登入 API不會啟用。
+
+這讓 Vercel 可以先部署取得 HTTPS hostname，再補 GitHub App callback / secrets 與 shared REST session resource；未完整配置前不能誤判成可用的私人登入站。
+
 ## 尚未提供的能力
 
 目前 private site 不提供：
@@ -270,7 +287,6 @@ Node adapter 可以放在 TLS reverse proxy 後方；正式 browser origin 仍�
 - profile / projects 原始資料 API
 - 任意 repository / path proxy
 - 網站寫入 Card
-- hosting-platform-specific deployment adapter
-- 內建 shared durable session backend
+- 內建 managed session database/resource
 
 以上能力不能從目前 API 或 UI 推測為已存在。
