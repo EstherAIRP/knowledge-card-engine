@@ -17,7 +17,7 @@ npm run validate
 `npm run validate` 目前等於：
 
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
-2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub ingestion、ownership、source-state atomicity 與失敗案例。
+2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub ingestion、ownership、source-state atomicity，以及 private login / authorization / Card API 安全案例。
 
 ## Workspace 驗證
 
@@ -48,6 +48,16 @@ npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
 可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需驗證的 evidence；否則 CLI 透過 GitHub API 即時取得 metadata + README。需要授權時使用環境變數 `GITHUB_TOKEN`，不可提交 token。
 
 GitHub writer 的資料與 ownership 前置條件見 [ingestion.md](./ingestion.md) 與 [card-contract.md](./card-contract.md)。
+
+## 私人網站
+
+使用 `apps/server/.env.example` 建立 server-side environment 後，可啟動 Node adapter：
+
+```bash
+npm run site:serve
+```
+
+完整 login/session/data boundary 見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設 memory store 只提供單 process reference runtime，多 instance / serverless 部署必須使用 shared server-side store。
 
 ## GitHub Actions
 
