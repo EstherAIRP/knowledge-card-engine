@@ -228,7 +228,7 @@ async function harness() {
   };
 }
 
-test('login uses state + PKCE and creates an encrypted one-hour session only after private Workspace eligibility', async () => {
+test('login uses state + PKCE and creates an opaque one-hour server session only after private Workspace eligibility', async () => {
   const h = await harness();
   const sessionCookie = await h.login();
   assert.ok(sessionCookie.startsWith('__Host-kc_session='));
