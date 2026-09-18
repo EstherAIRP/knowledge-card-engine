@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EstherAIRP/knowledge-card-engine/schema/engine-lock.schema.json",
+  "title": "Knowledge Card Engine Lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "engine_repository",
+    "engine_commit",
+    "workspace_schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "engine_repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "engine_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "workspace_schema_version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

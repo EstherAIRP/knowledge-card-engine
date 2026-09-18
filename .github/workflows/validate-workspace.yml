@@ -1,0 +1,51 @@
+name: Validate Workspace
+
+on:
+  workflow_call:
+    inputs:
+      engine_repository:
+        description: Engine repository pinned by engine.lock.json
+        required: true
+        type: string
+      engine_sha:
+        description: Full engine commit SHA pinned by engine.lock.json
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v5
+        with:
+          path: workspace
+
+      - name: Checkout pinned engine
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.engine_repository }}
+          ref: ${{ inputs.engine_sha }}
+          path: engine
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+
+      - name: Install engine dependencies
+        working-directory: engine
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate workspace contract and engine pin
+        run: >-
+          node engine/scripts/validate-workspace.mjs workspace
+          --engine-repository=${{ inputs.engine_repository }}
+          --engine-commit=${{ inputs.engine_sha }}
+          --workflow-file=.github/workflows/validate.yml

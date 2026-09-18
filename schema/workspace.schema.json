@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EstherAIRP/knowledge-card-engine/schema/workspace.schema.json",
+  "title": "Knowledge Card Workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "projects",
+        "knowledge",
+        "config",
+        "state",
+        "data",
+        "releases"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projects": {
+          "type": "string",
+          "minLength": 1
+        },
+        "knowledge": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "string",
+          "minLength": 1
+        },
+        "releases": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

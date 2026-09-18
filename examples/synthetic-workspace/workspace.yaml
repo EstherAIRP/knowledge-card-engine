@@ -1,0 +1,10 @@
+schema_version: 1
+workspace_id: synthetic-example
+paths:
+  profile: profile
+  projects: projects
+  knowledge: content/knowledge
+  config: config
+  state: state
+  data: data
+  releases: releases
