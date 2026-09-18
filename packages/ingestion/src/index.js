@@ -184,13 +184,19 @@ export function validateGitHubEvidence(evidence) {
   const resolved = canonicalizeSource(evidence.canonical_url);
   if (resolved.provider !== 'github') fail('SOURCE_IDENTITY_MISMATCH', 'GitHub evidence canonical URL is not a GitHub repository URL.');
   if (resolved.identity !== evidence.source_identity) fail('SOURCE_IDENTITY_MISMATCH', 'GitHub evidence identity does not match its canonical URL.');
+  if (Number.isNaN(Date.parse(evidence.captured_at || ''))) fail('SOURCE_CAPTURE_TIME_INVALID', 'GitHub evidence captured_at is invalid.');
   if (typeof evidence.readme?.text !== 'string' || !evidence.readme.text.trim()) fail('SOURCE_INCOMPLETE', 'GitHub evidence README is empty.');
-  if (!/^[0-9a-f]{64}$/.test(evidence.readme?.content_sha256 || '')) fail('SOURCE_INCOMPLETE', 'GitHub evidence README hash is invalid.');
-  if (!/^[0-9a-f]{64}$/.test(evidence.evidence_digest || '')) fail('SOURCE_INCOMPLETE', 'GitHub evidence digest is invalid.');
+  if (!evidence.readme?.sha) fail('SOURCE_INCOMPLETE', 'GitHub evidence README SHA is missing.');
+  if (!Number.isInteger(evidence.readme?.bytes) || evidence.readme.bytes < 1) fail('SOURCE_INCOMPLETE', 'GitHub evidence README byte count is invalid.');
+  const actualReadmeHash = sha256(evidence.readme.text);
+  if (evidence.readme.content_sha256 !== actualReadmeHash) fail('SOURCE_INCOMPLETE', 'GitHub evidence README hash does not match README content.');
+  if (evidence.readme.bytes !== Buffer.byteLength(evidence.readme.text, 'utf8')) fail('SOURCE_INCOMPLETE', 'GitHub evidence README byte count does not match README content.');
   if (!evidence.repository?.full_name || !evidence.repository?.default_branch) fail('SOURCE_INCOMPLETE', 'GitHub repository metadata is incomplete.');
   const repoIdentity = `github:${String(evidence.repository.full_name).toLowerCase()}`;
   if (repoIdentity !== evidence.source_identity) fail('SOURCE_IDENTITY_MISMATCH', 'GitHub repository metadata identity does not match requested identity.');
   if (evidence.repository.disabled) fail('SOURCE_INCOMPLETE', 'GitHub repository is disabled.');
+  const expectedDigest = digestEvidencePayload(evidence.repository, evidence.readme);
+  if (evidence.evidence_digest !== expectedDigest) fail('SOURCE_INCOMPLETE', 'GitHub evidence digest does not match accepted metadata and README.');
   return evidence;
 }
 
@@ -325,8 +331,13 @@ export function buildGitHubSourceState(evidence, { cardId, cardPath }) {
 export function validateGitHubSourceState(state) {
   if (!state || state.schema_version !== 1 || state.provider !== 'github') fail('SOURCE_STATE_INVALID', 'GitHub source state schema/provider is invalid.');
   if (!/^github:[^/]+\/.+$/.test(state.source_identity || '')) fail('SOURCE_STATE_INVALID', 'GitHub source state identity is invalid.');
+  const canonical = canonicalizeSource(state.canonical_url);
+  if (canonical.provider !== 'github' || canonical.identity !== state.source_identity) fail('SOURCE_STATE_INVALID', 'GitHub source state canonical URL does not match source identity.');
+  if (Number.isNaN(Date.parse(state.captured_at || ''))) fail('SOURCE_STATE_INVALID', 'GitHub source state captured_at is invalid.');
   if (!/^[0-9a-f]{64}$/.test(state.evidence_digest || '')) fail('SOURCE_STATE_INVALID', 'GitHub source state evidence digest is invalid.');
   if (!/^[0-9a-f]{64}$/.test(state.readme?.content_sha256 || '')) fail('SOURCE_STATE_INVALID', 'GitHub source state README hash is invalid.');
+  if (!state.readme?.sha || !Number.isInteger(state.readme?.bytes) || state.readme.bytes < 1) fail('SOURCE_STATE_INVALID', 'GitHub source state README metadata is incomplete.');
   if (!state.card_id || !state.card_path || !state.repository?.full_name || !state.repository?.default_branch) fail('SOURCE_STATE_INVALID', 'GitHub source state is incomplete.');
+  if (`github:${String(state.repository.full_name).toLowerCase()}` !== state.source_identity) fail('SOURCE_STATE_INVALID', 'GitHub source state repository identity does not match source identity.');
   return state;
 }
