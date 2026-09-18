@@ -3,7 +3,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
 import { loadCardDocuments, loadTaxonomyFile, validateCardCollection, parseCardDocument } from '../packages/core/src/index.js';
-import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';\nimport { findCurrentOnlyDocumentationIssues } from './documentation-policy.mjs';
+import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';
+import { findCurrentOnlyDocumentationIssues } from './documentation-policy.mjs';
 
 const root = process.cwd();
 const requiredFiles = [
@@ -25,7 +26,9 @@ const requiredFiles = [
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
   'scripts/ingest-github.mjs',
-  'scripts/validate-source-state.mjs',\n  'scripts/documentation-policy.mjs',
+  'scripts/validate-source-state.mjs',
+  'scripts/documentation-policy.mjs',
+  'tests/documentation-policy.test.mjs',
   'examples/synthetic-workspace/fixture.json',
   'examples/synthetic-workspace/workspace.yaml',
   'examples/synthetic-workspace/engine.lock.json',
@@ -41,6 +44,7 @@ const requiredFiles = [
   ]),
   'packages/workspace/src/card-store.js'
 ];
+
 const forbiddenPaths = [
   'docs/plans',
   'docs/archive',
@@ -50,12 +54,42 @@ const forbiddenPaths = [
   'CHANGELOG.md'
 ];
 
+const documentationFiles = [
+  'README.md',
+  'AGENTS.md',
+  ...fs.readdirSync(path.join(root, 'docs'), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => 'docs/' + entry.name),
+  'schema/README.md',
+  'prompts/README.md',
+  'defaults/README.md',
+  ...['README.md', 'config/README.md', 'content/knowledge/README.md', 'profile/README.md', 'projects/README.md', 'state/README.md', 'data/README.md', 'releases/README.md']
+    .map((relative) => 'examples/synthetic-workspace/' + relative)
+];
+
 const errors = [];
+
 for (const relative of requiredFiles) {
-  if (!fs.existsSync(path.join(root, relative))) errors.push('Missing required file: ' + relative);
+  if (!fs.existsSync(path.join(root, relative))) {
+    errors.push('Missing required file: ' + relative);
+  }
 }
+
 for (const relative of forbiddenPaths) {
-  if (fs.existsSync(path.join(root, relative))) errors.push('Historical/planning path is not allowed in engine: ' + relative);
+  if (fs.existsSync(path.join(root, relative))) {
+    errors.push('Historical/planning path is not allowed in engine: ' + relative);
+  }
+}
+
+for (const relative of documentationFiles) {
+  const text = fs.readFileSync(path.join(root, relative), 'utf8');
+  for (const issue of findCurrentOnlyDocumentationIssues(relative, text)) {
+    errors.push(
+      'Current-only documentation [' + issue.code + '] ' +
+      issue.path + ':' + issue.line + ': ' + issue.message +
+      ' Matched: ' + JSON.stringify(issue.match)
+    );
+  }
 }
 
 try {
@@ -71,7 +105,9 @@ try {
   const taxonomy = await loadTaxonomyFile(path.join(workspace.paths.config, 'taxonomy.yaml'));
   const cards = await loadCardDocuments(workspace.paths.knowledge);
   const issues = await validateCardCollection(cards, taxonomy);
-  for (const item of issues) errors.push('Synthetic Card validation [' + item.code + '] ' + item.path + ': ' + item.message);
+  for (const item of issues) {
+    errors.push('Synthetic Card validation [' + item.code + '] ' + item.path + ': ' + item.message);
+  }
 
   const statePath = path.join(workspace.paths.state, 'sources/github/example--synthetic-example.json');
   const state = validateGitHubSourceState(JSON.parse(fs.readFileSync(statePath, 'utf8')));
@@ -81,7 +117,11 @@ try {
   if (card.data.source?.identity !== state.source_identity) errors.push('Synthetic source state identity does not match Card.');
   if (card.data.canonical_url !== state.canonical_url) errors.push('Synthetic source state canonical_url does not match Card.');
 } catch (error) {
-  errors.push('Synthetic workspace/Card/source-state validation failed: ' + (error?.code || 'UNKNOWN') + ' ' + (error instanceof Error ? error.message : String(error)));
+  errors.push(
+    'Synthetic workspace/Card/source-state validation failed: ' +
+    (error?.code || 'UNKNOWN') + ' ' +
+    (error instanceof Error ? error.message : String(error))
+  );
 }
 
 if (errors.length) {
@@ -90,4 +130,7 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Repository check passed: ' + requiredFiles.length + ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, source state, and current-only documentation policy verified.');
+console.log(
+  'Repository check passed: ' + requiredFiles.length +
+  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, source state, and current-only documentation policy verified.'
+);
