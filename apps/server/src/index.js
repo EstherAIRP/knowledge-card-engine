@@ -115,7 +115,7 @@ export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now
         }
         if (request.method === 'POST') {
           assertSameOrigin(request, config);
-          return auth.logout(request);
+          return await auth.logout(request);
         }
         return methodNotAllowed(['GET', 'POST']);
       }
