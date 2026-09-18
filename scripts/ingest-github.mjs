@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import process from 'node:process';
-import { fetchGitHubEvidence, validateGitHubEvidence } from '../packages/ingestion/src/index.js';
+import { canonicalizeSource, fetchGitHubEvidence, validateGitHubEvidence } from '../packages/ingestion/src/index.js';
 import { applyAcceptedGitHubAnalysis } from '../packages/workspace/src/card-store.js';
 
 function parseArgs(argv) {
@@ -34,6 +34,12 @@ try {
         token: process.env.GITHUB_TOKEN || null,
         capturedAt: args.capturedAt || new Date().toISOString()
       });
+  const requested = canonicalizeSource(args.sourceUrl);
+  if (requested.provider !== 'github' || requested.identity !== evidence.source_identity) {
+    const error = new Error('Provided evidence does not match the requested GitHub repository URL.');
+    error.code = 'SOURCE_IDENTITY_MISMATCH';
+    throw error;
+  }
   const analysis = JSON.parse(await fs.readFile(args.analysisFile, 'utf8'));
   const result = await applyAcceptedGitHubAnalysis(args.workspaceRoot, evidence, analysis);
   console.log(JSON.stringify({ status: 'ok', ...result }, null, 2));
