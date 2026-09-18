@@ -6,18 +6,20 @@ import {
 } from 'node:crypto';
 import { GITHUB_API_VERSION, githubHeaders } from './github.js';
 import { HttpError, redirectResponse } from './http.js';
+import { assertSessionStore } from './session-store.js';
 
 const SESSION_COOKIE = '__Host-kc_session';
 const FLOW_COOKIE = '__Host-kc_oauth';
 const SESSION_MS = 60 * 60 * 1000;
 const FLOW_MS = 10 * 60 * 1000;
+const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 const GITHUB_API = 'https://api.github.com';
 
 function keyFor(secret) {
   return createHash('sha256').update(secret, 'utf8').digest();
 }
 
-function seal(payload, secret) {
+function sealFlow(payload, secret) {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', keyFor(secret), iv);
   const body = Buffer.from(JSON.stringify(payload), 'utf8');
@@ -26,7 +28,7 @@ function seal(payload, secret) {
   return [iv, tag, encrypted].map((part) => part.toString('base64url')).join('.');
 }
 
-function open(token, secret) {
+function openFlow(token, secret) {
   try {
     const parts = String(token || '').split('.');
     if (parts.length !== 3) return null;
@@ -193,24 +195,13 @@ export async function verifyWorkspaceEligibility(config, accessToken, fetchImpl 
   };
 }
 
-function sessionFromRequest(request, config, now) {
-  const raw = cookies(request).get(SESSION_COOKIE);
-  if (!raw) return null;
-  const payload = open(raw, config.sessionSecret);
-  if (
-    !payload
-    || typeof payload.sub !== 'string'
-    || !validLogin(payload.login)
-    || typeof payload.accessToken !== 'string'
-    || !payload.accessToken
-    || !Number.isFinite(payload.exp)
-  ) {
+function sessionIdFromRequest(request) {
+  const id = cookies(request).get(SESSION_COOKIE);
+  if (!id) return null;
+  if (!SESSION_ID.test(id)) {
     throw new HttpError(401, 'AUTH_SESSION_INVALID', 'Session is invalid.', { clearSession: true });
   }
-  if (payload.exp <= now()) {
-    throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired.', { clearSession: true });
-  }
-  return payload;
+  return id;
 }
 
 async function revokeUserToken(config, accessToken, fetchImpl) {
@@ -240,13 +231,20 @@ async function revokeUserToken(config, accessToken, fetchImpl) {
   }
 }
 
-export function createAuthService({ config, fetchImpl = fetch, now = () => Date.now() }) {
+export function createAuthService({
+  config,
+  sessionStore,
+  fetchImpl = fetch,
+  now = () => Date.now()
+}) {
+  assertSessionStore(sessionStore);
+
   return {
     beginLogin() {
       const state = randomBytes(32).toString('base64url');
       const verifier = randomBytes(48).toString('base64url');
       const challenge = createHash('sha256').update(verifier).digest('base64url');
-      const flow = seal({ state, verifier, exp: now() + FLOW_MS }, config.sessionSecret);
+      const flow = sealFlow({ state, verifier, exp: now() + FLOW_MS }, config.sessionSecret);
       return redirectResponse(
         authorizationUrl(config, state, challenge),
         302,
@@ -257,7 +255,7 @@ export function createAuthService({ config, fetchImpl = fetch, now = () => Date.
     async finishLogin(request) {
       const url = new URL(request.url);
       const flowRaw = cookies(request).get(FLOW_COOKIE);
-      const flow = flowRaw ? open(flowRaw, config.sessionSecret) : null;
+      const flow = flowRaw ? openFlow(flowRaw, config.sessionSecret) : null;
       const clearFlow = clearFlowCookie();
 
       if (url.searchParams.get('error')) {
@@ -290,18 +288,18 @@ export function createAuthService({ config, fetchImpl = fetch, now = () => Date.
         const exp = Math.min(now() + SESSION_MS, githubTokenExp);
         if (exp <= now()) throw new HttpError(502, 'AUTH_TOKEN_EXPIRED', 'GitHub returned an expired user token.');
 
-        const session = seal({
+        const sessionId = await sessionStore.create({
           sub: user.id,
           login: user.login,
           avatarUrl: user.avatarUrl,
           accessToken: exchanged.accessToken,
           githubTokenExp,
           exp
-        }, config.sessionSecret);
+        });
 
         return redirectResponse(appRoot(config), 302, [
           clearFlow,
-          cookie(SESSION_COOKIE, session, Math.max(1, Math.floor((exp - now()) / 1000)))
+          cookie(SESSION_COOKIE, sessionId, Math.max(1, Math.floor((exp - now()) / 1000)))
         ]);
       } catch (error) {
         if (error instanceof HttpError && error.status === 403) {
@@ -312,10 +310,26 @@ export function createAuthService({ config, fetchImpl = fetch, now = () => Date.
     },
 
     async authorize(request) {
-      const session = sessionFromRequest(request, config, now);
-      if (!session) throw new HttpError(401, 'AUTH_REQUIRED', 'GitHub login is required.');
-      const eligibility = await verifyWorkspaceEligibility(config, session.accessToken, fetchImpl);
+      const sessionId = sessionIdFromRequest(request);
+      if (!sessionId) throw new HttpError(401, 'AUTH_REQUIRED', 'GitHub login is required.');
+
+      const session = await sessionStore.get(sessionId);
+      if (!session) {
+        throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
+      }
+
+      let eligibility;
+      try {
+        eligibility = await verifyWorkspaceEligibility(config, session.accessToken, fetchImpl);
+      } catch (error) {
+        if (error instanceof HttpError && error.clearSession) {
+          await sessionStore.delete(sessionId);
+        }
+        throw error;
+      }
+
       return {
+        sessionId,
         session,
         user: {
           id: session.sub,
@@ -327,13 +341,32 @@ export function createAuthService({ config, fetchImpl = fetch, now = () => Date.
       };
     },
 
-    readSession(request) {
-      return sessionFromRequest(request, config, now);
-    },
-
     async logout(request) {
-      const session = sessionFromRequest(request, config, now);
-      if (session) await revokeUserToken(config, session.accessToken, fetchImpl);
+      const sessionId = sessionIdFromRequest(request);
+      if (!sessionId) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Set-Cookie': clearSessionCookie()
+          }
+        });
+      }
+
+      const session = await sessionStore.get(sessionId);
+      if (!session) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Set-Cookie': clearSessionCookie()
+          }
+        });
+      }
+
+      await revokeUserToken(config, session.accessToken, fetchImpl);
+      await sessionStore.delete(sessionId);
+
       return new Response(null, {
         status: 204,
         headers: {
