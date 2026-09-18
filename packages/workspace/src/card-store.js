@@ -201,8 +201,8 @@ export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analy
     throw error;
   }
 
-  const stateRelative = path.posix.join('state', githubSourceStatePath(evidence.source_identity));
-  const statePath = path.join(workspace.root, ...stateRelative.split('/'));
+  const statePath = path.join(workspace.paths.state, ...githubSourceStatePath(evidence.source_identity).split('/'));
+  const stateRelative = path.relative(workspace.root, statePath).split(path.sep).join('/');
   const state = buildGitHubSourceState(evidence, { cardId: built.card.data.id, cardPath: relativeCardPath });
   validateGitHubSourceState(state);
 
