@@ -1,0 +1,40 @@
+schema_version: 1
+
+categories:
+  - AI Systems
+  - Developer Tools
+
+navigation_categories:
+  - Agent / Harness
+  - Engineering
+
+relevance_dimensions:
+  overall:
+    label: Overall
+    description: Overall value of the synthetic example.
+  engineering:
+    label: Engineering
+    description: Engineering relevance of the synthetic example.
+
+relevance_scale:
+  1: Minimal
+  2: Low
+  3: Medium
+  4: High
+  5: Core
+
+actions:
+  LEARN: Study the resource.
+  REFERENCE: Keep as a reference.
+
+statuses:
+  - active
+  - archived
+
+source_types:
+  - github
+  - article
+
+resource_kinds:
+  - project
+  - article
