@@ -2,6 +2,6 @@
   "fixture_version": 2,
   "synthetic": true,
   "name": "example-synthetic-workspace",
-  "description": "Synthetic-only Workspace v1 fixture used to validate the public engine workspace contract.",
+  "description": "Synthetic-only Workspace fixture used to validate the current public engine contracts with schema_version 1.",
   "contains_private_data": false
 }
