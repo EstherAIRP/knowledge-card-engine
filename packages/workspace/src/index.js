@@ -300,4 +300,3 @@ export async function loadWorkspace(workspaceRoot, {
   };
 }
 
-export { applyAcceptedGitHubAnalysis } from './card-store.js';
