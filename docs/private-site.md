@@ -279,6 +279,32 @@ Vercel adapter **不允許 process-local memory session fallback**：只有同�
 
 ## 尚未提供的能力
 
+## Vercel 部署
+
+Repository root 的 `server.js` 是 Vercel 可偵測的 Node HTTP server entrypoint；`npm start` 會啟動同一個 adapter。
+
+Vercel / 多 instance runtime 不得使用 process-local memory session。當 `VERCEL` 存在時，如果沒有共享 session store，private site 會標示為 `unconfigured`，登入 API 回 503，不會退回 memory session。
+
+目前支援 Upstash-compatible Redis REST shared store。可使用：
+
+```text
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+```
+
+也接受 Knowledge Card 專用別名：
+
+```text
+KC_SESSION_REDIS_REST_URL
+KC_SESSION_REDIS_REST_TOKEN
+```
+
+Session value 在送進 Redis 前以 `KC_SESSION_SECRET` 衍生的 AES-256-GCM key 加密；Redis key 只使用 random session id。Store 的 `SET` TTL 取自 session expiry，最長 1 小時。
+
+Redis token 必須是可執行 `SET/GET/DEL` 的 server-side credential，不能暴露給 browser。
+
+## 尚未提供的能力
+
 目前 private site 不提供：
 
 - 搜尋 API
