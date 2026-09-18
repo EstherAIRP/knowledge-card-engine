@@ -1,28 +1,39 @@
 # Knowledge Card Engine
 
-Knowledge Card V2 的公開核心引擎倉庫。
-
-本倉庫負責共用程式、資料契約、驗證規則、網站程式、通用自動化與合成測試資料；真實私人知識資料放在私人工作區：
-
-- https://github.com/EstherAIRP/knowledge-card-workspace
+Knowledge Card V2 的公開核心引擎倉庫。真實私人知識資料存放於私人 `knowledge-card-workspace`，不得進入本公開倉庫、PR、測試、日誌或建置產物。
 
 ## 目前狀態
 
-目前只有專案治理與安全邊界的最小基線，尚未實作收錄、Schema、網站、搜尋、圖譜或發布流程。後續功能完成時，文件只描述當下有效的系統行為。
+目前已建立可執行的 engine skeleton：Node.js 24、npm workspaces、模組邊界、合成 workspace fixture、repository check、Node tests 與 GitHub Actions validation。
+
+目前**尚未**實作 Card Schema、Workspace 契約、來源收錄、登入授權、搜尋／圖譜或發布流程；正式文件不把尚未完成的功能描述成可用。
+
+## 模組
+
+- `apps/web`：私人閱覽前端邊界。
+- `apps/server`：登入、授權與讀取 API 邊界。
+- `packages/core`：Card 模型、驗證與所有權邊界。
+- `packages/ingestion`：來源識別、擷取與完整性邊界。
+- `packages/analysis`：個人化分析與模型介面邊界。
+- `packages/graph`：搜尋、向量、關聯與 Concept 邊界。
+- `packages/workspace`：工作區讀寫與版本解析邊界。
+- `packages/release`：manifest 與一致發布邊界。
+
+這些 entrypoint 目前只用來固定責任邊界，尚未承載領域行為。
+
+## 開發
+
+需求：Node.js 24。
+
+```bash
+npm ci
+npm run validate
+```
+
+`validate` 會執行 repository policy check 與 Node tests。GitHub Actions 在 pull request 與 `main` push 執行相同驗證。
+
+正式文件入口：[docs/index.md](./docs/index.md)。開發規則：[AGENTS.md](./AGENTS.md)。
 
 ## 資料邊界
 
-本公開倉庫不得包含：
-
-- 真實私人知識卡、個人背景或非公開專案資料。
-- 真實來源快照、私人向量／索引或發布紀錄。
-- API Key、Token、Cookie、Session Secret 或其他密鑰。
-- 從私人聊天、記憶或私人工作區複製出的測試內容。
-
-需要範例或測試資料時，只能使用合成資料。
-
-## 文件原則
-
-正式文件只保存目前有效的規格、架構與操作方式，不保存開發 Roadmap、Phase、任務計畫、過期設計或開發歷史。
-
-Agent 或開發者修改本倉庫前，先讀取 [AGENTS.md](./AGENTS.md)。
+公開範例與測試只能使用合成資料。`examples/synthetic-workspace/` 明確標記為 synthetic，且不是正式 Workspace Schema；正式 workspace contract 會在後續實作時定義。

@@ -1,0 +1,18 @@
+{
+  "name": "@knowledge-card/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "node scripts/check-repository.mjs",
+    "test": "node --test",
+    "validate": "npm run check && npm test"
+  }
+}
