@@ -1,0 +1,6 @@
+{
+  "fixture_version": 1,
+  "synthetic": true,
+  "name": "example-synthetic-workspace",
+  "description": "Synthetic-only placeholder used to verify the public engine never requires private user data during skeleton tests."
+}
