@@ -3,6 +3,7 @@ import { tryLoadSiteConfig } from './config.js';
 import { HttpError, htmlResponse, jsonResponse, methodNotAllowed } from './http.js';
 import { createWorkspaceRepositoryReader } from './workspace-reader.js';
 import { assertSessionStore, createMemorySessionStore } from './session-store.js';
+import { createUpstashSessionStore } from './upstash-session-store.js';
 import { renderPrivateSiteShell } from '../../web/src/index.js';
 
 export const moduleId = 'server';
@@ -52,9 +53,41 @@ function assertSameOrigin(request, config) {
 
 export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now = () => Date.now(), sessionStore = null } = {}) {
   const state = tryLoadSiteConfig(env);
-  const store = assertSessionStore(sessionStore || createMemorySessionStore({ now }));
-  const auth = state.configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
-  const reader = state.configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
+
+  let store = null;
+  let runtimeConfigured = state.configured;
+  if (state.configured) {
+    try {
+      if (sessionStore) {
+        store = assertSessionStore(sessionStore);
+      } else {
+        const upstashUrl = String(env.KC_SESSION_REDIS_REST_URL || env.UPSTASH_REDIS_REST_URL || '').trim();
+        const upstashToken = String(env.KC_SESSION_REDIS_REST_TOKEN || env.UPSTASH_REDIS_REST_TOKEN || '').trim();
+
+        if (upstashUrl || upstashToken) {
+          if (!upstashUrl || !upstashToken) {
+            throw new Error('Both shared session REST URL and token are required.');
+          }
+          store = createUpstashSessionStore({
+            url: upstashUrl,
+            token: upstashToken,
+            sessionSecret: state.config.sessionSecret,
+            fetchImpl,
+            now
+          });
+        } else if (env.VERCEL) {
+          throw new Error('Vercel runtime requires a shared server-side session store.');
+        } else {
+          store = createMemorySessionStore({ now });
+        }
+      }
+    } catch {
+      runtimeConfigured = false;
+    }
+  }
+
+  const auth = runtimeConfigured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
+  const reader = runtimeConfigured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
 
   return async function handle(request) {
     const url = new URL(request.url);
@@ -64,8 +97,8 @@ export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now
       if (pathname === '/api/health') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
         return jsonResponse(200, {
-          status: state.configured ? 'ok' : 'unconfigured',
-          configured: state.configured
+          status: runtimeConfigured ? 'ok' : 'unconfigured',
+          configured: runtimeConfigured
         });
       }
 
@@ -87,7 +120,7 @@ export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now
         });
       }
 
-      const config = configuredOrThrow(state);
+      const config = configuredOrThrow({ configured: runtimeConfigured, config: state.config });
 
       if (pathname === '/api/auth/login') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
