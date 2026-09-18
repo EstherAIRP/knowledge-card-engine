@@ -228,3 +228,33 @@ test('create then URL-variant update preserves stable path/id/date, user state, 
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+
+test('Card validation failure does not advance an existing accepted source state', async () => {
+  const root = await tempWorkspace();
+  try {
+    const firstEvidence = await fetchGitHubEvidence('https://github.com/example/new-project', {
+      fetchImpl: githubFetch({ metadata: metadata(), readme: readme('# New Project\n\nAccepted version.') }),
+      capturedAt: '2026-09-18T12:00:00Z'
+    });
+    const created = await applyAcceptedGitHubAnalysis(root, firstEvidence, analysisTemplate(firstEvidence));
+    const statePath = path.join(root, ...created.source_state_path.split('/'));
+    const priorState = await fs.readFile(statePath, 'utf8');
+
+    const secondEvidence = await fetchGitHubEvidence('https://github.com/example/new-project/tree/main/docs', {
+      fetchImpl: githubFetch({ metadata: metadata(), readme: readme('# New Project\n\nAccepted version.') }),
+      capturedAt: '2026-09-19T12:00:00Z'
+    });
+    const invalidAnalysis = analysisTemplate(secondEvidence, {
+      navigation_categories: ['NOT-IN-TAXONOMY']
+    });
+
+    await assert.rejects(
+      applyAcceptedGitHubAnalysis(root, secondEvidence, invalidAnalysis),
+      (error) => error.code === 'CARD_VALIDATION_FAILED'
+    );
+    assert.equal(await fs.readFile(statePath, 'utf8'), priorState);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
