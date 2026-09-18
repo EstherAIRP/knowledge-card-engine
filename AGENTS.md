@@ -28,7 +28,7 @@
 
 - 正式文件只描述目前有效的架構、契約、操作方式與限制。
 - 正式文件必須自足：不得要求讀者先理解其他產品代際、開發任務、舊 PR、聊天紀錄或外部開發管理倉庫才能正確操作目前系統。
-- 產品代際、遷移比較、開發 Roadmap、Phase、task plan、archive 與過期設計不得放入正式文件。
+- 產品代際、遷移比較、開發 Roadmap、開發階段文件、task plan、archive 與過期設計不得放入正式文件。
 - `schema_version`、`analysis_version`、API / protocol / data-format version 等可由機器驗證的版本屬於現行契約，可以保留並必須說明其驗證行為。
 - 文件與 runtime 行為不一致視為缺陷；不能以歷史敘事或「沿用既有行為」代替完整現行定義。
 
