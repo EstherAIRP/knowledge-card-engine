@@ -49,3 +49,6 @@ jobs:
           --engine-repository=${{ inputs.engine_repository }}
           --engine-commit=${{ inputs.engine_sha }}
           --workflow-file=.github/workflows/validate.yml
+
+      - name: Validate taxonomy and Knowledge Cards
+        run: node engine/scripts/validate-cards.mjs workspace
