@@ -52,3 +52,6 @@ jobs:
 
       - name: Validate taxonomy and Knowledge Cards
         run: node engine/scripts/validate-cards.mjs workspace
+
+      - name: Validate accepted source state
+        run: node engine/scripts/validate-source-state.mjs workspace

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
-import { loadCardDocuments, loadTaxonomyFile, validateCardCollection } from '../packages/core/src/index.js';
+import { loadCardDocuments, loadTaxonomyFile, validateCardCollection, parseCardDocument } from '../packages/core/src/index.js';
+import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';
 
 const root = process.cwd();
 const requiredFiles = [
@@ -16,24 +17,29 @@ const requiredFiles = [
   'docs/development.md',
   'docs/workspace.md',
   'docs/card-contract.md',
+  'docs/ingestion.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
   'schema/knowledge-card.schema.json',
   'schema/taxonomy.schema.json',
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
+  'scripts/ingest-github.mjs',
+  'scripts/validate-source-state.mjs',
   'examples/synthetic-workspace/fixture.json',
   'examples/synthetic-workspace/workspace.yaml',
   'examples/synthetic-workspace/engine.lock.json',
   'examples/synthetic-workspace/config/taxonomy.yaml',
   'examples/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md',
+  'examples/synthetic-workspace/state/sources/github/example--synthetic-example.json',
   ...['profile', 'projects', 'config', 'state', 'data', 'releases'].map((name) => 'examples/synthetic-workspace/' + name + '/README.md'),
   'examples/synthetic-workspace/content/knowledge/README.md',
   ...['web', 'server'].flatMap((name) => ['apps/' + name + '/package.json', 'apps/' + name + '/src/index.js']),
   ...['core', 'ingestion', 'analysis', 'graph', 'workspace', 'release'].flatMap((name) => [
     'packages/' + name + '/package.json',
     'packages/' + name + '/src/index.js'
-  ])
+  ]),
+  'packages/workspace/src/card-store.js'
 ];
 const forbiddenPaths = [
   'docs/plans',
@@ -66,8 +72,16 @@ try {
   const cards = await loadCardDocuments(workspace.paths.knowledge);
   const issues = await validateCardCollection(cards, taxonomy);
   for (const item of issues) errors.push('Synthetic Card validation [' + item.code + '] ' + item.path + ': ' + item.message);
+
+  const statePath = path.join(workspace.paths.state, 'sources/github/example--synthetic-example.json');
+  const state = validateGitHubSourceState(JSON.parse(fs.readFileSync(statePath, 'utf8')));
+  const cardPath = path.resolve(workspace.root, state.card_path);
+  const card = parseCardDocument(fs.readFileSync(cardPath, 'utf8'), cardPath);
+  if (card.data.id !== state.card_id) errors.push('Synthetic source state card_id does not match Card.');
+  if (card.data.source?.identity !== state.source_identity) errors.push('Synthetic source state identity does not match Card.');
+  if (card.data.canonical_url !== state.canonical_url) errors.push('Synthetic source state canonical_url does not match Card.');
 } catch (error) {
-  errors.push('Synthetic workspace/Card validation failed: ' + (error?.code || 'UNKNOWN') + ' ' + (error instanceof Error ? error.message : String(error)));
+  errors.push('Synthetic workspace/Card/source-state validation failed: ' + (error?.code || 'UNKNOWN') + ' ' + (error instanceof Error ? error.message : String(error)));
 }
 
 if (errors.length) {
@@ -76,4 +90,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Repository check passed: ' + requiredFiles.length + ' required files, Workspace v1, Card v1, Taxonomy v1, and current-only documentation policy verified.');
+console.log('Repository check passed: ' + requiredFiles.length + ' required files, Workspace v1, Card v1, Taxonomy v1, GitHub ingestion, source state, and current-only documentation policy verified.');

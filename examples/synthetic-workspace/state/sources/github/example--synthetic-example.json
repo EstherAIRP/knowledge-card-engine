@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "provider": "github",
+  "source_identity": "github:example/synthetic-example",
+  "canonical_url": "https://github.com/example/synthetic-example",
+  "captured_at": "2026-09-18T00:00:00.000Z",
+  "evidence_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "repository": {
+    "full_name": "example/synthetic-example",
+    "default_branch": "main",
+    "pushed_at": "2026-09-18T00:00:00Z",
+    "updated_at": "2026-09-18T00:00:00Z",
+    "archived": false,
+    "disabled": false
+  },
+  "readme": {
+    "sha": "synthetic-readme-sha",
+    "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "bytes": 128
+  },
+  "card_id": "synthetic-example-project",
+  "card_path": "content/knowledge/2026/synthetic-example-project.md"
+}
