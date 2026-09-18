@@ -15,8 +15,9 @@
 ## 修改規則
 - 只修改本次任務必要範圍。
 - 不以重寫、重置或清理方式處理與本次任務無關的內容。
-- 使用者備註、人工覆寫、穩定 ID、建立日期等所有權規則一旦建立，不得繞過驗證器修改。
+- Knowledge Card 修改必須遵守 [docs/card-contract.md](./docs/card-contract.md)；一般重新分析不得修改穩定 ID、建立日期、任何 user override 或 `## 使用者備註`。
 - 公開範例與測試只能使用合成資料。
+- Workspace Card 變更必須通過 Card Schema、Taxonomy、正文、集合唯一性與所有權相關驗證。
 - 正式文件只描述目前有效的行為；不加入 Roadmap、Phase、task plan、archive 或過期設計。
 
 ## 分支與交付

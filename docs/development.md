@@ -14,19 +14,20 @@ npm run validate
 
 `validate` 目前包含：
 
-1. `npm run check`：檢查必要骨架、Workspace synthetic fixture、current-only 文件政策。
-2. `npm test`：驗證模組 entrypoint 與 Workspace v1 正向／失敗案例。
+1. `npm run check`：檢查必要骨架、synthetic Workspace / Taxonomy / Card 與 current-only 文件政策。
+2. `npm test`：驗證模組、Workspace v1、Card v1、Taxonomy v1、ownership 與失敗案例。
 
-指定 Workspace 可使用：
+指定 Workspace：
 
 ```bash
 npm run workspace:validate -- /path/to/workspace
+npm run cards:validate -- /path/to/workspace
 ```
 
 GitHub Actions：
 
 - `.github/workflows/validate.yml`：engine PR / main validation。
-- `.github/workflows/validate-workspace.yml`：提供私人 workspace 以完整 engine SHA 呼叫的 reusable workflow。
+- `.github/workflows/validate-workspace.yml`：私人 Workspace 以固定 engine SHA 驗證 Workspace、Taxonomy 與 Cards。
 
 ## 文件原則
 
