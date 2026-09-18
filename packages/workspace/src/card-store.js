@@ -79,15 +79,15 @@ function appendUpdateLog(existingRaw, date, message) {
 }
 
 function renderBody(title, sections, notesRaw, updateLogRaw) {
-  const chunks = [`# ${title}\n`];
+  let body = `# ${title}\n\n`;
   for (const heading of ANALYSIS_SECTIONS) {
-    chunks.push(`## ${heading}\n\n${normalizeSectionPayload(sections[heading])}\n`);
+    body += `## ${heading}\n\n${normalizeSectionPayload(sections[heading])}\n\n`;
   }
-  chunks.push('## 使用者備註');
-  chunks.push(notesRaw ?? '\n\n');
-  chunks.push('## 更新紀錄');
-  chunks.push(updateLogRaw ?? '\n\n');
-  return chunks.join('\n');
+  body += '## 使用者備註';
+  body += notesRaw ?? '\n\n';
+  body += '## 更新紀錄';
+  body += updateLogRaw ?? '\n\n';
+  return body;
 }
 
 function preserveUserWrapper(existingWrapper, aiValue, emptyUser) {
