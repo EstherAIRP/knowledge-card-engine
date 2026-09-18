@@ -15,9 +15,11 @@
 ## 修改規則
 - 只修改本次任務必要範圍。
 - 不以重寫、重置或清理方式處理與本次任務無關的內容。
-- Knowledge Card 修改必須遵守 [docs/card-contract.md](./docs/card-contract.md)；一般重新分析不得修改穩定 ID、建立日期、任何 user override 或 `## 使用者備註`。
+- Knowledge Card 修改必須遵守 [docs/card-contract.md](./docs/card-contract.md)。
+- GitHub 收錄必須遵守 [docs/ingestion.md](./docs/ingestion.md)；不得以 URL slug、repo 名稱或模型記憶取代 accepted evidence。
+- 一般重新分析不得修改穩定 ID、建立日期、任何 user override 或 `## 使用者備註`。
+- accepted source state 只能在 Card 與 collection 驗證成功後推進。
 - 公開範例與測試只能使用合成資料。
-- Workspace Card 變更必須通過 Card Schema、Taxonomy、正文、集合唯一性與所有權相關驗證。
 - 正式文件只描述目前有效的行為；不加入 Roadmap、Phase、task plan、archive 或過期設計。
 
 ## 分支與交付

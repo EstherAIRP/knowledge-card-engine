@@ -6,13 +6,21 @@ Knowledge Card Engine 是公開程式倉庫；真實私人知識資料由私人 
 | --- | --- |
 | `apps/web` | 私人閱覽前端的應用邊界；尚未實作 UI。 |
 | `apps/server` | 登入、授權與讀取 API 的應用邊界；尚未實作服務。 |
-| `packages/core` | 已實作 Card v1 / Taxonomy v1、AI/user ownership、body contract、collection validation 與 stable path helper。 |
-| `packages/ingestion` | 來源識別、擷取與完整性驗證的邊界；provider 尚未建立。 |
-| `packages/analysis` | 個人化分析與模型介面的邊界；provider 尚未建立。 |
+| `packages/core` | Card v1 / Taxonomy v1、ownership、body contract、collection validation 與 stable path。 |
+| `packages/ingestion` | GitHub URL canonicalization、metadata + README evidence、identity resolution 與 accepted source state contract。 |
+| `packages/analysis` | provider-neutral analysis result contract，analysis 必須綁定 accepted evidence digest。 |
 | `packages/graph` | 搜尋、向量、關聯、Concept 與版面的邊界；演算法尚未建立。 |
-| `packages/workspace` | Workspace v1 loader、路徑安全、schema 相容性與 engine pin 驗證。 |
+| `packages/workspace` | Workspace loader、engine pin，以及 validated Card + source state 的安全寫入。 |
 | `packages/release` | manifest 與一致發布的邊界；E/S/P 尚未實作。 |
 
-Card structural schema 屬於公開 engine；受控 taxonomy 的實際值屬於各 Workspace 的 `config/taxonomy.yaml`。這讓 engine 可以公開驗證規則，而不需要公開私人工作區偏好。
+資料流目前是：
 
-Workspace 必須由明確 root 載入，不以 `process.cwd()` 或固定私人 repository 名稱猜測資料位置。
+```text
+source evidence
+→ analysis
+→ workspace write
+```
+
+三層責任分開：ingestion 不寫 Card、analysis 不操作 filesystem、workspace writer 不自行擷取外部來源。
+
+Card structural schema 屬於公開 engine；受控 taxonomy 實際值屬於各 Workspace。

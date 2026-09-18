@@ -299,3 +299,5 @@ export async function loadWorkspace(workspaceRoot, {
     paths: resolved.paths
   };
 }
+
+export { applyAcceptedGitHubAnalysis } from './card-store.js';
