@@ -6,8 +6,8 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 
 | 路徑 | 目前責任 |
 | --- | --- |
-| `apps/web` | 私人閱覽前端的應用邊界；目前未實作可用 UI。 |
-| `apps/server` | 登入、授權與資料讀取 API 的應用邊界；目前未實作可用服務。 |
+| `apps/web` | 私人唯讀 Card list/detail UI shell；private data 只由 authenticated API runtime 取得。 |
+| `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader 與 private Card API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、create/update resolution 與 GitHub source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result contract；analysis 必須綁定 accepted source identity 與 evidence digest。 |
@@ -47,3 +47,24 @@ Card 與 source state 寫入前會完成 evidence、analysis binding、ownership
 Engine 接收明確的 Workspace root，不以目前工作目錄或固定私人 repository 名稱推測資料位置。Workspace 以 `engine.lock.json` 固定核准的 engine repository 與完整 commit SHA；CI 再驗證 workflow pin、lock 與實際 checkout 的 engine SHA 一致。
 
 目前 Workspace、Card、GitHub ingestion 的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md) 與 [ingestion.md](./ingestion.md)。
+
+
+## 私人閱覽資料流
+
+目前私人網站的讀取邊界：
+
+```text
+Browser
+→ GitHub App state + PKCE login
+→ opaque session id
+→ server-side user-token session
+→ per-request private Workspace eligibility check
+→ GitHub App installation token
+→ configured Workspace revision
+→ validated Taxonomy + Card collection
+→ Card summary/detail projection
+```
+
+登入 credential 與 repository data credential 分離。User access token 只存在 server-side session store；installation token 只存在 server runtime。Private API authorization 一律先於 Workspace snapshot cache。
+
+目前 Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。詳細契約見 [private-site.md](./private-site.md)。

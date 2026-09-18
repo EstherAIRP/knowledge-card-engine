@@ -17,6 +17,7 @@
     "workspace:validate": "node scripts/validate-workspace.mjs",
     "cards:validate": "node scripts/validate-cards.mjs",
     "source-state:validate": "node scripts/validate-source-state.mjs",
-    "ingest:github": "node scripts/ingest-github.mjs"
+    "ingest:github": "node scripts/ingest-github.mjs",
+    "site:serve": "node apps/server/src/node-server.js"
   }
 }

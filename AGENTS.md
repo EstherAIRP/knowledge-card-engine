@@ -22,6 +22,8 @@
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` override 或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Card update；identity / canonical URL 衝突必須 fail closed。
 - accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。
+- Private API 必須在讀取 server-side Workspace/cache 前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
+- GitHub user access token、installation token、App private key、client secret 不得回傳到 browser；browser session cookie 只保存 opaque session id。
 - 公開範例與測試只能使用合成資料。
 
 ## 正式文件規則

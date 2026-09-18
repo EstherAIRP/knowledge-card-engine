@@ -19,6 +19,7 @@ const requiredFiles = [
   'docs/workspace.md',
   'docs/card-contract.md',
   'docs/ingestion.md',
+  'docs/private-site.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
   'schema/knowledge-card.schema.json',
@@ -42,7 +43,16 @@ const requiredFiles = [
     'packages/' + name + '/package.json',
     'packages/' + name + '/src/index.js'
   ]),
-  'packages/workspace/src/card-store.js'
+  'packages/workspace/src/card-store.js',
+  'apps/server/.env.example',
+  'apps/server/src/auth.js',
+  'apps/server/src/config.js',
+  'apps/server/src/github.js',
+  'apps/server/src/http.js',
+  'apps/server/src/session-store.js',
+  'apps/server/src/workspace-reader.js',
+  'apps/server/src/node-server.js',
+  'tests/private-site.test.mjs'
 ];
 
 const forbiddenPaths = [
@@ -132,5 +142,5 @@ if (errors.length) {
 
 console.log(
   'Repository check passed: ' + requiredFiles.length +
-  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, source state, and current-only documentation policy verified.'
+  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, private site authorization, source state, and current-only documentation policy verified.'
 );
