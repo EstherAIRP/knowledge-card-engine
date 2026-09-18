@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 
 export function createMemorySessionStore({ now = () => Date.now() } = {}) {
@@ -14,7 +16,7 @@ export function createMemorySessionStore({ now = () => Date.now() } = {}) {
 
   return {
     async create(value) {
-      const id = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
+      const id = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
       sessions.set(id, structuredClone(value));
       return id;
     },
@@ -88,7 +90,7 @@ export function createRestSessionStore({
       if (!Number.isFinite(value?.exp) || value.exp <= now()) {
         throw new TypeError('Session value must contain a future exp timestamp.');
       }
-      const id = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
+      const id = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
       const ttlSeconds = Math.max(1, Math.ceil((value.exp - now()) / 1000));
       const result = await redisCommand(
         config,
