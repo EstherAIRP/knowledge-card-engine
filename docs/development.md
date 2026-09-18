@@ -61,9 +61,9 @@ Reusable workflow 只需要 `contents: read`，並 checkout Workspace 與指定 
 正式 engine 文件必須能在不依賴開發歷史的情況下描述目前系統：
 
 - 只寫現在有效的架構、契約、操作與限制。
-- 不保存 Roadmap、Phase、task plan、archive、產品代際比較或過期設計。
+- 不保存 Roadmap、開發階段文件、task plan、archive、產品代際比較或過期設計。
 - 不引用外部開發管理 repository、舊 PR 或聊天紀錄作為理解目前 runtime 的前置條件。
 - 真正的機器契約版本（例如 `schema_version: 1`、`analysis_version: 1`）必須保留並說明 fail-closed 行為。
 - 文件與 Schema/runtime/tests 不一致時，視為缺陷並修正，不用歷史敘事補足缺口。
 
-Repository check 會掃描正式 Markdown 入口，阻擋已知產品代際、task/phase 歷史與外部開發歷史依賴重新進入正式文件。
+Repository check 會掃描正式 Markdown 入口，阻擋已知產品代際、任務／開發階段歷史與外部開發歷史依賴重新進入正式文件。
