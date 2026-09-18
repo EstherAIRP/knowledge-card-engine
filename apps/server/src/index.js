@@ -2,6 +2,7 @@ import { createAuthService, clearSessionCookie } from './auth.js';
 import { tryLoadSiteConfig } from './config.js';
 import { HttpError, htmlResponse, jsonResponse, methodNotAllowed } from './http.js';
 import { createWorkspaceRepositoryReader } from './workspace-reader.js';
+import { assertSessionStore, createMemorySessionStore } from './session-store.js';
 import { renderPrivateSiteShell } from '../../web/src/index.js';
 
 export const moduleId = 'server';
@@ -49,9 +50,10 @@ function assertSameOrigin(request, config) {
   }
 }
 
-export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now = () => Date.now() } = {}) {
+export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now = () => Date.now(), sessionStore = null } = {}) {
   const state = tryLoadSiteConfig(env);
-  const auth = state.configured ? createAuthService({ config: state.config, fetchImpl, now }) : null;
+  const store = assertSessionStore(sessionStore || createMemorySessionStore({ now }));
+  const auth = state.configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
   const reader = state.configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
 
   return async function handle(request) {
