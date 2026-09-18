@@ -52,7 +52,10 @@ const requiredFiles = [
   'apps/server/src/session-store.js',
   'apps/server/src/workspace-reader.js',
   'apps/server/src/node-server.js',
-  'tests/private-site.test.mjs'
+  'tests/private-site.test.mjs',
+  'tests/session-store.test.mjs',
+  'api/site.js',
+  'vercel.json'
 ];
 
 const forbiddenPaths = [

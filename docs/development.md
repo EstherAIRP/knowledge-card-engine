@@ -57,7 +57,7 @@ GitHub writer 的資料與 ownership 前置條件見 [ingestion.md](./ingestion.
 npm run site:serve
 ```
 
-完整 login/session/data boundary 見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設 memory store 只提供單 process reference runtime，多 instance / serverless 部署必須使用 shared server-side store。
+完整 login/session/data boundary 見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設 memory store 只提供單 process reference runtime。Vercel deployment 由 `api/site.js` + `vercel.json` 提供，並要求 `KC_SESSION_STORE_REST_URL` / `KC_SESSION_STORE_REST_TOKEN` shared REST session store；缺少它們時 deployment 保持 unconfigured。
 
 ## GitHub Actions
 
