@@ -33,10 +33,9 @@ export function loadSiteConfig(env = process.env) {
   } catch {
     throw new SiteConfigError('SITE_CONFIG_INVALID', 'KC_PUBLIC_URL must be an absolute URL.');
   }
-  if (publicUrl.protocol !== 'https:' || publicUrl.username || publicUrl.password || publicUrl.search || publicUrl.hash) {
-    throw new SiteConfigError('SITE_CONFIG_INVALID', 'KC_PUBLIC_URL must be an HTTPS origin/base URL without credentials, query, or fragment.');
+  if (publicUrl.protocol !== 'https:' || publicUrl.username || publicUrl.password || publicUrl.search || publicUrl.hash || publicUrl.pathname !== '/') {
+    throw new SiteConfigError('SITE_CONFIG_INVALID', 'KC_PUBLIC_URL must be an HTTPS origin without credentials, path, query, or fragment.');
   }
-  publicUrl.pathname = publicUrl.pathname.replace(/\/+$/, '') || '/';
 
   const sessionSecret = required(env, 'KC_SESSION_SECRET');
   if (Buffer.byteLength(sessionSecret, 'utf8') < 32) {
