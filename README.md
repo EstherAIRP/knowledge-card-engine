@@ -1,34 +1,49 @@
 # Knowledge Card Engine
 
-Knowledge Card V2 的公開核心引擎倉庫。真實私人知識資料存放於私人 `knowledge-card-workspace`，不得進入本公開倉庫、PR、測試、日誌或建置產物。
+Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供 Workspace、Knowledge Card、來源收錄、分析資料契約、驗證與共用自動化；真實私人知識資料保存在私人 Workspace，不得進入本公開倉庫、PR、測試、日誌或建置產物。
 
-## 目前狀態
+## 目前可用能力
 
-目前已建立：
+目前已實作：
 
-- Node.js 24 / npm workspace 骨架。
-- Workspace v1 契約與固定 engine SHA 驗證。
-- Knowledge Card v1 / Taxonomy v1 契約。
-- Card ownership、正文、collection uniqueness 與 stable path 驗證。
-- GitHub Repository canonicalization、metadata + README evidence provider。
-- evidence-bound analysis contract。
-- create/update resolver、ownership-safe Workspace writer 與 accepted source state。
-- reusable Workspace CI，可驗 workspace、taxonomy、Cards 與 source state。
+- Node.js 24 / npm workspaces 工具鏈。
+- Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
+- Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
+- GitHub Repository URL canonicalization、repository metadata + README accepted evidence。
+- 與 accepted evidence digest 綁定的 analysis result 契約。
+- 依 source identity / canonical URL 判斷 create 或 update。
+- 保護 user/stable-owned state 的 Workspace writer。
+- GitHub accepted source state 與 Card 對應驗證。
+- reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
 
-目前尚未實作其他來源 provider、登入授權、搜尋／圖譜或發布流程。
+目前尚未實作其他來源 provider、登入授權、搜尋／圖譜演算法或一致發布流程；這些邊界已預留，但不能視為可用功能。
 
-## 模組
+## 模組責任
 
-- `apps/web`：私人閱覽前端邊界。
-- `apps/server`：登入、授權與讀取 API 邊界。
-- `packages/core`：Card v1、Taxonomy v1、ownership 與 collection validation。
-- `packages/ingestion`：GitHub canonicalization、provider evidence、create/update resolution、source state contract。
-- `packages/analysis`：provider-neutral evidence-bound analysis result contract。
-- `packages/graph`：搜尋、向量、關聯與 Concept 邊界。
-- `packages/workspace`：Workspace loader、engine pin 與 ownership-safe Card persistence。
-- `packages/release`：manifest 與一致發布邊界。
+- `apps/web`：私人閱覽前端應用邊界；目前沒有可用 UI。
+- `apps/server`：登入、授權與資料讀取 API 應用邊界；目前沒有可用服務。
+- `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
+- `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
+- `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
+- `packages/graph`：搜尋、向量、關聯與 Concept 的模組邊界；目前未實作演算法。
+- `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
+- `packages/release`：manifest 與一致發布的模組邊界；目前未實作發布模型。
 
-## 開發
+架構與責任邊界詳見 [docs/architecture.md](./docs/architecture.md)。
+
+## Workspace 與資料契約
+
+Workspace root 必須明確指定，並包含 `workspace.yaml`、`engine.lock.json` 與契約要求的標準目錄。Workspace 不自動追隨 engine `main`；核准 engine 由完整 40 位 commit SHA 固定。
+
+Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `config/taxonomy.yaml` 定義受控詞彙。一般重新分析可以更新 AI-owned 內容，但不得修改穩定 `id`、`created_at`、任何 user override 或完整 `## 使用者備註`。
+
+完整契約：
+
+- [Workspace 契約](./docs/workspace.md)
+- [Knowledge Card 契約](./docs/card-contract.md)
+- [GitHub 收錄契約](./docs/ingestion.md)
+
+## 開發與驗證
 
 需求：Node.js 24。
 
@@ -36,6 +51,8 @@ Knowledge Card V2 的公開核心引擎倉庫。真實私人知識資料存放�
 npm ci
 npm run validate
 ```
+
+`npm run validate` 會執行 repository policy check 與 Node tests。
 
 驗證指定 Workspace：
 
@@ -51,8 +68,10 @@ GitHub ingestion CLI：
 npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json
 ```
 
-正式文件入口：[docs/index.md](./docs/index.md)。
+CLI 可即時取得 GitHub metadata + README，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。需要 GitHub 授權時使用環境變數 `GITHUB_TOKEN`；密鑰不得寫入 repository。
 
-## 資料邊界
+完整開發說明見 [docs/development.md](./docs/development.md)，正式文件入口見 [docs/index.md](./docs/index.md)。
 
-公開範例與測試只能使用合成資料。`examples/synthetic-workspace/` 僅含 synthetic Workspace / Taxonomy / Card / source state。
+## 公私資料邊界
+
+公開測試、範例與 fixture 只能使用明確標示的合成資料。`examples/synthetic-workspace/` 用來驗證 Workspace、Taxonomy、Card 與 source-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。

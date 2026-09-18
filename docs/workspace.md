@@ -1,15 +1,26 @@
 # Workspace 契約
 
-## 檔案
+Workspace 是 Knowledge Card 的私人資料根目錄。Engine 只接受呼叫端明確提供的 Workspace root，不會從目前工作目錄、repository 名稱或其他環境資訊推測私人資料位置。
 
-Workspace root 必須同時包含：
+## 必要檔案與目錄
 
-- `workspace.yaml`：Workspace schema version、穩定 workspace ID 與標準目錄映射。
-- `engine.lock.json`：核准的 engine repository、完整 40 位 commit SHA，以及該 engine 預期的 Workspace schema version。
+Workspace root 必須包含：
 
-Engine 不會從目前工作目錄猜測私人 workspace；所有載入都必須明確傳入 workspace root。
+- `workspace.yaml`：工作區識別與標準目錄映射。
+- `engine.lock.json`：核准的 engine repository、完整 commit SHA 與 Workspace schema 相容資訊。
+- `profile/`：經使用者授權的私人背景與分析政策。
+- `projects/`：私人專案背景與需求。
+- `content/knowledge/`：Knowledge Cards。
+- `config/`：Taxonomy、人工設定與其他不含密鑰的設定。
+- `state/`：accepted source state。
+- `data/`：可重建的搜尋、向量、關聯與 Concept 索引。
+- `releases/`：私人發布描述與發布指標。
 
-## workspace.yaml v1
+實際目錄名稱由 `workspace.yaml.paths` 指定；七個 logical path 都必須存在且互不重複。
+
+## workspace.yaml
+
+目前支援的 Workspace schema version 是 `1`。
 
 ```yaml
 schema_version: 1
@@ -24,11 +35,28 @@ paths:
   releases: releases
 ```
 
-路徑必須是 workspace root 內的 canonical relative path。絕對路徑、反斜線、空 segment、`.`、`..`、重複目錄映射都會被拒絕。
+欄位契約：
 
-正式結構 Schema：`schema/workspace.schema.json`。
+- `schema_version`：目前只接受整數 `1`；未知版本 fail closed。
+- `workspace_id`：1–64 位小寫英數或 `-`，第一字元必須是英數。
+- `paths`：必須且只能包含 `profile`、`projects`、`knowledge`、`config`、`state`、`data`、`releases`。
 
-## engine.lock.json v1
+每個 path 都必須是 Workspace root 內的 canonical relative path。以下情況會被拒絕：
+
+- 空字串或前後空白。
+- 絕對路徑。
+- 反斜線。
+- 空 segment、`.`、`..`。
+- normalize 後與原值不同。
+- 兩個 logical path 指向同一位置。
+- resolve 後越出 Workspace root。
+- 對應路徑不存在或不是目錄。
+
+結構 Schema：[`schema/workspace.schema.json`](../schema/workspace.schema.json)。
+
+## engine.lock.json
+
+目前支援的 engine lock schema version 是 `1`。
 
 ```json
 {
@@ -39,32 +67,58 @@ paths:
 }
 ```
 
-Workspace 不追隨 engine `main`。lock 必須指向已核准、不可變的完整 commit SHA。正式結構 Schema：`schema/engine-lock.schema.json`。
+欄位契約：
 
-## 相容性
+- `schema_version`：目前只接受整數 `1`。
+- `engine_repository`：`owner/repository` 格式。
+- `engine_commit`：完整 40 位小寫十六進位 Git SHA。
+- `workspace_schema_version`：正整數，必須與 `workspace.yaml.schema_version` 相同，且必須由目前 engine 支援。
 
-目前 engine 只支援 Workspace schema version 1 與 engine lock schema version 1。未知版本會 fail closed。
+Workspace 不追隨 engine `main`。升級 engine 時必須以新的不可變 commit SHA 更新 lock，不能只修改 branch 或 tag 名稱。
 
-`loadWorkspace(root, options)` 會驗證：
+結構 Schema：[`schema/engine-lock.schema.json`](../schema/engine-lock.schema.json)。
 
-1. 兩個契約檔存在且可解析。
-2. schema version 受支援。
-3. lock 的 `workspace_schema_version` 與 `workspace.yaml` 一致。
-4. 目錄映射安全且實際目錄存在。
-5. 呼叫端若提供預期 engine repository / commit，lock 必須完全一致。
+## Loader 與相容性驗證
 
-## GitHub Actions pin
+`loadWorkspace(root, options)` 依序驗證：
 
-`.github/workflows/validate-workspace.yml` 是可重用驗證流程。私人 workspace 的薄層 workflow 必須以完整 SHA 引用：
+1. root 已明確提供。
+2. `workspace.yaml` 與 `engine.lock.json` 存在且可解析。
+3. 兩份檔案只包含契約允許的欄位。
+4. 兩種 schema version 都受支援。
+5. `workspace_id` 與所有 path 合法。
+6. `engine.lock.json.workspace_schema_version` 與 Workspace schema 一致。
+7. 呼叫端若提供 expected engine repository / commit，lock 必須完全相符。
+8. 七個 resolved path 都在 root 內；預設還會要求目錄實際存在。
+
+任何一項不成立都 fail closed，不回傳部分載入的 Workspace。
+
+## GitHub Actions engine pin
+
+Engine 提供 reusable workflow：`.github/workflows/validate-workspace.yml`。Workspace 的薄層 workflow 必須用完整 SHA 引用：
 
 ```yaml
 uses: EstherAIRP/knowledge-card-engine/.github/workflows/validate-workspace.yml@<40-sha>
 ```
 
-驗證流程同時檢查：
+Workspace 驗證會同時核對：
 
-- workflow `uses @SHA`
-- `engine.lock.json.engine_commit`
-- 實際 checkout 的 `engine_sha`
+- workflow `uses @SHA`。
+- `engine.lock.json.engine_repository` / `engine_commit`。
+- reusable workflow input 的 `engine_repository` / `engine_sha`。
+- 實際 checkout 的 engine commit。
 
-三者必須一致；repository 也必須一致。
+repository 與 SHA 必須一致。
+
+## 驗證命令
+
+本機或 CI 可使用：
+
+```bash
+npm run workspace:validate -- /path/to/workspace \
+  --engine-repository=EstherAIRP/knowledge-card-engine \
+  --engine-commit=<40-sha> \
+  --workflow-file=.github/workflows/validate.yml
+```
+
+完整 Workspace CI 還會執行 Card / Taxonomy 與 accepted source-state 驗證；詳見 [development.md](./development.md)。
