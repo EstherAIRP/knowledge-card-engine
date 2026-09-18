@@ -3,7 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
 import { loadCardDocuments, loadTaxonomyFile, validateCardCollection, parseCardDocument } from '../packages/core/src/index.js';
-import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';
+import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';\nimport { findCurrentOnlyDocumentationIssues } from './documentation-policy.mjs';
 
 const root = process.cwd();
 const requiredFiles = [
@@ -25,7 +25,7 @@ const requiredFiles = [
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
   'scripts/ingest-github.mjs',
-  'scripts/validate-source-state.mjs',
+  'scripts/validate-source-state.mjs',\n  'scripts/documentation-policy.mjs',
   'examples/synthetic-workspace/fixture.json',
   'examples/synthetic-workspace/workspace.yaml',
   'examples/synthetic-workspace/engine.lock.json',
@@ -90,4 +90,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Repository check passed: ' + requiredFiles.length + ' required files, Workspace v1, Card v1, Taxonomy v1, GitHub ingestion, source state, and current-only documentation policy verified.');
+console.log('Repository check passed: ' + requiredFiles.length + ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, source state, and current-only documentation policy verified.');
