@@ -19,7 +19,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 - Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
 
-目前尚未實作其他來源 provider、搜尋／圖譜演算法、一致發布流程、hosting-specific deployment adapter 或內建 shared durable session backend；這些邊界不能視為可用功能。
+目前尚未實作其他來源 provider、搜尋／圖譜演算法、一致發布流程或非 Redis REST 的 shared durable session backend；Vercel Node server entrypoint 與 Redis REST shared session store 已可用。
 
 ## 模組責任
 
