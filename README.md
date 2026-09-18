@@ -17,6 +17,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
+- Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
 
 目前尚未實作其他來源 provider、搜尋／圖譜演算法、一致發布流程、hosting-specific deployment adapter 或內建 shared durable session backend；這些邊界不能視為可用功能。
 
@@ -79,7 +80,7 @@ CLI 可即時取得 GitHub metadata + README，或用 `--evidence-file` 注入�
 npm run site:serve
 ```
 
-正式部署需要設定 GitHub App / Workspace environment，且多 instance 或 serverless 平台必須注入 shared server-side session store。完整契約見 [docs/private-site.md](./docs/private-site.md)。
+正式部署需要設定 GitHub App / Workspace environment；多 instance 或 serverless 平台必須使用 shared server-side session store。Vercel adapter 使用 `KC_SESSION_STORE_REST_URL` / `KC_SESSION_STORE_REST_TOKEN`。完整契約見 [docs/private-site.md](./docs/private-site.md)。
 
 完整開發說明見 [docs/development.md](./docs/development.md)，正式文件入口見 [docs/index.md](./docs/index.md)。
 
