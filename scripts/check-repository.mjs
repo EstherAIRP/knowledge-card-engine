@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { loadWorkspace } from '../packages/workspace/src/index.js';
 
 const root = process.cwd();
 const requiredFiles = [
@@ -12,7 +13,16 @@ const requiredFiles = [
   'docs/index.md',
   'docs/architecture.md',
   'docs/development.md',
+  'docs/workspace.md',
+  'schema/workspace.schema.json',
+  'schema/engine-lock.schema.json',
+  '.github/workflows/validate.yml',
+  '.github/workflows/validate-workspace.yml',
   'examples/synthetic-workspace/fixture.json',
+  'examples/synthetic-workspace/workspace.yaml',
+  'examples/synthetic-workspace/engine.lock.json',
+  ...['profile', 'projects', 'config', 'state', 'data', 'releases'].map((name) => `examples/synthetic-workspace/${name}/README.md`),
+  'examples/synthetic-workspace/content/knowledge/README.md',
   ...['web', 'server'].flatMap((name) => [`apps/${name}/package.json`, `apps/${name}/src/index.js`]),
   ...['core', 'ingestion', 'analysis', 'graph', 'workspace', 'release'].flatMap((name) => [
     `packages/${name}/package.json`,
@@ -43,10 +53,16 @@ try {
   errors.push(`Synthetic workspace fixture is invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
 }
 
+try {
+  await loadWorkspace(path.join(root, 'examples/synthetic-workspace'));
+} catch (error) {
+  errors.push(`Synthetic workspace contract validation failed: ${error?.code || 'UNKNOWN'} ${error instanceof Error ? error.message : String(error)}`);
+}
+
 if (errors.length) {
   console.error(`Repository check failed (${errors.length}):`);
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
 }
 
-console.log(`Repository check passed: ${requiredFiles.length} required files and current-only documentation policy verified.`);
+console.log(`Repository check passed: ${requiredFiles.length} required files, workspace contract, and current-only documentation policy verified.`);

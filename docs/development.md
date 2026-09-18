@@ -7,24 +7,26 @@
 - ESM
 - `package-lock.json` 納入版本控制
 
-安裝依賴：
-
 ```bash
 npm ci
-```
-
-完整驗證：
-
-```bash
 npm run validate
 ```
 
 `validate` 目前包含：
 
-1. `npm run check`：檢查必要骨架、current-only 文件與 synthetic fixture。
-2. `npm test`：確認所有 app/package entrypoint 可載入且模組識別唯一。
+1. `npm run check`：檢查必要骨架、Workspace synthetic fixture、current-only 文件政策。
+2. `npm test`：驗證模組 entrypoint 與 Workspace v1 正向／失敗案例。
 
-GitHub Actions 在 pull request 與 `main` push 使用 Node 24 執行相同的 `npm ci` 與 `npm run validate`。
+指定 Workspace 可使用：
+
+```bash
+npm run workspace:validate -- /path/to/workspace
+```
+
+GitHub Actions：
+
+- `.github/workflows/validate.yml`：engine PR / main validation。
+- `.github/workflows/validate-workspace.yml`：提供私人 workspace 以完整 engine SHA 呼叫的 reusable workflow。
 
 ## 文件原則
 
