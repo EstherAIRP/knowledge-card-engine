@@ -15,13 +15,15 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub accepted source state 與 Card 對應驗證。
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
+- GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
+- GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 
-目前尚未實作其他來源 provider、登入授權、搜尋／圖譜演算法或一致發布流程；這些邊界已預留，但不能視為可用功能。
+目前尚未實作其他來源 provider、搜尋／圖譜演算法、一致發布流程、hosting-specific deployment adapter 或內建 shared durable session backend；這些邊界不能視為可用功能。
 
 ## 模組責任
 
-- `apps/web`：私人閱覽前端應用邊界；目前沒有可用 UI。
-- `apps/server`：登入、授權與資料讀取 API 應用邊界；目前沒有可用服務。
+- `apps/web`：目前的私人唯讀 Card list/detail UI shell。
+- `apps/server`：GitHub App 登入、session、authorization、私人 Workspace reader 與 Card API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
 - `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
 - `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
@@ -42,6 +44,7 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [GitHub 收錄契約](./docs/ingestion.md)
+- [私人網站與授權契約](./docs/private-site.md)
 
 ## 開發與驗證
 
@@ -69,6 +72,14 @@ npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --anal
 ```
 
 CLI 可即時取得 GitHub metadata + README，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。需要 GitHub 授權時使用環境變數 `GITHUB_TOKEN`；密鑰不得寫入 repository。
+
+啟動私人 Node HTTP adapter：
+
+```bash
+npm run site:serve
+```
+
+正式部署需要設定 GitHub App / Workspace environment，且多 instance 或 serverless 平台必須注入 shared server-side session store。完整契約見 [docs/private-site.md](./docs/private-site.md)。
 
 完整開發說明見 [docs/development.md](./docs/development.md)，正式文件入口見 [docs/index.md](./docs/index.md)。
 
