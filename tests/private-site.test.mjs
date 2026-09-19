@@ -453,7 +453,8 @@ test('health exposes only safe configuration diagnostics and honors runtime depl
     }
   });
   const runtimeHealth = await runtime(new Request('https://cards.example.test/api/health'));
-  assert.deepEqual(await runtimeHealth.json(), {
+  const runtimePayload = await runtimeHealth.json();
+  assert.deepEqual(runtimePayload, {
     status: 'unconfigured',
     configured: false,
     configuration_error: {
@@ -462,6 +463,6 @@ test('health exposes only safe configuration diagnostics and honors runtime depl
     }
   });
 
-  const serialized = JSON.stringify(await runtimeHealth.clone().json()).toLowerCase();
+  const serialized = JSON.stringify(runtimePayload).toLowerCase();
   assert.doesNotMatch(serialized, /secret.*value|private key value|token value/u);
 });
