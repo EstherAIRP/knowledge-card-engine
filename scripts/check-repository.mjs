@@ -26,8 +26,10 @@ const requiredFiles = [
   'schema/taxonomy.schema.json',
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
+  '.github/workflows/release-workspace.yml',
   'scripts/ingest-github.mjs',
   'scripts/validate-source-state.mjs',
+  'scripts/release-workspace.mjs',
   'scripts/documentation-policy.mjs',
   'tests/documentation-policy.test.mjs',
   'examples/synthetic-workspace/fixture.json',
@@ -54,6 +56,8 @@ const requiredFiles = [
   'apps/server/src/node-server.js',
   'tests/private-site.test.mjs',
   'tests/session-store.test.mjs',
+  'tests/graph-release.test.mjs',
+  'tests/release-reader.test.mjs',
   'api/site.js',
   'vercel.json'
 ];
