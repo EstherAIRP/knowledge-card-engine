@@ -75,6 +75,7 @@ Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、
 
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards 與 accepted source state。
+- `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
 
 Reusable workflow 只需要 `contents: read`，並 checkout Workspace 與指定 engine SHA；私人 Workspace 的 workflow pin 必須和 `engine.lock.json` 一致。
 
