@@ -1,0 +1,5 @@
+schema_version: 1
+min_score: 0.35
+top_k: 6
+taxonomy_weight: 0.4
+vector_weight: 0.6
