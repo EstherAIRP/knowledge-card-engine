@@ -288,12 +288,10 @@ Vercel adapter **不允許 process-local memory session fallback**：只有同�
 
 目前 private site 不提供：
 
-- 搜尋 API
-- 圖譜 API
-- release API / release-pinned read model
 - profile / projects 原始資料 API
 - 任意 repository / path proxy
 - 網站寫入 Card
+- 外部 embedding / model search provider
 - 內建 managed session database/resource
 
 以上能力不能從目前 API 或 UI 推測為已存在。
