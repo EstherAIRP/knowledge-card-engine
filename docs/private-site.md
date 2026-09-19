@@ -182,27 +182,20 @@ Server 先由受驗證的 Card collection 建立 id→Card map，再回：
 
 ## Workspace repository reader
 
-目前 reader 的 configured repository 由下列 env 決定：
-
-- `KC_WORKSPACE_OWNER`
-- `KC_WORKSPACE_REPO`
-- `KC_WORKSPACE_REF`，預設 `main`
+Reader 的 repository 由 `KC_WORKSPACE_OWNER`、`KC_WORKSPACE_REPO` 與 `KC_WORKSPACE_REF`（預設 `main`）定位，但 Card/search/graph data source 由 current release 決定。
 
 每次 snapshot：
 
-1. 解析 configured ref 到 commit SHA / tree SHA。
-2. 讀 recursive Git tree。
-3. GitHub 若回 `truncated: true`，fail closed。
-4. 只接受 `content/knowledge/{YYYY}/{stable-id}.md`。
-5. 載入 `config/taxonomy.yaml`。
-6. 解析所有 Card，執行完整 Taxonomy / Card collection validation。
-7. 只在驗證成功後把 snapshot 放入 server memory cache。
+1. 解析 configured ref，讀 `releases/current.json`。
+2. 驗證 release pointer 與 release description。
+3. 固定 published revision P，驗證 P = S 或 P 是 S 的直接 generated-only child。
+4. 從 P 載入 `content/knowledge/{YYYY}/{stable-id}.md`、`config/taxonomy.yaml` 與五個 generated artifacts。
+5. 驗 Card collection、manifest hash / bytes / provenance 與 generated-data consistency。
+6. 只在完整驗證成功後建立 snapshot cache。
 
-Card 單檔上限目前是 1 MiB；Taxonomy 上限是 512 KiB。
+若 Workspace 尚未有 release pointer 且完全沒有 generated artifacts，reader 允許 bootstrap Card-only mode；Card list/detail 可讀，search / graph 不可用。若 generated artifacts 已存在卻沒有 pointer，視為不完整發布並 fail closed。
 
-Snapshot cache 以 resolved commit SHA 為 key，最多保留 3 個 revision。Private API 在存取此 cache 前仍會先完成 user authorization。
-
-目前網站直接讀 configured Workspace ref；一致發布、E/S/P manifest 與 release-pinned read model 尚未實作。
+Card 單檔上限目前是 1 MiB；Taxonomy / release metadata 與 generated artifact 另有 server-side size limits。Release snapshot cache 以 release id + P 隔離，最多保留少量 revision；authorization 永遠先於 cache。完整 E／S／P 與 manifest 契約見 [release.md](./release.md)。
 
 ## GitHub App server credential
 
