@@ -60,9 +60,11 @@ Browser
 → server-side user-token session
 → per-request private Workspace eligibility check
 → GitHub App installation token
-→ configured Workspace revision
-→ validated Taxonomy + Card collection
-→ Card summary/detail projection
+→ current release pointer
+→ validated release description + E/S/P manifest
+→ fixed published revision P
+→ validated Taxonomy + Card collection + generated artifacts
+→ Card/search/graph/release projection
 ```
 
 登入 credential 與 repository data credential 分離。User access token 只存在 server-side session store；installation token 只存在 server runtime。Private API authorization 一律先於 Workspace snapshot cache。
