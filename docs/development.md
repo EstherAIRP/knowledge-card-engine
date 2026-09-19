@@ -59,6 +59,18 @@ npm run site:serve
 
 完整 login/session/data boundary 見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設 memory store 只提供單 process reference runtime。Vercel deployment 由 `api/site.js` + `vercel.json` 提供，並要求 `KC_SESSION_STORE_REST_URL` / `KC_SESSION_STORE_REST_TOKEN` shared REST session store；缺少它們時 deployment 保持 unconfigured。
 
+## Generated data 與 release
+
+本機或受控 runner 可執行：
+
+```bash
+npm run generated:build -- /path/to/workspace --engine-sha=<E> --source-sha=<S> --generated-at=<iso> --mode=incremental
+npm run release:finalize -- /path/to/workspace --engine-sha=<E> --source-sha=<S> --published-sha=<P> --release-id=<id> --created-at=<iso> --mode=incremental
+npm run release:validate -- /path/to/workspace
+```
+
+Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、manifest、pointer、stale guard 與 rollback 見 [release.md](./release.md)。
+
 ## GitHub Actions
 
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
