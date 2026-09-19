@@ -2,7 +2,7 @@ export const moduleId = 'web';
 export const moduleKind = 'app';
 
 export function renderPrivateSiteShell() {
-  return `<!doctype html>
+  return String.raw`<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
