@@ -122,14 +122,6 @@ if (releaseWorkflowText.includes('git diff --name-only')) {
 }
 
 try {
-  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'examples/synthetic-workspace/fixture.json'), 'utf8'));'), 'g')) || []).length < 2) {
-  errors.push('Release workflow must detect untracked generated and release files before persistence.');
-}
-if (releaseWorkflowText.includes('git diff --name-only')) {
-  errors.push('Release workflow must not use git diff --name-only as the persistence change detector because it ignores first-run untracked artifacts.');
-}
-
-try {
   const fixture = JSON.parse(fs.readFileSync(path.join(root, 'examples/synthetic-workspace/fixture.json'), 'utf8'));
   if (fixture.synthetic !== true) errors.push('Synthetic workspace fixture must declare synthetic=true.');
   if (fixture.contains_private_data !== false) errors.push('Synthetic workspace fixture must declare contains_private_data=false.');
