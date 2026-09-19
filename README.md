@@ -26,8 +26,8 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 
 ## 模組責任
 
-- `apps/web`：目前的私人唯讀 Card list/detail UI shell。
-- `apps/server`：GitHub App 登入、session、authorization、私人 Workspace reader 與 Card API。
+- `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
+- `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
 - `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
 - `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
