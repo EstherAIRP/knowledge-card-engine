@@ -1,0 +1,8 @@
+schema_version: 1
+extraction:
+  include_categories: true
+  include_shared_tags: true
+  minimum_tag_support: 2
+  concept_relation_min_support: 2
+  concept_relation_top_k: 8
+promoted_concepts: []
