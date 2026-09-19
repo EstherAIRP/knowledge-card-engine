@@ -31,9 +31,9 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
 - `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
 - `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
-- `packages/graph`：搜尋、向量、關聯與 Concept 的模組邊界；目前未實作演算法。
+- `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
-- `packages/release`：manifest 與一致發布的模組邊界；目前未實作發布模型。
+- `packages/release`：E／S／P、manifest、release pointer / description 與 published lineage 驗證。
 
 架構與責任邊界詳見 [docs/architecture.md](./docs/architecture.md)。
 
