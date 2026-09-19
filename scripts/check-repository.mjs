@@ -112,8 +112,16 @@ for (const relative of documentationFiles) {
 }
 
 const releaseWorkflowText = fs.readFileSync(path.join(root, '.github/workflows/release-workspace.yml'), 'utf8');
-const statusProbe = "git status --porcelain=v1 --untracked-files=all";
-if ((releaseWorkflowText.match(new RegExp(statusProbe.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\try {
+const statusProbe = 'git status --porcelain=v1 --untracked-files=all';
+const statusProbeCount = releaseWorkflowText.split(statusProbe).length - 1;
+if (statusProbeCount < 2) {
+  errors.push('Release workflow must detect untracked generated and release files before persistence.');
+}
+if (releaseWorkflowText.includes('git diff --name-only')) {
+  errors.push('Release workflow must not use git diff --name-only as the persistence change detector because it ignores first-run untracked artifacts.');
+}
+
+try {
   const fixture = JSON.parse(fs.readFileSync(path.join(root, 'examples/synthetic-workspace/fixture.json'), 'utf8'));'), 'g')) || []).length < 2) {
   errors.push('Release workflow must detect untracked generated and release files before persistence.');
 }
