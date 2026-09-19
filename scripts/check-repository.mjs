@@ -19,6 +19,8 @@ const requiredFiles = [
   'docs/workspace.md',
   'docs/card-contract.md',
   'docs/ingestion.md',
+  'docs/generated-data.md',
+  'docs/release.md',
   'docs/private-site.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
@@ -149,5 +151,5 @@ if (errors.length) {
 
 console.log(
   'Repository check passed: ' + requiredFiles.length +
-  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, private site authorization, source state, and current-only documentation policy verified.'
+  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, generated/release contracts, private site authorization, source state, and current-only documentation policy verified.'
 );
