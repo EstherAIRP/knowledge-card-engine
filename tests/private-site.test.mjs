@@ -417,6 +417,51 @@ test('session expiry, logout CSRF, public health, methods, and public app shell 
   const unconfigured = createPrivateSiteApp({ env: {} });
   const health = await unconfigured(new Request('https://cards.example.test/api/health'));
   assert.equal(health.status, 200);
-  assert.deepEqual(await health.json(), { status: 'unconfigured', configured: false });
+  assert.deepEqual(await health.json(), {
+    status: 'unconfigured',
+    configured: false,
+    configuration_error: {
+      code: 'SITE_CONFIG_MISSING',
+      detail: 'KC_PUBLIC_URL is required.'
+    }
+  });
   assert.doesNotMatch(await (await unconfigured(new Request('https://cards.example.test/'))).text(), /client-secret|private-key|session-secret/iu);
+});
+
+
+test('health exposes only safe configuration diagnostics and honors runtime deployment errors', async () => {
+  const missing = createPrivateSiteApp({
+    env: {
+      KC_PUBLIC_URL: 'https://cards.example.test'
+    }
+  });
+  const missingHealth = await missing(new Request('https://cards.example.test/api/health'));
+  assert.deepEqual(await missingHealth.json(), {
+    status: 'unconfigured',
+    configured: false,
+    configuration_error: {
+      code: 'SITE_CONFIG_MISSING',
+      detail: 'KC_SESSION_SECRET is required.'
+    }
+  });
+
+  const runtime = createPrivateSiteApp({
+    env: {},
+    runtimeError: {
+      code: 'SESSION_STORE_NOT_CONFIGURED',
+      message: 'KC_SESSION_STORE_REST_URL and KC_SESSION_STORE_REST_TOKEN are required on Vercel.'
+    }
+  });
+  const runtimeHealth = await runtime(new Request('https://cards.example.test/api/health'));
+  assert.deepEqual(await runtimeHealth.json(), {
+    status: 'unconfigured',
+    configured: false,
+    configuration_error: {
+      code: 'SESSION_STORE_NOT_CONFIGURED',
+      detail: 'KC_SESSION_STORE_REST_URL and KC_SESSION_STORE_REST_TOKEN are required on Vercel.'
+    }
+  });
+
+  const serialized = JSON.stringify(await runtimeHealth.clone().json()).toLowerCase();
+  assert.doesNotMatch(serialized, /secret.*value|private key value|token value/u);
 });
