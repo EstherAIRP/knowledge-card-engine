@@ -6,8 +6,8 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 
 | 路徑 | 目前責任 |
 | --- | --- |
-| `apps/web` | 私人唯讀 Card list/detail UI shell；private data 只由 authenticated API runtime 取得。 |
-| `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader 與 private Card API。 |
+| `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；private data 只由 authenticated API runtime 取得。 |
+| `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、create/update resolution 與 GitHub source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result contract；analysis 必須綁定 accepted source identity 與 evidence digest。 |
