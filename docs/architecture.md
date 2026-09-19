@@ -46,7 +46,7 @@ Card 與 source state 寫入前會完成 evidence、analysis binding、ownership
 
 Engine 接收明確的 Workspace root，不以目前工作目錄或固定私人 repository 名稱推測資料位置。Workspace 以 `engine.lock.json` 固定核准的 engine repository 與完整 commit SHA；CI 再驗證 workflow pin、lock 與實際 checkout 的 engine SHA 一致。
 
-目前 Workspace、Card、GitHub ingestion 的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md) 與 [ingestion.md](./ingestion.md)。
+目前 Workspace、Card、GitHub ingestion、generated data 與一致發布的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md)、[ingestion.md](./ingestion.md)、[generated-data.md](./generated-data.md) 與 [release.md](./release.md)。
 
 
 ## 私人閱覽資料流
