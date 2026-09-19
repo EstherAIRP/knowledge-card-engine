@@ -50,11 +50,19 @@ function assertSameOrigin(request, config) {
   }
 }
 
-export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now = () => Date.now(), sessionStore = null } = {}) {
+export function createPrivateSiteApp({
+  env = process.env,
+  fetchImpl = fetch,
+  now = () => Date.now(),
+  sessionStore = null,
+  runtimeError = null
+} = {}) {
   const state = tryLoadSiteConfig(env);
-  const store = assertSessionStore(sessionStore || createMemorySessionStore({ now }));
-  const auth = state.configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
-  const reader = state.configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
+  const configured = state.configured && !runtimeError;
+  const store = configured ? assertSessionStore(sessionStore || createMemorySessionStore({ now })) : null;
+  const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
+  const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
+  const configurationError = runtimeError || state.error;
 
   return async function handle(request) {
     const url = new URL(request.url);
@@ -64,8 +72,14 @@ export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now
       if (pathname === '/api/health') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
         return jsonResponse(200, {
-          status: state.configured ? 'ok' : 'unconfigured',
-          configured: state.configured
+          status: configured ? 'ok' : 'unconfigured',
+          configured,
+          ...(configured ? {} : {
+            configuration_error: {
+              code: configurationError?.code || 'SITE_CONFIG_INVALID',
+              detail: configurationError?.message || 'Private site configuration is invalid.'
+            }
+          })
         });
       }
 
@@ -87,7 +101,7 @@ export function createPrivateSiteApp({ env = process.env, fetchImpl = fetch, now
         });
       }
 
-      const config = configuredOrThrow(state);
+      const config = configuredOrThrow({ configured, config: state.config });
 
       if (pathname === '/api/auth/login') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
