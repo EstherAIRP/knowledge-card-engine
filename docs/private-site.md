@@ -219,8 +219,9 @@ GitHub REST request 使用 API version `2026-03-10`。
 
 - 未登入：GitHub login。
 - cancelled / invalid / forbidden / unavailable：登入錯誤狀態。
-- 已登入：GitHub login/avatar、登出、Card list、Card detail。
+- 已登入：GitHub login/avatar、登出、Card list/detail、搜尋、relation / Concept、graph 與 release version。
 - 401 / 403：立即清除前端目前 private state，回到 auth UI。
+- Search / graph 只透過 authenticated API 取得；private generated index 不打包進 shell。
 - Markdown 以 DOM `textContent` 建立基本 heading / list / paragraph，不解譯 raw HTML。
 
 UI shell 本身不包含任何私人 Card 內容。
