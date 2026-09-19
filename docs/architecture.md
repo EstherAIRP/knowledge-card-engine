@@ -69,4 +69,6 @@ Browser
 
 登入 credential 與 repository data credential 分離。User access token 只存在 server-side session store；installation token 只存在 server runtime。Private API authorization 一律先於 Workspace snapshot cache。
 
-目前 Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。詳細契約見 [private-site.md](./private-site.md)。
+Private API authorization 一律先於 release snapshot cache。第一個 release 尚未建立、且 Workspace 沒有任何 generated artifacts 時只提供 bootstrap Card list/detail；一旦存在 current release，Card、search、graph 與 release API 都固定同一個 P。詳細契約見 [private-site.md](./private-site.md) 與 [release.md](./release.md)。
+
+Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。
