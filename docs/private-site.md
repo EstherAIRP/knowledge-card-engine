@@ -163,9 +163,22 @@ Server 先由受驗證的 Card collection 建立 id→Card map，再回：
 
 - Card safe metadata projection
 - effective ownership values
+- relation / Concept projection
 - Markdown body
 
 不存在的 id 回 404；非法 id 回 400。
+
+### GET /api/search
+
+需要授權。使用 `q` 與可選 `limit` 執行 server-side deterministic search。只有 current validated release 存在時可用；bootstrap Card-only mode 回 `503 RELEASE_REQUIRED`。
+
+### GET /api/graph
+
+需要授權。只回 current release 的 graph display projection：Card / Concept nodes、typed edges、semantic neighbors 與 layout method，不提供任意 Workspace path 或 raw repository dump。
+
+### GET /api/release
+
+需要授權。回目前 read model 的 release projection。第一個 release 尚未建立時回 `mode: "bootstrap"`；有 current release 時回 release_id、E/S/P、manifest projection、revision 與 pointer revision。
 
 ## Workspace repository reader
 
