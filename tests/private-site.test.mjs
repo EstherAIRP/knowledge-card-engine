@@ -3,6 +3,7 @@ import { createHash, generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import { createPrivateSiteApp } from '../apps/server/src/index.js';
+import { renderPrivateSiteShell } from '../apps/web/src/index.js';
 
 function json(status, payload) {
   return new Response(JSON.stringify(payload), {
@@ -465,4 +466,14 @@ test('health exposes only safe configuration diagnostics and honors runtime depl
 
   const serialized = JSON.stringify(runtimePayload).toLowerCase();
   assert.doesNotMatch(serialized, /secret.*value|private key value|token value/u);
+});
+
+
+test('rendered private-site inline script compiles after HTML template rendering', () => {
+  const html = renderPrivateSiteShell();
+  const match = /<script>([\s\S]*?)<\/script>/u.exec(html);
+  assert.ok(match, 'inline script must be present');
+  assert.doesNotThrow(() => new Function(match[1]));
+  assert.match(match[1], /split\(\/\\r\?\\n\/\)/u);
+  assert.match(match[1], /\^\(#\{1,3\}\)\\s\+/u);
 });
