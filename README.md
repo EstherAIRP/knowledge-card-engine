@@ -61,7 +61,7 @@ npm ci
 npm run validate
 ```
 
-`npm run validate` 會執行 repository policy check 與 Node tests。
+`npm run validate` 會執行 repository policy check 與 Node tests。Generated data / release CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace automation 使用 reusable `release-workspace.yml`。
 
 驗證指定 Workspace：
 
