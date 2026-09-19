@@ -11,9 +11,9 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、create/update resolution 與 GitHub source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result contract；analysis 必須綁定 accepted source identity 與 evidence digest。 |
-| `packages/graph` | 搜尋、向量、關聯與 Concept 的模組邊界；目前未實作演算法。 |
+| `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
-| `packages/release` | manifest 與一致發布的模組邊界；目前未實作發布模型。 |
+| `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
 
 模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。
 
