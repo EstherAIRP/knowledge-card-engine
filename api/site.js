@@ -45,12 +45,29 @@ async function writeFetchResponse(response, outgoing) {
   outgoing.end(Buffer.from(await response.arrayBuffer()));
 }
 
-const sharedSessionConfigured = hasRestSessionStoreConfig(process.env);
+let sessionStore = null;
+let runtimeError = null;
+
+try {
+  if (!hasRestSessionStoreConfig(process.env)) {
+    runtimeError = {
+      code: 'SESSION_STORE_NOT_CONFIGURED',
+      message: 'KC_SESSION_STORE_REST_URL and KC_SESSION_STORE_REST_TOKEN are required on Vercel.'
+    };
+  } else {
+    sessionStore = createRestSessionStore({ env: process.env });
+  }
+} catch (error) {
+  runtimeError = {
+    code: 'SESSION_STORE_CONFIG_INVALID',
+    message: error instanceof Error ? error.message : 'Shared session store configuration is invalid.'
+  };
+}
+
 const app = createPrivateSiteApp({
-  env: sharedSessionConfigured ? process.env : {},
-  sessionStore: sharedSessionConfigured
-    ? createRestSessionStore({ env: process.env })
-    : undefined
+  env: process.env,
+  sessionStore,
+  runtimeError
 });
 
 export default async function handler(request, response) {

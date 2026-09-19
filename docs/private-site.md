@@ -121,12 +121,12 @@ Server-side data cache 不能繞過 authorization；authorization 一律先於 C
 
 ### GET /api/health
 
-公開 endpoint。只回：
+公開 endpoint。固定回：
 
 - `status`
 - `configured`
 
-不回傳 env、repository credential 或其他秘密。
+若 `configured: false`，另外回 `configuration_error.code` 與 `configuration_error.detail`。診斷內容只描述缺少的 environment variable 名稱或格式規則，不回傳 environment value、repository credential 或其他秘密。
 
 ### GET /api/auth/session
 
