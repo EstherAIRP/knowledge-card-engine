@@ -17,7 +17,7 @@ npm run validate
 `npm run validate` 目前等於：
 
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
-2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub ingestion、ownership、source-state atomicity，以及 private login / authorization / Card API 安全案例。
+2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub ingestion、ownership、source-state atomicity、private login / authorization，以及 generated-data / release / release-reader 一致性案例。
 
 ## Workspace 驗證
 
@@ -59,10 +59,23 @@ npm run site:serve
 
 完整 login/session/data boundary 見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設 memory store 只提供單 process reference runtime。Vercel deployment 由 `api/site.js` + `vercel.json` 提供，並要求 `KC_SESSION_STORE_REST_URL` / `KC_SESSION_STORE_REST_TOKEN` shared REST session store；缺少它們時 deployment 保持 unconfigured。
 
+## Generated data 與 release
+
+本機或受控 runner 可執行：
+
+```bash
+npm run generated:build -- /path/to/workspace --engine-sha=<E> --source-sha=<S> --generated-at=<iso> --mode=incremental
+npm run release:finalize -- /path/to/workspace --engine-sha=<E> --source-sha=<S> --published-sha=<P> --release-id=<id> --created-at=<iso> --mode=incremental
+npm run release:validate -- /path/to/workspace
+```
+
+Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、manifest、pointer、stale guard 與 rollback 見 [release.md](./release.md)。
+
 ## GitHub Actions
 
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards 與 accepted source state。
+- `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
 
 Reusable workflow 只需要 `contents: read`，並 checkout Workspace 與指定 engine SHA；私人 Workspace 的 workflow pin 必須和 `engine.lock.json` 一致。
 

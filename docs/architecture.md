@@ -6,14 +6,14 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 
 | 路徑 | 目前責任 |
 | --- | --- |
-| `apps/web` | 私人唯讀 Card list/detail UI shell；private data 只由 authenticated API runtime 取得。 |
-| `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader 與 private Card API。 |
+| `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；private data 只由 authenticated API runtime 取得。 |
+| `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、create/update resolution 與 GitHub source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result contract；analysis 必須綁定 accepted source identity 與 evidence digest。 |
-| `packages/graph` | 搜尋、向量、關聯與 Concept 的模組邊界；目前未實作演算法。 |
+| `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
-| `packages/release` | manifest 與一致發布的模組邊界；目前未實作發布模型。 |
+| `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
 
 模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。
 
@@ -46,7 +46,7 @@ Card 與 source state 寫入前會完成 evidence、analysis binding、ownership
 
 Engine 接收明確的 Workspace root，不以目前工作目錄或固定私人 repository 名稱推測資料位置。Workspace 以 `engine.lock.json` 固定核准的 engine repository 與完整 commit SHA；CI 再驗證 workflow pin、lock 與實際 checkout 的 engine SHA 一致。
 
-目前 Workspace、Card、GitHub ingestion 的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md) 與 [ingestion.md](./ingestion.md)。
+目前 Workspace、Card、GitHub ingestion、generated data 與一致發布的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md)、[ingestion.md](./ingestion.md)、[generated-data.md](./generated-data.md) 與 [release.md](./release.md)。
 
 
 ## 私人閱覽資料流
@@ -60,11 +60,15 @@ Browser
 → server-side user-token session
 → per-request private Workspace eligibility check
 → GitHub App installation token
-→ configured Workspace revision
-→ validated Taxonomy + Card collection
-→ Card summary/detail projection
+→ current release pointer
+→ validated release description + E/S/P manifest
+→ fixed published revision P
+→ validated Taxonomy + Card collection + generated artifacts
+→ Card/search/graph/release projection
 ```
 
 登入 credential 與 repository data credential 分離。User access token 只存在 server-side session store；installation token 只存在 server runtime。Private API authorization 一律先於 Workspace snapshot cache。
 
-目前 Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。詳細契約見 [private-site.md](./private-site.md)。
+Private API authorization 一律先於 release snapshot cache。第一個 release 尚未建立、且 Workspace 沒有任何 generated artifacts 時只提供 bootstrap Card list/detail；一旦存在 current release，Card、search、graph 與 release API 都固定同一個 P。詳細契約見 [private-site.md](./private-site.md) 與 [release.md](./release.md)。
+
+Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。

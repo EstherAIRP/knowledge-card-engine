@@ -19,6 +19,8 @@ const requiredFiles = [
   'docs/workspace.md',
   'docs/card-contract.md',
   'docs/ingestion.md',
+  'docs/generated-data.md',
+  'docs/release.md',
   'docs/private-site.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
@@ -26,8 +28,10 @@ const requiredFiles = [
   'schema/taxonomy.schema.json',
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
+  '.github/workflows/release-workspace.yml',
   'scripts/ingest-github.mjs',
   'scripts/validate-source-state.mjs',
+  'scripts/release-workspace.mjs',
   'scripts/documentation-policy.mjs',
   'tests/documentation-policy.test.mjs',
   'examples/synthetic-workspace/fixture.json',
@@ -54,6 +58,8 @@ const requiredFiles = [
   'apps/server/src/node-server.js',
   'tests/private-site.test.mjs',
   'tests/session-store.test.mjs',
+  'tests/graph-release.test.mjs',
+  'tests/release-reader.test.mjs',
   'api/site.js',
   'vercel.json'
 ];
@@ -145,5 +151,5 @@ if (errors.length) {
 
 console.log(
   'Repository check passed: ' + requiredFiles.length +
-  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, private site authorization, source state, and current-only documentation policy verified.'
+  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, generated/release contracts, private site authorization, source state, and current-only documentation policy verified.'
 );

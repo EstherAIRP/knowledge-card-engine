@@ -22,7 +22,10 @@
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` override 或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Card update；identity / canonical URL 衝突必須 fail closed。
 - accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。
-- Private API 必須在讀取 server-side Workspace/cache 前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
+- Private API 必須在讀取 server-side Workspace/release cache 前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
+- Search、vector、relation、Concept、graph 與 release metadata 都是 generated/private data；真實產物不得進公開 engine、PR、測試、log 或 build artifact。
+- Navigation taxonomy 與 semantic relation 不得混為同一維度；manual relation block/pin/override 必須優先於 generated result。
+- Release reader 必須驗 E／S／P lineage、manifest hash/size 與 current pointer；不完整 release fail closed，不能混讀最新 Card 與舊索引。
 - GitHub user access token、installation token、App private key、client secret 不得回傳到 browser；browser session cookie 只保存 opaque session id。
 - 公開範例與測試只能使用合成資料。
 

@@ -17,20 +17,23 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
+- Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。
+- E／S／P + manifest 一致發布、stale guard、release-pinned private reader 與 rollback pointer model。
+- Authenticated `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
 - Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
 
-目前尚未實作其他來源 provider、搜尋／圖譜演算法、一致發布流程、hosting-specific deployment adapter 或內建 shared durable session backend；這些邊界不能視為可用功能。
+目前尚未實作其他來源 provider、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
 
 ## 模組責任
 
-- `apps/web`：目前的私人唯讀 Card list/detail UI shell。
-- `apps/server`：GitHub App 登入、session、authorization、私人 Workspace reader 與 Card API。
+- `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
+- `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
 - `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
 - `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
-- `packages/graph`：搜尋、向量、關聯與 Concept 的模組邊界；目前未實作演算法。
+- `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
-- `packages/release`：manifest 與一致發布的模組邊界；目前未實作發布模型。
+- `packages/release`：E／S／P、manifest、release pointer / description 與 published lineage 驗證。
 
 架構與責任邊界詳見 [docs/architecture.md](./docs/architecture.md)。
 
@@ -45,6 +48,8 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [GitHub 收錄契約](./docs/ingestion.md)
+- [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
+- [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
 
 ## 開發與驗證
@@ -56,7 +61,7 @@ npm ci
 npm run validate
 ```
 
-`npm run validate` 會執行 repository policy check 與 Node tests。
+`npm run validate` 會執行 repository policy check 與 Node tests。Generated data / release CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace automation 使用 reusable `release-workspace.yml`。
 
 驗證指定 Workspace：
 

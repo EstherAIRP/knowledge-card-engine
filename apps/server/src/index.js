@@ -150,6 +150,27 @@ export function createPrivateSiteApp({
         return jsonResponse(200, await reader.getCard(safeCardId(pathname)));
       }
 
+      if (pathname === '/api/search') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        await auth.authorize(request);
+        return jsonResponse(200, await reader.search({
+          query: url.searchParams.get('q'),
+          limit: url.searchParams.get('limit')
+        }));
+      }
+
+      if (pathname === '/api/graph') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        await auth.authorize(request);
+        return jsonResponse(200, await reader.graph());
+      }
+
+      if (pathname === '/api/release') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        await auth.authorize(request);
+        return jsonResponse(200, await reader.release());
+      }
+
       if (pathname.startsWith('/api/')) {
         return jsonResponse(404, { code: 'API_NOT_FOUND', detail: 'API endpoint not found.' });
       }
