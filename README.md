@@ -48,6 +48,8 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [GitHub 收錄契約](./docs/ingestion.md)
+- [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
+- [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
 
 ## 開發與驗證
