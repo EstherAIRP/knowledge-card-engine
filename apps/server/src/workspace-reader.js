@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   effectiveOwnershipValue,
   effectiveRelevance,
@@ -5,6 +6,19 @@ import {
   parseTaxonomyDocument,
   validateCardCollection
 } from '../../../packages/core/src/index.js';
+import {
+  searchGeneratedIndex,
+  validateGeneratedArtifacts
+} from '../../../packages/graph/src/index.js';
+import {
+  GENERATED_ARTIFACT_PATHS,
+  RELEASE_POINTER_PATH,
+  releasePublicProjection,
+  validatePublishedCommit,
+  validateReleaseBundle,
+  validateReleaseDescription,
+  validateReleasePointer
+} from '../../../packages/release/src/index.js';
 import { createInstallationTokenProvider, githubInstallationJson } from './github.js';
 import { HttpError } from './http.js';
 
@@ -13,6 +27,8 @@ const CARD_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const TAXONOMY_PATH = 'config/taxonomy.yaml';
 const MAX_CARD_BYTES = 1024 * 1024;
 const MAX_TAXONOMY_BYTES = 512 * 1024;
+const MAX_RELEASE_BYTES = 512 * 1024;
+const MAX_INDEX_BYTES = 8 * 1024 * 1024;
 
 function encodeCursor(revision, offset) {
   return Buffer.from(JSON.stringify({ revision, offset }), 'utf8').toString('base64url');
@@ -35,8 +51,8 @@ function decodeCursor(value) {
   }
 }
 
-function safeLimit(value) {
-  if (value == null || value === '') return 50;
+function safeLimit(value, fallback = 50) {
+  if (value == null || value === '') return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100) {
     throw new HttpError(400, 'PAGINATION_INVALID', 'limit must be an integer between 1 and 100.');
@@ -64,6 +80,14 @@ function blobText(payload, maxBytes, label) {
   return text;
 }
 
+function parseJson(text, label) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new HttpError(503, 'WORKSPACE_DATA_INVALID', label + ' is invalid JSON.');
+  }
+}
+
 function cardSummary(card) {
   return {
     id: card.data.id,
@@ -78,9 +102,45 @@ function cardSummary(card) {
   };
 }
 
-function cardDetail(card, revision) {
+function relationProjection(cardId, snapshot) {
+  if (!snapshot.artifacts) return [];
+  const byId = snapshot.byId;
+  return (snapshot.artifacts.relations?.edges || [])
+    .filter((edge) => edge.source === cardId || edge.target === cardId)
+    .map((edge) => {
+      const otherId = edge.source === cardId ? edge.target : edge.source;
+      const other = byId.get(otherId);
+      return {
+        other_id: otherId,
+        other_title: other?.data?.title || otherId,
+        type: edge.type,
+        direction: edge.direction,
+        score: edge.score,
+        method: edge.method,
+        source: edge.source,
+        target: edge.target
+      };
+    });
+}
+
+function conceptProjection(cardId, snapshot) {
+  if (!snapshot.artifacts) return [];
+  const concepts = new Map((snapshot.artifacts.concepts?.concepts || []).map((concept) => [concept.id, concept]));
+  return (snapshot.artifacts.concepts?.card_concepts || [])
+    .filter((edge) => edge.card_id === cardId)
+    .map((edge) => ({
+      ...concepts.get(edge.concept_id),
+      strength: edge.strength,
+      origin: edge.origin,
+      evidence: edge.evidence
+    }))
+    .filter((value) => value.id);
+}
+
+function cardDetail(card, snapshot) {
   return {
-    revision,
+    release_id: snapshot.release?.release_id || null,
+    revision: snapshot.revision,
     id: card.data.id,
     title: card.data.title,
     summary: card.data.summary,
@@ -100,7 +160,27 @@ function cardDetail(card, revision) {
     created_at: card.data.created_at,
     updated_at: card.data.updated_at,
     last_checked_at: card.data.last_checked_at,
+    relations: relationProjection(card.data.id, snapshot),
+    concepts: conceptProjection(card.data.id, snapshot),
     body: card.body
+  };
+}
+
+function treeMap(tree) {
+  return new Map(
+    tree.tree
+      .filter((entry) => entry?.type === 'blob' && typeof entry.path === 'string' && typeof entry.sha === 'string')
+      .map((entry) => [entry.path, entry])
+  );
+}
+
+function artifactObject(texts) {
+  return {
+    search: parseJson(texts['data/search.json'], 'Search index'),
+    vectors: parseJson(texts['data/vectors.json'], 'Vector index'),
+    relations: parseJson(texts['data/relations.json'], 'Relation index'),
+    concepts: parseJson(texts['data/concepts.json'], 'Concept index'),
+    graph: parseJson(texts['data/graph.json'], 'Graph projection')
   };
 }
 
@@ -118,22 +198,25 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
     });
   }
 
-  async function resolveRevision() {
+  async function resolveCommit(ref) {
     const commit = await api(
-      `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/commits/${encodeURIComponent(config.workspaceRef)}`
+      `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/commits/${encodeURIComponent(ref)}`
     );
     const revision = typeof commit.sha === 'string' ? commit.sha.toLowerCase() : '';
     const treeSha = typeof commit.commit?.tree?.sha === 'string' ? commit.commit.tree.sha.toLowerCase() : '';
     if (!/^[0-9a-f]{40}$/u.test(revision) || !/^[0-9a-f]{40}$/u.test(treeSha)) {
       throw new HttpError(503, 'WORKSPACE_REVISION_INVALID', 'Workspace repository revision could not be resolved.');
     }
-    return { revision, treeSha };
+    return {
+      revision,
+      treeSha,
+      parents: Array.isArray(commit.parents)
+        ? commit.parents.map((parent) => String(parent?.sha || '').toLowerCase()).filter((sha) => /^[0-9a-f]{40}$/u.test(sha))
+        : []
+    };
   }
 
-  async function loadSnapshot() {
-    const { revision, treeSha } = await resolveRevision();
-    if (snapshots.has(revision)) return snapshots.get(revision);
-
+  async function loadTree(treeSha) {
     const tree = await api(
       `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/git/trees/${treeSha}`,
       '?recursive=1'
@@ -144,20 +227,26 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
     if (!Array.isArray(tree.tree)) {
       throw new HttpError(503, 'WORKSPACE_DATA_INVALID', 'Workspace repository tree response is invalid.');
     }
+    return tree;
+  }
 
-    const taxonomyEntry = tree.tree.find((entry) => entry?.type === 'blob' && entry.path === TAXONOMY_PATH);
-    if (!taxonomyEntry || typeof taxonomyEntry.sha !== 'string') {
+  async function readEntry(entry, maxBytes, label) {
+    if (!entry || typeof entry.sha !== 'string') {
+      throw new HttpError(503, 'WORKSPACE_DATA_INVALID', label + ' is missing.');
+    }
+    const payload = await api(
+      `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/git/blobs/${encodeURIComponent(entry.sha)}`
+    );
+    return blobText(payload, maxBytes, label);
+  }
+
+  async function loadCardsAtTree(tree, revision) {
+    const entries = treeMap(tree);
+    const taxonomyEntry = entries.get(TAXONOMY_PATH);
+    if (!taxonomyEntry) {
       throw new HttpError(503, 'WORKSPACE_TAXONOMY_MISSING', 'Workspace taxonomy is missing.');
     }
-
-    const cardEntries = tree.tree
-      .filter((entry) => entry?.type === 'blob' && typeof entry.path === 'string' && CARD_PATH.test(entry.path))
-      .sort((a, b) => a.path.localeCompare(b.path));
-
-    const taxonomyPayload = await api(
-      `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/git/blobs/${encodeURIComponent(taxonomyEntry.sha)}`
-    );
-    const taxonomyText = blobText(taxonomyPayload, MAX_TAXONOMY_BYTES, 'Workspace taxonomy');
+    const taxonomyText = await readEntry(taxonomyEntry, MAX_TAXONOMY_BYTES, 'Workspace taxonomy');
     let taxonomy;
     try {
       taxonomy = parseTaxonomyDocument(taxonomyText, TAXONOMY_PATH);
@@ -165,12 +254,13 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       throw new HttpError(503, 'WORKSPACE_TAXONOMY_INVALID', 'Workspace taxonomy cannot be parsed.');
     }
 
+    const cardEntries = [...entries.values()]
+      .filter((entry) => CARD_PATH.test(entry.path))
+      .sort((a, b) => a.path.localeCompare(b.path));
+
     const cards = [];
     for (const entry of cardEntries) {
-      const payload = await api(
-        `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/git/blobs/${encodeURIComponent(entry.sha)}`
-      );
-      const text = blobText(payload, MAX_CARD_BYTES, `Knowledge Card ${entry.path}`);
+      const text = await readEntry(entry, MAX_CARD_BYTES, `Knowledge Card ${entry.path}`);
       try {
         cards.push(parseCardDocument(text, entry.path));
       } catch {
@@ -189,9 +279,129 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       if (date !== 0) return date;
       return String(a.data.title).localeCompare(String(b.data.title));
     });
+    return { revision, cards: ordered, byId, entries };
+  }
 
-    const snapshot = Object.freeze({ revision, cards: ordered, byId });
-    snapshots.set(revision, snapshot);
+  async function verifyPublishedLineage(release, publishedCommit) {
+    if (release.published_sha === release.source_sha) {
+      validatePublishedCommit({
+        sourceSha: release.source_sha,
+        publishedSha: release.published_sha,
+        changedPaths: []
+      });
+      return;
+    }
+    const parentSha = publishedCommit.parents?.[0] || null;
+    const comparison = await api(
+      `/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}/compare/${release.source_sha}...${release.published_sha}`
+    );
+    const changedPaths = Array.isArray(comparison.files)
+      ? comparison.files.map((file) => file?.filename).filter((value) => typeof value === 'string')
+      : [];
+    try {
+      validatePublishedCommit({
+        sourceSha: release.source_sha,
+        publishedSha: release.published_sha,
+        parentSha,
+        changedPaths
+      });
+    } catch {
+      throw new HttpError(503, 'RELEASE_LINEAGE_INVALID', 'Published release commit is not a direct generated-only child of its source.');
+    }
+  }
+
+  async function loadReleaseSnapshot(refRevision, refTree) {
+    const refEntries = treeMap(refTree);
+    const pointerEntry = refEntries.get(RELEASE_POINTER_PATH);
+    const hasGeneratedData = GENERATED_ARTIFACT_PATHS.some((artifactPath) => refEntries.has(artifactPath));
+
+    if (!pointerEntry) {
+      if (hasGeneratedData) {
+        throw new HttpError(503, 'RELEASE_POINTER_MISSING', 'Generated data exists without a current release pointer.');
+      }
+      return null;
+    }
+
+    const pointerText = await readEntry(pointerEntry, MAX_RELEASE_BYTES, 'Current release pointer');
+    const pointer = parseJson(pointerText, 'Current release pointer');
+    try {
+      validateReleasePointer(pointer);
+    } catch {
+      throw new HttpError(503, 'RELEASE_POINTER_INVALID', 'Current release pointer is invalid.');
+    }
+
+    const releaseEntry = refEntries.get(pointer.release_path);
+    if (!releaseEntry) {
+      throw new HttpError(503, 'RELEASE_DESCRIPTION_MISSING', 'Current release description is missing.');
+    }
+    const releaseText = await readEntry(releaseEntry, MAX_RELEASE_BYTES, 'Release description');
+    const release = parseJson(releaseText, 'Release description');
+    try {
+      validateReleaseDescription(release);
+    } catch {
+      throw new HttpError(503, 'RELEASE_DESCRIPTION_INVALID', 'Current release description is invalid.');
+    }
+    if (release.release_id !== pointer.release_id) {
+      throw new HttpError(503, 'RELEASE_POINTER_INVALID', 'Current release pointer does not match its release description.');
+    }
+
+    const cacheKey = release.release_id + ':' + release.published_sha;
+    if (snapshots.has(cacheKey)) return snapshots.get(cacheKey);
+
+    const publishedCommit = await resolveCommit(release.published_sha);
+    if (publishedCommit.revision !== release.published_sha) {
+      throw new HttpError(503, 'RELEASE_REVISION_INVALID', 'Published release revision could not be resolved exactly.');
+    }
+    await verifyPublishedLineage(release, publishedCommit);
+    const publishedTree = await loadTree(publishedCommit.treeSha);
+    const base = await loadCardsAtTree(publishedTree, release.published_sha);
+
+    const artifactTexts = {};
+    for (const artifactPath of GENERATED_ARTIFACT_PATHS) {
+      const entry = base.entries.get(artifactPath);
+      artifactTexts[artifactPath] = await readEntry(entry, MAX_INDEX_BYTES, 'Generated artifact ' + artifactPath);
+    }
+
+    try {
+      validateReleaseBundle({ pointer, release, artifactTexts });
+    } catch {
+      throw new HttpError(503, 'RELEASE_MANIFEST_INVALID', 'Current release manifest does not match generated artifacts.');
+    }
+    const artifacts = artifactObject(artifactTexts);
+    const generatedIssues = validateGeneratedArtifacts(artifacts, base.cards);
+    if (generatedIssues.length) {
+      throw new HttpError(503, 'RELEASE_GENERATED_DATA_INVALID', 'Current release generated data validation failed.');
+    }
+
+    const snapshot = Object.freeze({
+      ...base,
+      mode: 'release',
+      release,
+      pointer_revision: refRevision,
+      artifacts
+    });
+    snapshots.set(cacheKey, snapshot);
+    while (snapshots.size > 3) snapshots.delete(snapshots.keys().next().value);
+    return snapshot;
+  }
+
+  async function loadSnapshot() {
+    const configuredCommit = await resolveCommit(config.workspaceRef);
+    const refTree = await loadTree(configuredCommit.treeSha);
+    const released = await loadReleaseSnapshot(configuredCommit.revision, refTree);
+    if (released) return released;
+
+    const cacheKey = 'bootstrap:' + configuredCommit.revision;
+    if (snapshots.has(cacheKey)) return snapshots.get(cacheKey);
+    const base = await loadCardsAtTree(refTree, configuredCommit.revision);
+    const snapshot = Object.freeze({
+      ...base,
+      mode: 'bootstrap',
+      release: null,
+      pointer_revision: configuredCommit.revision,
+      artifacts: null
+    });
+    snapshots.set(cacheKey, snapshot);
     while (snapshots.size > 3) snapshots.delete(snapshots.keys().next().value);
     return snapshot;
   }
@@ -205,7 +415,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
         throw new HttpError(400, 'PAGINATION_INVALID', 'cursor is invalid.');
       }
       if (decoded && decoded.revision !== snapshot.revision) {
-        throw new HttpError(409, 'DATA_VERSION_CHANGED', 'Workspace revision changed; restart pagination from the first page.');
+        throw new HttpError(409, 'DATA_VERSION_CHANGED', 'Published revision changed; restart pagination from the first page.');
       }
       const offset = decoded?.offset || 0;
       if (offset > snapshot.cards.length) {
@@ -215,6 +425,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       const page = snapshot.cards.slice(offset, offset + size);
       const nextOffset = offset + page.length;
       return {
+        release_id: snapshot.release?.release_id || null,
         revision: snapshot.revision,
         items: page.map(cardSummary),
         next_cursor: nextOffset < snapshot.cards.length ? encodeCursor(snapshot.revision, nextOffset) : null
@@ -228,7 +439,62 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       const snapshot = await loadSnapshot();
       const card = snapshot.byId.get(id);
       if (!card) throw new HttpError(404, 'CARD_NOT_FOUND', 'Knowledge Card not found.');
-      return cardDetail(card, snapshot.revision);
+      return cardDetail(card, snapshot);
+    },
+
+    async search({ query, limit } = {}) {
+      const q = String(query || '').trim();
+      if (!q) throw new HttpError(400, 'SEARCH_QUERY_REQUIRED', 'q is required.');
+      if (q.length > 300) throw new HttpError(400, 'SEARCH_QUERY_INVALID', 'q must be at most 300 characters.');
+      const snapshot = await loadSnapshot();
+      if (!snapshot.release || !snapshot.artifacts?.search) {
+        throw new HttpError(503, 'RELEASE_REQUIRED', 'Search is unavailable before the first validated release.');
+      }
+      const size = safeLimit(limit, 20);
+      let results;
+      try {
+        results = searchGeneratedIndex(snapshot.artifacts.search, q, { limit: size });
+      } catch {
+        throw new HttpError(400, 'SEARCH_QUERY_INVALID', 'Search request is invalid.');
+      }
+      return {
+        release_id: snapshot.release.release_id,
+        revision: snapshot.revision,
+        query: q,
+        items: results
+      };
+    },
+
+    async graph() {
+      const snapshot = await loadSnapshot();
+      if (!snapshot.release || !snapshot.artifacts?.graph) {
+        throw new HttpError(503, 'RELEASE_REQUIRED', 'Graph is unavailable before the first validated release.');
+      }
+      return {
+        release_id: snapshot.release.release_id,
+        revision: snapshot.revision,
+        layout_method: snapshot.artifacts.graph.layout_method,
+        nodes: snapshot.artifacts.graph.nodes,
+        edges: snapshot.artifacts.graph.edges,
+        semantic_neighbors: snapshot.artifacts.graph.semantic_neighbors
+      };
+    },
+
+    async release() {
+      const snapshot = await loadSnapshot();
+      if (!snapshot.release) {
+        return {
+          release_id: null,
+          revision: snapshot.revision,
+          mode: 'bootstrap'
+        };
+      }
+      return {
+        ...releasePublicProjection(snapshot.release),
+        revision: snapshot.revision,
+        pointer_revision: snapshot.pointer_revision,
+        mode: 'release'
+      };
     }
   };
 }
