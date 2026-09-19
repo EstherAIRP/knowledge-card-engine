@@ -1,0 +1,170 @@
+name: Release Workspace
+
+on:
+  workflow_call:
+    inputs:
+      engine_repository:
+        description: Engine repository pinned by engine.lock.json
+        required: true
+        type: string
+      engine_sha:
+        description: Full engine commit SHA pinned by engine.lock.json
+        required: true
+        type: string
+      build_mode:
+        description: incremental or full
+        required: false
+        default: incremental
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: knowledge-card-release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v5
+        with:
+          path: workspace
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Checkout pinned engine
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.engine_repository }}
+          ref: ${{ inputs.engine_sha }}
+          path: engine
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+
+      - name: Install engine dependencies
+        working-directory: engine
+        run: npm ci --no-audit --no-fund
+
+      - name: Capture release source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git -C workspace rev-parse HEAD)"
+          SOURCE_AT="$(git -C workspace show -s --format=%cI "$SOURCE_SHA")"
+          MODE="${{ inputs.build_mode }}"
+          if [[ "$MODE" != "incremental" && "$MODE" != "full" ]]; then
+            echo "Unsupported build mode: $MODE" >&2
+            exit 1
+          fi
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "generated_at=$SOURCE_AT" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Validate source and pinned engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/validate-workspace.mjs workspace             --engine-repository=${{ inputs.engine_repository }}             --engine-commit=${{ inputs.engine_sha }}             --workflow-file=.github/workflows/validate.yml
+          node engine/scripts/validate-cards.mjs workspace
+          node engine/scripts/validate-source-state.mjs workspace
+
+      - name: Build generated data
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/release-workspace.mjs build workspace             --engine-sha=${{ inputs.engine_sha }}             --source-sha=${{ steps.source.outputs.sha }}             --generated-at=${{ steps.source.outputs.generated_at }}             --mode=${{ steps.source.outputs.mode }}
+
+      - name: Persist generated commit P
+        id: published
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workspace
+          SOURCE_SHA="${{ steps.source.outputs.sha }}"
+          REMOTE_SHA="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          if [[ "$REMOTE_SHA" != "$SOURCE_SHA" ]]; then
+            echo "Stale release: origin/main is $REMOTE_SHA, expected source $SOURCE_SHA" >&2
+            exit 1
+          fi
+
+          mapfile -t CHANGED < <(git diff --name-only)
+          for path in "${CHANGED[@]}"; do
+            case "$path" in
+              data/search.json|data/vectors.json|data/relations.json|data/concepts.json|data/graph.json) ;;
+              *) echo "Generated build changed forbidden path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          if (( ${#CHANGED[@]} > 0 )); then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/search.json data/vectors.json data/relations.json data/concepts.json data/graph.json
+            git commit -m "chore: refresh generated knowledge indexes"
+            PUBLISHED_SHA="$(git rev-parse HEAD)"
+            PARENT_SHA="$(git rev-parse HEAD^)"
+            if [[ "$PARENT_SHA" != "$SOURCE_SHA" ]]; then
+              echo "Generated commit parent mismatch: $PARENT_SHA != $SOURCE_SHA" >&2
+              exit 1
+            fi
+            git push origin HEAD:main
+          else
+            PUBLISHED_SHA="$SOURCE_SHA"
+          fi
+
+          echo "sha=$PUBLISHED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Freeze release description and pointer
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="${{ steps.source.outputs.sha }}"
+          ENGINE_SHA="${{ inputs.engine_sha }}"
+          MODE="${{ steps.source.outputs.mode }}"
+          RELEASE_ID="r1-${SOURCE_SHA:0:12}-${ENGINE_SHA:0:12}-${MODE}"
+          node engine/scripts/release-workspace.mjs finalize workspace             --engine-sha="$ENGINE_SHA"             --source-sha="$SOURCE_SHA"             --published-sha=${{ steps.published.outputs.sha }}             --release-id="$RELEASE_ID"             --created-at=${{ steps.source.outputs.generated_at }}             --mode="$MODE"
+          echo "id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Persist release pointer atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workspace
+          PUBLISHED_SHA="${{ steps.published.outputs.sha }}"
+          REMOTE_SHA="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          if [[ "$REMOTE_SHA" != "$PUBLISHED_SHA" ]]; then
+            echo "Stale release pointer: origin/main is $REMOTE_SHA, expected $PUBLISHED_SHA" >&2
+            exit 1
+          fi
+
+          mapfile -t CHANGED < <(git diff --name-only)
+          for path in "${CHANGED[@]}"; do
+            case "$path" in
+              releases/current.json|releases/by-id/*.json) ;;
+              *) echo "Release finalization changed forbidden path: $path" >&2; exit 1 ;;
+            esac
+          done
+
+          if (( ${#CHANGED[@]} > 0 )); then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add releases/current.json releases/by-id
+            git commit -m "chore: publish knowledge release"
+            git push origin HEAD:main
+          fi
+
+      - name: Validate persisted release
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/release-workspace.mjs validate workspace
