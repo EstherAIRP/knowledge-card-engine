@@ -94,9 +94,14 @@ function cardSummary(card) {
     title: card.data.title,
     summary: card.data.summary,
     canonical_url: card.data.canonical_url,
+    source_type: card.data.source.type,
     resource_kind: effectiveOwnershipValue(card.data.resource_kind),
     navigation_categories: effectiveOwnershipValue(card.data.navigation?.categories) || [],
+    tags: effectiveOwnershipValue(card.data.classification?.tags) || [],
+    relevance: effectiveRelevance(card.data.relevance),
+    actions: effectiveOwnershipValue(card.data.actions) || [],
     status: effectiveOwnershipValue(card.data.status),
+    created_at: card.data.created_at,
     updated_at: card.data.updated_at,
     last_checked_at: card.data.last_checked_at
   };

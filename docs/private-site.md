@@ -151,7 +151,7 @@ Server-side data cache 不能繞過 authorization；authorization 一律先於 C
 - `limit`：1–100，預設 50
 - `cursor`：由 server 產生的 revision-bound cursor
 
-只回 Card summary，不回正文。Summary 目前包含 stable id、title、summary、canonical URL、effective resource kind / navigation / status，以及更新日期。
+只回 Card summary，不回正文。Summary 目前包含 stable id、title、summary、canonical URL、source type、effective resource kind / navigation / tags / relevance / actions / status，以及建立、更新與最近檢查日期。這些欄位供已授權 Radar 首頁做呈現、排序與 client-side 篩選；正文仍只由 Card detail API 提供。
 
 Cursor 綁定 Workspace commit SHA；如果下一頁 request 時 configured ref 已移到另一 revision，回 409 `DATA_VERSION_CHANGED`，要求從第一頁重讀，避免跨 revision 混頁。
 
@@ -220,7 +220,7 @@ GitHub REST request 使用 API version `2026-03-10`。
 - 未登入：以 Knowledge Radar 品牌頁提供 GitHub login。
 - cancelled / invalid / forbidden / unavailable：顯示同一視覺系統的登入錯誤狀態。
 - 已登入首頁：使用寬版 Radar page frame、hero、統計資訊、搜尋／篩選控制與響應式 Knowledge Card grid。
-- Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、resource kind、navigation categories、status 與日期；首頁篩選不額外下載私人正文。
+- Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、source/resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些 metadata 篩選與排序，但不額外下載私人正文。
 - Card detail：使用 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期，再以較窄 reading width 顯示 Markdown 正文、relation 與 Concept。
 - 搜尋與圖譜沿用同一套 page frame、surface、品牌色、控制項與 responsive layout，但資料仍只由 authenticated `/api/search`、`/api/graph` 取得。
 - header 顯示登入帳號、avatar、release version 與登出操作；401 / 403 立即清除前端目前 private state，回到 auth UI。

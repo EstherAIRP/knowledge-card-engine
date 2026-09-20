@@ -221,7 +221,7 @@ export function renderPrivateSiteShell() {
     }
     .radar-search-row {
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) 190px 160px auto;
+      grid-template-columns: minmax(260px, 1fr) 170px 140px 160px 130px 150px;
       gap: 12px;
       align-items: end;
     }
@@ -330,6 +330,44 @@ export function renderPrivateSiteShell() {
       color: var(--kc-brand);
       font-size: 11px;
       font-weight: 750;
+    }
+    .knowledge-score {
+      color: var(--kc-brand);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+    .knowledge-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 14px;
+    }
+    .knowledge-actions b {
+      padding: 5px 9px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--kc-brand) 11%, var(--kc-bg));
+      color: var(--kc-brand);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .knowledge-tags-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .knowledge-tags-buttons button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--kc-subtle);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .knowledge-tags-buttons button:hover {
+      color: var(--kc-brand);
     }
     .knowledge-tile h2 {
       margin: 15px 0 10px;
@@ -961,12 +999,21 @@ export function renderPrivateSiteShell() {
 
     const categoryCounts = new Map();
     const resourceCounts = new Map();
-    let activeCount = 0;
+    const actionCounts = new Map();
+    const tagCounts = new Map();
+    let highRelevanceCount = 0;
     for (const card of cards) {
-      if (card.status === 'active') activeCount += 1;
+      const overall = Number(card.relevance?.overall);
+      if (Number.isFinite(overall) && overall >= 4) highRelevanceCount += 1;
       if (card.resource_kind) resourceCounts.set(card.resource_kind, (resourceCounts.get(card.resource_kind) || 0) + 1);
       for (const category of card.navigation_categories || []) {
         categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+      }
+      for (const action of card.actions || []) {
+        actionCounts.set(action, (actionCounts.get(action) || 0) + 1);
+      }
+      for (const tag of card.tags || []) {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       }
     }
 
@@ -974,8 +1021,8 @@ export function renderPrivateSiteShell() {
     stats.className = 'radar-stats';
     for (const [value, label] of [
       [cards.length, 'Knowledge Cards'],
-      [activeCount, 'Active'],
-      [resourceCounts.size, '資源型態'],
+      [highRelevanceCount, '高度相關'],
+      [actionCounts.get('TRY') || 0, '值得 TRY'],
       [categoryCounts.size, '主題分類']
     ]) {
       const stat = document.createElement('div');
@@ -1040,8 +1087,32 @@ export function renderPrivateSiteShell() {
       status.append(option);
     }
 
+    const action = document.createElement('select');
+    const actionAll = document.createElement('option');
+    actionAll.value = 'ALL';
+    actionAll.textContent = '全部';
+    action.append(actionAll);
+    for (const item of [...actionCounts.keys()].sort()) {
+      const option = document.createElement('option');
+      option.value = item;
+      option.textContent = item + ' (' + actionCounts.get(item) + ')';
+      action.append(option);
+    }
+
+    const tag = document.createElement('select');
+    const tagAll = document.createElement('option');
+    tagAll.value = 'ALL';
+    tagAll.textContent = '全部';
+    tag.append(tagAll);
+    for (const [item, count] of [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-TW')).slice(0, 60)) {
+      const option = document.createElement('option');
+      option.value = item;
+      option.textContent = item + ' (' + count + ')';
+      tag.append(option);
+    }
+
     const sort = document.createElement('select');
-    for (const [value, label] of [['newest', '最近更新'], ['title', '名稱']]) {
+    for (const [value, label] of [['newest', '最近更新'], ['relevance', '相關性'], ['title', '名稱']]) {
       const option = document.createElement('option');
       option.value = value;
       option.textContent = label;
@@ -1050,6 +1121,8 @@ export function renderPrivateSiteShell() {
     row.append(
       makeLabel('搜尋', query),
       makeLabel('資源型態', resource),
+      makeLabel('Action', action),
+      makeLabel('Tag', tag),
       makeLabel('狀態', status),
       makeLabel('排序', sort)
     );
@@ -1100,21 +1173,30 @@ export function renderPrivateSiteShell() {
       const needle = query.value.trim().toLocaleLowerCase('zh-TW');
       let filtered = cards.filter((card) => {
         if (resource.value !== 'ALL' && card.resource_kind !== resource.value) return false;
+        if (action.value !== 'ALL' && !(card.actions || []).includes(action.value)) return false;
+        if (tag.value !== 'ALL' && !(card.tags || []).includes(tag.value)) return false;
         if (status.value !== 'ALL' && card.status !== status.value) return false;
         if (selectedCategory !== 'ALL' && !(card.navigation_categories || []).includes(selectedCategory)) return false;
         if (!needle) return true;
         const haystack = [
           card.title,
           card.summary,
+          card.source_type,
           card.resource_kind,
           card.status,
-          ...(card.navigation_categories || [])
+          ...(card.navigation_categories || []),
+          ...(card.tags || []),
+          ...(card.actions || [])
         ].filter(Boolean).join(' ').toLocaleLowerCase('zh-TW');
         return haystack.includes(needle);
       });
 
       filtered = [...filtered].sort((a, b) => {
         if (sort.value === 'title') return a.title.localeCompare(b.title, 'zh-TW');
+        if (sort.value === 'relevance') {
+          const score = Number(b.relevance?.overall || 0) - Number(a.relevance?.overall || 0);
+          if (score) return score;
+        }
         return String(b.updated_at || '').localeCompare(String(a.updated_at || ''))
           || a.title.localeCompare(b.title, 'zh-TW');
       });
@@ -1148,11 +1230,13 @@ export function renderPrivateSiteShell() {
         top.className = 'knowledge-tile-top';
         const source = document.createElement('div');
         source.className = 'knowledge-source';
-        source.textContent = card.resource_kind || 'Knowledge Card';
-        const state = document.createElement('div');
-        state.className = 'knowledge-status';
-        state.textContent = card.status || '';
-        top.append(source, state);
+        source.textContent = [card.source_type, card.resource_kind].filter(Boolean).join(' · ') || 'Knowledge Card';
+        const score = document.createElement('div');
+        score.className = 'knowledge-score';
+        const overall = Math.max(0, Math.min(5, Math.round(Number(card.relevance?.overall || 0))));
+        score.textContent = '★'.repeat(overall) + '☆'.repeat(5 - overall);
+        score.title = 'Overall relevance ' + overall + ' / 5';
+        top.append(source, score);
 
         const h2 = document.createElement('h2');
         h2.textContent = card.title;
@@ -1168,6 +1252,28 @@ export function renderPrivateSiteShell() {
           categoriesEl.append(badge);
         }
 
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'knowledge-actions';
+        for (const item of card.actions || []) {
+          const badge = document.createElement('b');
+          badge.textContent = item;
+          actionsEl.append(badge);
+        }
+
+        const tagsEl = document.createElement('div');
+        tagsEl.className = 'knowledge-tags-buttons';
+        for (const item of (card.tags || []).slice(0, 6)) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = '#' + item;
+          button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            tag.value = item;
+            renderGrid();
+          });
+          tagsEl.append(button);
+        }
+
         const footer = document.createElement('footer');
         const updated = document.createElement('span');
         updated.textContent = card.updated_at ? '更新 ' + card.updated_at : '';
@@ -1175,7 +1281,7 @@ export function renderPrivateSiteShell() {
         open.textContent = '查看分析 →';
         footer.append(updated, open);
 
-        tile.append(top, h2, summary, categoriesEl, footer);
+        tile.append(top, h2, summary, categoriesEl, actionsEl, tagsEl, footer);
         grid.append(tile);
       }
     }
@@ -1183,11 +1289,15 @@ export function renderPrivateSiteShell() {
     const update = () => renderGrid();
     query.addEventListener('input', update);
     resource.addEventListener('change', update);
+    action.addEventListener('change', update);
+    tag.addEventListener('change', update);
     status.addEventListener('change', update);
     sort.addEventListener('change', update);
     reset.addEventListener('click', () => {
       query.value = '';
       resource.value = 'ALL';
+      action.value = 'ALL';
+      tag.value = 'ALL';
       status.value = 'ALL';
       sort.value = 'newest';
       selectedCategory = 'ALL';
