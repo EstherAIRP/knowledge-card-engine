@@ -1,3 +1,5 @@
+import { legacyGraphCss, legacyGraphScript } from './legacy-graph.js';
+
 export const moduleId = 'web';
 export const moduleKind = 'app';
 
@@ -764,6 +766,7 @@ export function renderPrivateSiteShell() {
       .knowledge-detail-top,
       .knowledge-detail-footer { flex-direction: column; }
     }
+    ${legacyGraphCss}
   </style>
 </head>
 <body>
@@ -782,6 +785,7 @@ export function renderPrivateSiteShell() {
 </div>
 <script>
 (() => {
+  ${legacyGraphScript}
   const app = document.getElementById('app');
   const header = document.getElementById('header');
   const nav = {
@@ -796,6 +800,7 @@ export function renderPrivateSiteShell() {
   }
 
   function setView(name) {
+    if (name !== 'graph' && typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
     for (const [key, button] of Object.entries(nav)) {
       if (key === name) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
@@ -1458,270 +1463,7 @@ export function renderPrivateSiteShell() {
   async function renderGraph() {
     setView('graph');
     const payload = await api('/api/graph');
-    const view = document.createElement('section');
-    view.className = 'graph-view page-shell';
-    const h1 = document.createElement('h1');
-    h1.textContent = '圖譜';
-    const toolbar = document.createElement('div');
-    toolbar.className = 'graph-toolbar';
-    const search = document.createElement('input');
-    search.type = 'search';
-    search.placeholder = '篩選節點';
-    const kind = document.createElement('select');
-    for (const [value, label] of [['all', '全部節點'], ['card', 'Cards'], ['concept', 'Concepts']]) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      kind.append(option);
-    }
-    const relationToggleLabel = document.createElement('label');
-    const relationToggle = document.createElement('input');
-    relationToggle.type = 'checkbox';
-    relationToggle.checked = true;
-    relationToggleLabel.append(relationToggle, document.createTextNode(' Card↔Card'));
-    toolbar.append(search, kind, relationToggleLabel);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'graph-wrap';
-    const svg = svgElement('svg', { viewBox: '0 0 1000 700', class: 'graph-canvas', role: 'img', 'aria-label': 'Knowledge Card graph' });
-    const viewport = svgElement('g');
-    svg.append(viewport);
-    wrap.append(svg);
-    view.append(h1, toolbar, wrap);
-    app.replaceChildren(view);
-
-    let inspector = null;
-    let inspectorBackdrop = null;
-
-    function closeInspector() {
-      inspector?.remove();
-      inspectorBackdrop?.remove();
-      inspector = null;
-      inspectorBackdrop = null;
-      for (const element of nodeEls.values()) element.classList.remove('focus');
-    }
-
-    function openInspector(node) {
-      inspector?.remove();
-      inspectorBackdrop?.remove();
-
-      inspectorBackdrop = document.createElement('div');
-      inspectorBackdrop.className = 'graph-inspector-backdrop';
-      inspectorBackdrop.addEventListener('click', closeInspector);
-
-      inspector = document.createElement('aside');
-      inspector.className = 'graph-inspector';
-      inspector.tabIndex = -1;
-      inspector.setAttribute('aria-label', '圖譜節點資訊');
-
-      const head = document.createElement('div');
-      head.className = 'graph-inspector-head';
-      const heading = document.createElement('div');
-      const eyebrow = document.createElement('div');
-      eyebrow.className = 'graph-inspector-eyebrow';
-      eyebrow.textContent = node.kind === 'card' ? '已選取知識卡' : '已選取概念';
-      const title = document.createElement('h2');
-      title.textContent = node.label;
-      heading.append(eyebrow, title);
-      const close = document.createElement('button');
-      close.type = 'button';
-      close.className = 'graph-inspector-close';
-      close.setAttribute('aria-label', '關閉節點資訊');
-      close.textContent = '×';
-      close.addEventListener('click', closeInspector);
-      head.append(heading, close);
-      inspector.append(head);
-
-      inspector.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeInspector();
-      });
-
-      document.body.append(inspectorBackdrop, inspector);
-      inspector.focus({ preventScroll: true });
-    }
-
-    const nodes = new Map(payload.nodes.map((node) => [node.id, node]));
-    const nodeEls = new Map();
-    const edgeEls = [];
-    const xOf = (node) => 500 + (Number(node.x) * 360);
-    const yOf = (node) => 350 + (Number(node.y) * 260);
-
-    for (const edge of payload.edges) {
-      const source = nodes.get(edge.source);
-      const target = nodes.get(edge.target);
-      if (!source || !target) continue;
-      const line = svgElement('line', {
-        x1: xOf(source), y1: yOf(source), x2: xOf(target), y2: yOf(target),
-        class: 'graph-edge ' + edge.kind
-      });
-      line.dataset.kind = edge.kind;
-      viewport.append(line);
-      edgeEls.push({ edge, element: line });
-    }
-
-    for (const node of payload.nodes) {
-      const group = svgElement('g', {
-        class: 'graph-node ' + node.kind,
-        transform: 'translate(' + xOf(node) + ' ' + yOf(node) + ')'
-      });
-      group.dataset.nodeId = node.id;
-      const circle = svgElement('circle', { r: node.kind === 'concept' ? 9 : 7 });
-      const text = svgElement('text', { x: 12, y: 4 });
-      text.textContent = node.label;
-      group.append(circle, text);
-      viewport.append(group);
-      nodeEls.set(node.id, group);
-
-      group.addEventListener('click', async (event) => {
-        event.stopPropagation();
-        for (const element of nodeEls.values()) element.classList.remove('focus');
-        group.classList.add('focus');
-        openInspector(node);
-
-        if (node.kind === 'card') {
-          const loading = document.createElement('div');
-          loading.className = 'empty';
-          loading.textContent = '載入 Knowledge Card…';
-          inspector.append(loading);
-
-          try {
-            const detail = await api('/api/cards/' + encodeURIComponent(node.entity_id));
-            if (!inspector || !document.body.contains(inspector)) return;
-            loading.remove();
-
-            const summary = document.createElement('p');
-            summary.className = 'graph-inspector-summary';
-            summary.textContent = detail.summary || '';
-            inspector.append(summary);
-
-            const taxonomy = document.createElement('div');
-            taxonomy.className = 'graph-inspector-taxonomy';
-            for (const item of [
-              detail.source?.type,
-              detail.resource_kind,
-              detail.status,
-              ...(detail.navigation_categories || []),
-              ...(detail.actions || [])
-            ].filter(Boolean)) {
-              const badge = document.createElement('span');
-              badge.textContent = item;
-              taxonomy.append(badge);
-            }
-            inspector.append(taxonomy);
-
-            const open = document.createElement('button');
-            open.type = 'button';
-            open.className = 'primary';
-            open.textContent = '開啟 Knowledge Card';
-            open.addEventListener('click', async () => {
-              closeInspector();
-              await renderCards();
-              await openCard(node.entity_id);
-            });
-            inspector.append(open);
-
-            const neighbors = payload.semantic_neighbors?.[node.entity_id] || [];
-            if (neighbors.length) {
-              const section = document.createElement('section');
-              section.className = 'graph-inspector-section';
-              const sectionTitle = document.createElement('h3');
-              sectionTitle.textContent = '最近語意鄰居';
-              section.append(sectionTitle);
-
-              for (const neighbor of neighbors) {
-                const neighborNode = nodes.get('card:' + neighbor.card_id);
-                const row = document.createElement('button');
-                row.type = 'button';
-                row.className = 'graph-inspector-neighbor';
-                const label = document.createElement('strong');
-                label.textContent = neighborNode?.label || neighbor.card_id;
-                const metrics = document.createElement('span');
-                metrics.textContent = '相似度 ' + neighbor.similarity.toFixed(3) + ' · 距離 ' + neighbor.distance.toFixed(3);
-                row.append(label, metrics);
-                row.addEventListener('click', () => {
-                  const target = nodeEls.get('card:' + neighbor.card_id);
-                  target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                });
-                section.append(row);
-              }
-              inspector.append(section);
-            }
-          } catch (error) {
-            if (error.message !== 'AUTH_STOP' && inspector && document.body.contains(inspector)) {
-              loading.textContent = error.message || 'Knowledge Card 載入失敗。';
-              loading.classList.add('error');
-            }
-          }
-        } else {
-          const connected = payload.edges.filter((edge) => edge.source === node.id || edge.target === node.id);
-          const section = document.createElement('section');
-          section.className = 'graph-inspector-section';
-          const sectionTitle = document.createElement('h3');
-          sectionTitle.textContent = 'Connected nodes';
-          section.append(sectionTitle);
-          for (const edge of connected.slice(0, 30)) {
-            const otherId = edge.source === node.id ? edge.target : edge.source;
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'graph-inspector-neighbor';
-            const label = document.createElement('strong');
-            label.textContent = nodes.get(otherId)?.label || otherId;
-            const relation = document.createElement('span');
-            relation.textContent = edge.relation_type;
-            row.append(label, relation);
-            row.addEventListener('click', () => {
-              const target = nodeEls.get(otherId);
-              target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            });
-            section.append(row);
-          }
-          inspector.append(section);
-        }
-      });
-    }
-
-    function applyFilter() {
-      const needle = search.value.trim().toLocaleLowerCase('en-US');
-      const selectedKind = kind.value;
-      for (const [id, element] of nodeEls) {
-        const node = nodes.get(id);
-        const visibleKind = selectedKind === 'all' || node.kind === selectedKind;
-        const visibleText = !needle || node.label.toLocaleLowerCase('en-US').includes(needle);
-        element.classList.toggle('dim', !(visibleKind && visibleText));
-      }
-      for (const item of edgeEls) {
-        item.element.style.display = (!relationToggle.checked && item.edge.kind === 'card-card') ? 'none' : '';
-      }
-    }
-    search.addEventListener('input', applyFilter);
-    kind.addEventListener('change', applyFilter);
-    relationToggle.addEventListener('change', applyFilter);
-
-    let scale = 1;
-    let tx = 0;
-    let ty = 0;
-    let drag = null;
-    function transform() {
-      viewport.setAttribute('transform', 'translate(' + tx + ' ' + ty + ') scale(' + scale + ')');
-    }
-    svg.addEventListener('wheel', (event) => {
-      event.preventDefault();
-      scale = Math.max(.4, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89)));
-      transform();
-    }, { passive: false });
-    svg.addEventListener('pointerdown', (event) => {
-      if (event.target === svg) closeInspector();
-      drag = { x: event.clientX, y: event.clientY, tx, ty };
-      svg.setPointerCapture(event.pointerId);
-    });
-    svg.addEventListener('pointermove', (event) => {
-      if (!drag) return;
-      tx = drag.tx + (event.clientX - drag.x);
-      ty = drag.ty + (event.clientY - drag.y);
-      transform();
-    });
-    svg.addEventListener('pointerup', () => { drag = null; });
-    svg.addEventListener('pointercancel', () => { drag = null; });
+    renderLegacyGraph(payload);
   }
 
   function applyAuthResult() {
