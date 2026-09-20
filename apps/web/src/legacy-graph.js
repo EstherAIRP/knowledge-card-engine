@@ -147,6 +147,7 @@ export const legacyGraphCss = String.raw`
 
 .graph-node { transition: opacity .18s ease; }
 .graph-node circle { vector-effect: non-scaling-stroke; transition: opacity .18s ease, stroke-width .18s ease; }
+.graph-node-hit { fill: transparent; stroke: none; pointer-events: all; }
 .graph-node-core { stroke-width: 2; }
 .graph-node-interactive { cursor: pointer; }
 .graph-node-interactive:hover .graph-node-core,
@@ -612,7 +613,9 @@ function renderLegacyGraph(graph) {
     if(Number(state.filters.minimumRelevance)>1)count+=1;if(state.filters.semanticEnabled)count+=1;return count;
   }
   function relationClass(type){return String(type||'unknown').replaceAll('_','-');}
-  function nodeRadius(node){return node.kind==='concept'?Math.min(17,8+Number(node.degree||0)*.65):10;}
+  function nodeRadius(node){return node.kind==='concept'?Math.min(11,5+Number(node.degree||0)*.35):6;}
+  function displayNodeRadius(node){return nodeRadius(node)/Math.max(state.viewport.scale,1);}
+  function nodeHitRadius(node){const scale=Math.max(state.viewport.scale,1);return Math.max(displayNodeRadius(node)+4/scale,10/scale);}
   function shortLabel(label){const limit=isMobile()?15:20;return label.length>limit?label.slice(0,limit-1)+'…':label;}
   function nodeLabelPriority(node,results){
     if(isSelected(node))return 100;if(node.id===state.hoveredNodeId)return 95;if(results.needle&&results.directNodeIds.has(node.id))return 90;
@@ -700,9 +703,10 @@ function renderLegacyGraph(graph) {
     viewport.append(edgesGroup);
     nodes.forEach((node)=>{const group=document.createElementNS('http://www.w3.org/2000/svg','g');group.setAttribute('data-node-id',node.id);let classes='graph-node graph-node--'+node.kind;if(isSelected(node))classes+=' graph-node--selected';if(isNeighbor(node))classes+=' graph-node--neighbor';if(isRelatedConcept(node))classes+=' graph-node--related-concept';if(state.selectedCardId&&!isSelected(node)&&!isNeighbor(node)&&!isRelatedConcept(node))classes+=' graph-node--dimmed';group.setAttribute('class',classes);group.setAttribute('transform','translate('+node.x+' '+node.y+')');if(node.kind==='card'&&state.colorBy!=='none')group.style.setProperty('--node-accent',cardColor(node,state.colorBy));
       const interactive=document.createElementNS('http://www.w3.org/2000/svg','g');interactive.setAttribute('class','graph-node-interactive');interactive.setAttribute('role','link');interactive.setAttribute('tabindex','0');interactive.setAttribute('aria-label',node.label);
-      if(isSelected(node)){const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','graph-node-halo graph-node-halo--selected');halo.setAttribute('r',nodeRadius(node)+9);interactive.append(halo);}else if(isNeighbor(node)){const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','graph-node-halo graph-node-halo--neighbor');halo.setAttribute('r',nodeRadius(node)+6);interactive.append(halo);}
-      const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('class','graph-node-core');circle.setAttribute('r',nodeRadius(node));interactive.append(circle);
-      if(labels.has(node.id)){const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('class','graph-node-label');text.setAttribute('y',nodeRadius(node)+18/state.viewport.scale);text.setAttribute('text-anchor','middle');text.style.fontSize=(12.5/Math.max(state.canvasCssScale*state.viewport.scale,.15))+'px';text.style.strokeWidth=(4/Math.max(state.canvasCssScale*state.viewport.scale,.15))+'px';text.textContent=shortLabel(node.label);interactive.append(text);}
+      const hitCircle=document.createElementNS('http://www.w3.org/2000/svg','circle');hitCircle.setAttribute('class','graph-node-hit');hitCircle.setAttribute('r',nodeHitRadius(node));interactive.append(hitCircle);
+      if(isSelected(node)){const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','graph-node-halo graph-node-halo--selected');halo.setAttribute('r',displayNodeRadius(node)+6/Math.max(state.viewport.scale,1));interactive.append(halo);}else if(isNeighbor(node)){const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','graph-node-halo graph-node-halo--neighbor');halo.setAttribute('r',displayNodeRadius(node)+4/Math.max(state.viewport.scale,1));interactive.append(halo);}
+      const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');circle.setAttribute('class','graph-node-core');circle.setAttribute('r',displayNodeRadius(node));interactive.append(circle);
+      if(labels.has(node.id)){const text=document.createElementNS('http://www.w3.org/2000/svg','text');text.setAttribute('class','graph-node-label');text.setAttribute('y',displayNodeRadius(node)+18/state.viewport.scale);text.setAttribute('text-anchor','middle');text.style.fontSize=(12.5/Math.max(state.canvasCssScale*state.viewport.scale,.15))+'px';text.style.strokeWidth=(4/Math.max(state.canvasCssScale*state.viewport.scale,.15))+'px';text.textContent=shortLabel(node.label);interactive.append(text);}
       const title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=node.label+' — '+(node.description||'');interactive.append(title);
       interactive.addEventListener('click',(event)=>{event.stopPropagation();activateNode(node);});
       interactive.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();activateNode(node);}});
