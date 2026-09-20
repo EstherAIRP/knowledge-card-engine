@@ -1033,6 +1033,7 @@ export function renderPrivateSiteShell() {
   }
 
   function renderLoading(title, detail) {
+    if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
     app.replaceChildren(createLoadingView(title, detail));
   }
 
