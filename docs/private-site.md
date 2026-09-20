@@ -223,9 +223,9 @@ GitHub REST request 使用 API version `2026-03-10`。
 - Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、source/resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些 metadata 篩選與排序，但不額外下載私人正文。
 - Card detail：使用 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期，再以較窄 reading width 顯示 Markdown 正文、relation 與 Concept。
 - 搜尋沿用同一套 page frame、surface、品牌色與控制項；資料只由 authenticated `/api/search` 取得。
-- Graph UI 直接移植舊版 `KnowledgeGraph.vue` 的互動模型：同一套 semantic viewport fitting、node-aware pointer capture、mouse/touch pan + pinch/wheel zoom、Card selection、focus/global mode、responsive inspector drawer、semantic-neighbor list、node label priority、relation visibility 與 graph filtering。V2 不沿用舊版 VitePress/Vue runtime，只保留等價 client interaction，資料改由 authenticated `/api/graph` 提供。
-- `/api/graph` 在 current release snapshot 上投影成舊版 graph view model：Card metadata、Concept metadata、typed edges、layout/stats，以及由 current release vectors 即時計算的 `semantic.neighborsByCard` / `semantic.distancesByCard`。這個 adapter 不寫回 generated artifacts，也不跨 release 讀資料。
-- Graph pointer rule 必須保留舊版語意：pointerdown 發生在 `.graph-node` 上時不得建立 drag state 或 pointer capture；Card node 的 click / Enter / Space 必須可進入 selected inspector。
+- Graph UI 使用 semantic viewport fitting、node-aware pointer capture、mouse/touch pan + pinch/wheel zoom、Card selection、focus/global mode、responsive inspector drawer、semantic-neighbor list、node label priority、relation visibility 與 graph filtering；資料只由 authenticated `/api/graph` 提供。
+- `/api/graph` 在 current release snapshot 上投影 graph view model：Card metadata、Concept metadata、typed edges、layout/stats，以及由 current release vectors 即時計算的 `semantic.neighborsByCard` / `semantic.distancesByCard`。這個 projection 不寫回 generated artifacts，也不跨 release 讀資料。
+- Graph pointer rule：pointerdown 發生在 `.graph-node` 上時不得建立 drag state 或 pointer capture；Card node 的 click / Enter / Space 必須可進入 selected inspector。
 - header 只保留 Knowledge Radar 品牌與 Cards / Search / Graph 導覽，不顯示 release id、GitHub avatar / login 或登出按鈕；session 與 release API 契約仍保留。401 / 403 會立即清除前端目前 private state，回到 auth UI。
 - Markdown 以 DOM `textContent` 建立基本 heading / list / paragraph，不解譯 raw HTML。
 - UI 支援 light / dark color scheme；desktop Radar grid 為三欄，較窄 viewport 依序收斂為兩欄與單欄。
