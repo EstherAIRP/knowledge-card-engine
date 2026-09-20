@@ -13,35 +13,122 @@ export const legacyGraphCss = String.raw`
   padding-top: 20px;
   padding-bottom: 64px;
 }
-.graph-hero { margin-bottom: 16px; }
-.graph-hero__title-row {
+.graph-hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+  padding: 48px;
+  border: 1px solid var(--kc-border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 86% 12%, color-mix(in srgb, var(--kc-brand) 22%, transparent), transparent 34%),
+    linear-gradient(145deg, var(--kc-bg-soft), var(--kc-bg));
+  box-shadow: 0 18px 70px rgba(34, 39, 62, .06);
+}
+.graph-kicker {
+  color: var(--kc-brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.graph-hero h1 {
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 0;
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: .98;
+  letter-spacing: -.045em;
+  word-break: keep-all;
+}
+.graph-hero > p {
+  max-width: 800px;
+  margin: 0;
+  color: var(--kc-muted);
+  font-size: 17px;
+  line-height: 1.8;
+}
+.graph-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 34px;
+}
+.graph-stat {
+  padding: 17px 18px;
+  border: 1px solid var(--kc-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--kc-bg) 78%, transparent);
+}
+.graph-stat strong,
+.graph-stat span { display: block; }
+.graph-stat strong {
+  color: var(--vp-c-text-1);
+  font-size: 26px;
+  line-height: 1.1;
+}
+.graph-stat span {
+  margin-top: 5px;
+  color: var(--kc-muted);
+  font-size: 12px;
+}
+
+.graph-controls {
+  margin-bottom: 20px;
+  padding: 22px;
+  border: 1px solid var(--kc-border);
+  border-radius: 22px;
+  background: var(--kc-panel);
+}
+.graph-controls__head {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
+  margin-bottom: 16px;
 }
-.graph-kicker { font-size: 11px; font-weight: 800; letter-spacing: .1em; opacity: .58; }
-.graph-hero h1 {
-  margin: 4px 0 0;
-  padding: 0;
-  border: 0;
-  font-size: clamp(28px, 3vw, 32px);
-  line-height: 1.15;
-  letter-spacing: -.025em;
-  word-break: keep-all;
+.graph-controls__head strong {
+  display: block;
+  font-size: 15px;
 }
-.graph-hero p { margin: 8px 0 0; max-width: 920px; font-size: 13px; line-height: 1.65; opacity: .72; }
-.graph-stats { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: flex-end; font-size: 12px; opacity: .72; }
-.graph-stats strong { color: var(--vp-c-text-1); font-size: 16px; }
-
-.legacy-graph-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
+.graph-controls__head small {
+  display: block;
+  margin-top: 4px;
+  color: var(--kc-muted);
+  font-size: 12px;
+}
+.legacy-graph-toolbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 160px auto auto auto auto;
+  gap: 12px;
+  align-items: end;
+}
 .legacy-graph-toolbar label,
-.graph-search { display: grid; gap: 5px; font-size: 12px; font-weight: 700; }
-.legacy-graph-toolbar input[type='search'], .legacy-graph-toolbar select {
-  min-height: 40px; border: 1px solid var(--kc-border); border-radius: 10px; padding: 0 12px;
-  background: var(--vp-c-bg); color: var(--vp-c-text-1);
+.graph-search,
+.graph-control {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--kc-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
-.graph-search { flex: 1 1 320px; }
+.legacy-graph-toolbar input[type='search'],
+.legacy-graph-toolbar select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--kc-border);
+  border-radius: 11px;
+  padding: 0 12px;
+  outline: none;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+}
+.legacy-graph-toolbar input[type='search']:focus,
+.legacy-graph-toolbar select:focus {
+  border-color: var(--kc-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc-brand) 14%, transparent);
+}
+.graph-search { min-width: 0; }
 .graph-search__input { position: relative; }
 .graph-search__input input { width: 100%; padding-right: 38px !important; }
 .graph-search__input button {
@@ -50,9 +137,9 @@ export const legacyGraphCss = String.raw`
 }
 .graph-color-select { flex: 0 0 145px; }
 .graph-filter-trigger {
-  min-height: 40px; align-self: end; display: inline-flex; align-items: center; gap: 7px;
-  border: 1px solid var(--kc-border); border-radius: 10px; padding: 0 12px;
-  background: var(--vp-c-bg-soft); color: var(--vp-c-text-1); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
+  width: 100%; min-height: 42px; align-self: end; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--kc-border); border-radius: 11px; padding: 0 14px;
+  background: var(--vp-c-bg); color: var(--vp-c-text-1); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
 }
 .graph-filter-trigger.active { border-color: var(--vp-c-brand-1); color: var(--vp-c-brand-1); }
 .graph-filter-trigger strong {
@@ -60,12 +147,12 @@ export const legacyGraphCss = String.raw`
   background: var(--vp-c-brand-1); color: white; font-size: 9px;
 }
 .graph-toggle {
-  display: flex !important; grid-auto-flow: column; align-items: center; min-height: 40px;
-  border: 1px solid var(--kc-border); border-radius: 10px; padding: 0 12px; background: var(--vp-c-bg-soft);
+  display: flex !important; grid-auto-flow: column; align-items: center; justify-content: center; gap: 7px; min-height: 42px;
+  border: 1px solid var(--kc-border); border-radius: 11px; padding: 0 14px; background: var(--vp-c-bg);
 }
 .graph-view-mode {
-  display: inline-flex; min-height: 40px; padding: 3px; border: 1px solid var(--kc-border);
-  border-radius: 11px; background: var(--vp-c-bg-soft);
+  display: inline-flex; min-height: 42px; padding: 3px; border: 1px solid var(--kc-border);
+  border-radius: 11px; background: var(--vp-c-bg);
 }
 .graph-view-mode button {
   border: 0; border-radius: 8px; padding: 0 12px; background: transparent; color: var(--vp-c-text-2);
@@ -74,9 +161,9 @@ export const legacyGraphCss = String.raw`
 .graph-view-mode button.active { background: var(--vp-c-bg); color: var(--vp-c-brand-1); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
 .graph-layout-details { position: relative; align-self: end; }
 .graph-layout-details summary {
-  margin: 0; min-height: 40px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  border: 1px solid var(--kc-border); border-radius: 10px; padding: 0 12px;
-  background: var(--vp-c-bg-soft); font-size: 12px; font-weight: 800; list-style: none;
+  margin: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--kc-border); border-radius: 11px; padding: 0 14px;
+  background: var(--vp-c-bg); color: var(--vp-c-text-1); font-size: 12px; font-weight: 800; list-style: none;
 }
 .graph-layout-details summary::-webkit-details-marker { display: none; }
 .graph-layout-details > div {
@@ -85,7 +172,7 @@ export const legacyGraphCss = String.raw`
   background: var(--vp-c-bg); box-shadow: var(--vp-shadow-3); font-size: 11px; line-height: 1.5;
 }
 
-.graph-filter-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.graph-filter-chips { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 16px; }
 .graph-filter-chips button {
   border: 1px solid var(--vp-c-brand-1); border-radius: 999px; padding: 5px 8px;
   background: var(--vp-c-brand-soft); color: var(--vp-c-brand-1); font: inherit; font-size: 9px; font-weight: 800; cursor: pointer;
@@ -259,18 +346,23 @@ export const legacyGraphCss = String.raw`
 .graph-inspector-backdrop { position: fixed; z-index: 100; inset: 0; background: rgba(0, 0, 0, .32); }
 .graph-inspector-backdrop { z-index: 90; }
 
+@media (max-width: 1120px) {
+  .legacy-graph-toolbar { grid-template-columns: minmax(260px, 1fr) 160px 1fr 1.4fr; }
+  .graph-toggle,
+  .graph-layout-details { grid-column: auto; }
+}
 @media (max-width: 760px) {
   .knowledge-graph-shell { padding-top: 16px; padding-bottom: 56px; }
-  .graph-hero__title-row { align-items: start; gap: 12px; }
-  .graph-hero p { font-size: 12px; line-height: 1.55; }
-  .graph-stats { justify-content: flex-start; font-size: 10px; }
-  .legacy-graph-toolbar { align-items: stretch; }
-  .graph-search { flex-basis: 100%; }
-  .graph-filter-trigger { flex: 1 1 105px; justify-content: center; }
-  .graph-color-select { flex: 1 1 130px; }
-  .graph-view-mode { flex: 1 1 210px; }
+  .graph-hero { padding: 26px 22px; border-radius: 22px; }
+  .graph-hero > p { font-size: 14px; line-height: 1.65; }
+  .graph-stats { grid-template-columns: 1fr 1fr; margin-top: 24px; }
+  .graph-controls { padding: 16px; border-radius: 18px; }
+  .graph-controls__head { align-items: flex-start; flex-direction: column; }
+  .legacy-graph-toolbar { grid-template-columns: 1fr; align-items: stretch; }
   .graph-view-mode button { flex: 1; padding-inline: 8px; }
-  .graph-toggle { flex: 1 1 150px; }
+  .graph-filter-trigger,
+  .graph-toggle,
+  .graph-layout-details summary { justify-content: center; }
   .knowledge-graph { height: min(62vh, 620px); min-height: 420px; }
   .graph-focus-hint { top: 10px; max-width: calc(100% - 145px); font-size: 10px; }
   .graph-zoom-controls { right: 10px; top: 10px; }
@@ -501,9 +593,45 @@ function renderLegacyGraph(graph) {
 
   const shell = document.createElement('section');
   shell.className = 'knowledge-graph-shell page-shell';
-  const hero = document.createElement('header');
+  const hero = document.createElement('section');
   hero.className = 'graph-hero';
-  hero.innerHTML = '<div class="graph-hero__title-row"><div><div class="graph-kicker">語意知識地圖</div><h1>Knowledge Graph</h1></div><div class="graph-stats"><span><strong>'+graph.stats.cards+'</strong> 知識卡</span><span><strong>'+graph.stats.concepts+'</strong> 概念</span></div></div><p>距離越近，主題通常越相似。可搜尋、篩選、縮放或點選知識卡探索鄰域；操作只改變顯示與視角，不會改動原始語意座標。</p>';
+  const heroKicker = document.createElement('div');
+  heroKicker.className = 'graph-kicker';
+  heroKicker.textContent = 'SEMANTIC KNOWLEDGE MAP';
+  const heroTitle = document.createElement('h1');
+  heroTitle.textContent = 'Knowledge Graph';
+  const heroIntro = document.createElement('p');
+  heroIntro.textContent = '距離越近，主題通常越相似。可搜尋、篩選、縮放或點選知識卡探索語意鄰域；操作只改變顯示與視角，不會改動原始語意座標。';
+  const stats = document.createElement('div');
+  stats.className = 'graph-stats';
+  for (const [value, label] of [
+    [graph.stats.cards, 'Knowledge Cards'],
+    [graph.stats.concepts, 'Concepts'],
+    [graph.stats.cardRelations, 'Card Relations'],
+    [graph.stats.cardConceptEdges, 'Card ↔ Concept']
+  ]) {
+    const stat = document.createElement('div');
+    stat.className = 'graph-stat';
+    const strong = document.createElement('strong');
+    strong.textContent = String(value ?? 0);
+    const span = document.createElement('span');
+    span.textContent = label;
+    stat.append(strong, span);
+    stats.append(stat);
+  }
+  hero.append(heroKicker, heroTitle, heroIntro, stats);
+
+  const controls = document.createElement('section');
+  controls.className = 'graph-controls';
+  const controlsHead = document.createElement('div');
+  controlsHead.className = 'graph-controls__head';
+  const controlsText = document.createElement('div');
+  const controlsTitle = document.createElement('strong');
+  controlsTitle.textContent = '探索與篩選';
+  const controlsHint = document.createElement('small');
+  controlsHint.textContent = '搜尋節點、調整顏色與視圖，或打開進階篩選縮小探索範圍';
+  controlsText.append(controlsTitle, controlsHint);
+  controlsHead.append(controlsText);
 
   const toolbar = document.createElement('div');
   toolbar.className = 'legacy-graph-toolbar';
@@ -515,7 +643,10 @@ function renderLegacyGraph(graph) {
   const clearSearch = document.createElement('button'); clearSearch.type='button'; clearSearch.textContent='×'; clearSearch.setAttribute('aria-label','清除搜尋'); clearSearch.hidden=true;
   searchInputWrap.append(search, clearSearch); searchWrap.append(searchLabel, searchInputWrap);
 
-  const filterTrigger = document.createElement('button'); filterTrigger.type='button'; filterTrigger.className='graph-filter-trigger'; filterTrigger.textContent='篩選';
+  const filterControl = document.createElement('div'); filterControl.className='graph-control';
+  const filterLabel = document.createElement('span'); filterLabel.textContent='篩選';
+  const filterTrigger = document.createElement('button'); filterTrigger.type='button'; filterTrigger.className='graph-filter-trigger'; filterTrigger.textContent='進階篩選';
+  filterControl.append(filterLabel, filterTrigger);
 
   const colorLabel = document.createElement('label'); colorLabel.className='graph-color-select';
   const colorText=document.createElement('span'); colorText.textContent='顏色依據';
@@ -523,24 +654,34 @@ function renderLegacyGraph(graph) {
   [['none','無'],['category','分類'],['action','建議動作'],['relevance','關聯度']].forEach(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;colorSelect.append(o);});
   colorSelect.value=state.colorBy; colorLabel.append(colorText,colorSelect);
 
+  const viewControl=document.createElement('div'); viewControl.className='graph-control';
+  const viewLabel=document.createElement('span'); viewLabel.textContent='視圖';
   const viewMode=document.createElement('div'); viewMode.className='graph-view-mode';
   const globalButton=document.createElement('button'); globalButton.type='button'; globalButton.textContent='全域地圖';
   const focusButton=document.createElement('button'); focusButton.type='button'; focusButton.textContent='聚焦模式';
   viewMode.append(globalButton,focusButton);
+  viewControl.append(viewLabel,viewMode);
 
+  const relationControl=document.createElement('div'); relationControl.className='graph-control';
+  const relationControlLabel=document.createElement('span'); relationControlLabel.textContent='連線';
   const relationLabel=document.createElement('label'); relationLabel.className='graph-toggle';
   const relationToggle=document.createElement('input'); relationToggle.type='checkbox';
   const relationText=document.createElement('span'); relationText.textContent='卡片間連線';
   relationLabel.append(relationToggle,relationText);
+  relationControl.append(relationControlLabel,relationLabel);
 
+  const infoControl=document.createElement('div'); infoControl.className='graph-control';
+  const infoLabel=document.createElement('span'); infoLabel.textContent='資訊';
   const details=document.createElement('details'); details.className='graph-layout-details';
   const summary=document.createElement('summary'); summary.textContent='圖譜資訊 ⓘ';
   const detailsBody=document.createElement('div');
   ['投影：'+(graph.layout?.method||'deterministic projection'),'距離：'+(graph.layout?.metric||'cosine-distance'),graph.semantic?.embeddingModel?'模型：'+graph.semantic.embeddingModel:null].filter(Boolean).forEach((value)=>{const span=document.createElement('span');span.textContent=value;detailsBody.append(span);});
   details.append(summary,detailsBody);
-  toolbar.append(searchWrap,filterTrigger,colorLabel,viewMode,relationLabel,details);
+  infoControl.append(infoLabel,details);
+  toolbar.append(searchWrap,colorLabel,filterControl,viewControl,relationControl,infoControl);
 
   const chips=document.createElement('div'); chips.className='graph-filter-chips';
+  controls.append(controlsHead,toolbar,chips);
   const explorer=document.createElement('div'); explorer.className='graph-explorer';
   const canvasWrap=document.createElement('div'); canvasWrap.className='graph-canvas-wrap';
   const focusHint=document.createElement('div'); focusHint.className='graph-focus-hint'; focusHint.textContent='點選一張 Knowledge Card，查看它的語意鄰域'; focusHint.hidden=true;
@@ -557,7 +698,7 @@ function renderLegacyGraph(graph) {
   const colorLegendEl=document.createElement('div'); colorLegendEl.className='graph-color-legend';
   const graphLegend=document.createElement('div'); graphLegend.className='graph-legend';
   graphLegend.innerHTML='<span><i class="legend-dot legend-dot--concept"></i>概念</span><span><i class="legend-dot legend-dot--card"></i>知識卡</span><span><i class="legend-dot legend-dot--neighbor"></i>最近語意鄰居</span>';
-  shell.append(hero,toolbar,chips,explorer,colorLegendEl,graphLegend);
+  shell.append(hero,controls,explorer,colorLegendEl,graphLegend);
   app.replaceChildren(shell);
 
   function isMobile(){return state.layoutWidth<760;}
@@ -726,7 +867,7 @@ function renderLegacyGraph(graph) {
     if(filterDocked)explorer.classList.add('graph-explorer--filters');
     if(inspectorDocked)explorer.classList.add('graph-explorer--inspecting');
     focusHint.hidden=!(state.focusMode&&!state.selectedCardId);
-    filterTrigger.classList.toggle('active',activeFilterCount()>0);filterTrigger.replaceChildren(document.createTextNode('篩選'));if(activeFilterCount()){const badge=document.createElement('strong');badge.textContent=String(activeFilterCount());filterTrigger.append(badge);}
+    filterTrigger.classList.toggle('active',activeFilterCount()>0);filterTrigger.replaceChildren(document.createTextNode('進階篩選'));if(activeFilterCount()){const badge=document.createElement('strong');badge.textContent=String(activeFilterCount());filterTrigger.append(badge);}
     globalButton.classList.toggle('active',!state.focusMode);focusButton.classList.toggle('active',state.focusMode);relationToggle.checked=state.showCardRelations;colorSelect.value=state.colorBy;
     clearSearch.hidden=!state.query;search.value=state.query;
     renderChips();renderFilterPanel();renderGraphSvg();renderInspector();renderLegend();
