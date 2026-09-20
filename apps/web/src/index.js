@@ -1480,7 +1480,6 @@ export function renderPrivateSiteShell() {
     if (messages[result]) stateView('登入未完成', messages[result], true, result === 'forbidden' ? 'error' : '');
   }
 
-
   async function bootstrap() {
     applyAuthResult();
     try {
