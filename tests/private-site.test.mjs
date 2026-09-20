@@ -488,6 +488,8 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /pointers\.size===1&&!nodeTarget/u);
   assert.match(html, /graph-node-interactive/u);
   assert.match(html, /graph-explorer--inspecting/u);
+  assert.match(html, /graph-node-hit/u);
+  assert.match(html, /displayNodeRadius\(node\)/u);
   assert.doesNotMatch(html, /class="session"/u);
   assert.doesNotMatch(html, /id="release"/u);
   assert.doesNotMatch(html, /id="avatar"/u);
