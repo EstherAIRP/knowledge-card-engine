@@ -77,7 +77,7 @@ export function renderPrivateSiteShell() {
       background: color-mix(in srgb, var(--kc-bg) 88%, transparent);
       backdrop-filter: blur(18px);
     }
-    .brand-row, .session, .nav {
+    .brand-row, .nav {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -102,26 +102,6 @@ export function renderPrivateSiteShell() {
       color: var(--kc-brand);
       background: color-mix(in srgb, var(--kc-brand) 9%, transparent);
     }
-    .session {
-      color: var(--kc-muted);
-      font-size: 13px;
-    }
-    .release-badge {
-      max-width: 250px;
-      overflow: hidden;
-      color: var(--kc-subtle);
-      font-size: 11px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .avatar {
-      width: 28px;
-      height: 28px;
-      border: 1px solid var(--kc-border);
-      border-radius: 50%;
-      background: var(--kc-bg-soft);
-    }
-    .secondary,
     .radar-reset {
       min-height: 38px;
       padding: 0 14px;
@@ -130,7 +110,6 @@ export function renderPrivateSiteShell() {
       background: var(--kc-bg);
       color: var(--kc-muted);
     }
-    .secondary:hover,
     .radar-reset:hover {
       border-color: var(--kc-brand);
       color: var(--kc-brand);
@@ -624,9 +603,7 @@ export function renderPrivateSiteShell() {
     .graph-toolbar input { min-width: min(420px, 100%); flex: 1; }
     .graph-toolbar select { width: auto; min-width: 160px; }
     .graph-wrap {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-      gap: 14px;
+      position: relative;
       min-height: 70vh;
     }
     .graph-canvas {
@@ -638,12 +615,107 @@ export function renderPrivateSiteShell() {
       box-shadow: 0 10px 36px rgba(34, 39, 62, .035);
       touch-action: none;
     }
-    .graph-info {
-      padding: 18px;
+    .graph-inspector-backdrop {
+      position: fixed;
+      z-index: 39;
+      inset: 64px 0 0;
+      background: rgba(12, 16, 30, .18);
+      backdrop-filter: blur(1px);
+    }
+    .graph-inspector {
+      position: fixed;
+      z-index: 40;
+      top: 84px;
+      right: 24px;
+      bottom: 24px;
+      width: min(380px, calc(100vw - 48px));
       overflow: auto;
+      padding: 20px;
       border: 1px solid var(--kc-border);
-      border-radius: 18px;
-      background: var(--kc-panel);
+      border-radius: 20px;
+      background: var(--kc-bg);
+      box-shadow: -12px 12px 44px rgba(20, 25, 45, .18);
+    }
+    .graph-inspector:focus { outline: none; }
+    .graph-inspector-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .graph-inspector-eyebrow {
+      color: var(--kc-subtle);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .graph-inspector h2 {
+      margin: 5px 0 0;
+      font-size: 22px;
+      line-height: 1.3;
+      letter-spacing: -.02em;
+    }
+    .graph-inspector-close {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--kc-bg-soft);
+      color: var(--kc-muted);
+      font-size: 22px;
+      line-height: 1;
+    }
+    .graph-inspector-summary {
+      margin: 14px 0;
+      color: var(--kc-muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .graph-inspector-taxonomy {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 12px 0 16px;
+    }
+    .graph-inspector-taxonomy span {
+      padding: 5px 8px;
+      border: 1px solid var(--kc-border);
+      border-radius: 999px;
+      background: var(--kc-bg-soft);
+      color: var(--kc-muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .graph-inspector-section {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--kc-border);
+    }
+    .graph-inspector-section h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+    .graph-inspector-neighbor {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 10px;
+      border: 1px solid var(--kc-border);
+      border-radius: 12px;
+      background: var(--kc-bg-soft);
+      color: var(--kc-text);
+      text-align: left;
+    }
+    .graph-inspector-neighbor strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    .graph-inspector-neighbor span {
+      color: var(--kc-muted);
+      font-size: 10px;
     }
     .graph-edge { stroke: var(--kc-divider); stroke-width: 1.2; opacity: .7; }
     .graph-edge.card-card { stroke: color-mix(in srgb, var(--kc-brand) 45%, var(--kc-divider)); stroke-width: 1.8; }
@@ -661,13 +733,21 @@ export function renderPrivateSiteShell() {
     @media (max-width: 900px) {
       header { align-items: flex-start; flex-wrap: wrap; padding-block: 10px; }
       .brand-row { width: 100%; justify-content: space-between; }
-      .graph-wrap { grid-template-columns: 1fr; }
       .graph-canvas { min-height: 480px; }
+      .graph-inspector-backdrop { inset: 64px 0 0; }
+      .graph-inspector {
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 72vh;
+        border-radius: 20px 20px 0 0;
+      }
       .radar-hero { padding: 34px; }
       .radar-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 680px) {
-      .session span { display: none; }
       .nav { max-width: 100%; overflow-x: auto; }
       .radar-view,
       .detail-view,
@@ -683,7 +763,6 @@ export function renderPrivateSiteShell() {
       .relevance-grid { grid-template-columns: 1fr; }
       .knowledge-detail-top,
       .knowledge-detail-footer { flex-direction: column; }
-      .release-badge { display: none; }
     }
   </style>
 </head>
@@ -698,12 +777,6 @@ export function renderPrivateSiteShell() {
         <button id="nav-graph" type="button">圖譜</button>
       </nav>
     </div>
-    <div class="session">
-      <span id="release" class="release-badge"></span>
-      <img id="avatar" class="avatar" alt="" hidden>
-      <span id="login"></span>
-      <button id="logout" class="secondary" type="button">登出</button>
-    </div>
   </header>
   <div id="app"></div>
 </div>
@@ -711,10 +784,6 @@ export function renderPrivateSiteShell() {
 (() => {
   const app = document.getElementById('app');
   const header = document.getElementById('header');
-  const loginEl = document.getElementById('login');
-  const avatarEl = document.getElementById('avatar');
-  const logoutEl = document.getElementById('logout');
-  const releaseEl = document.getElementById('release');
   const nav = {
     cards: document.getElementById('nav-cards'),
     search: document.getElementById('nav-search'),
@@ -724,10 +793,6 @@ export function renderPrivateSiteShell() {
   function clearPrivateState() {
     app.replaceChildren();
     header.hidden = true;
-    loginEl.textContent = '';
-    releaseEl.textContent = '';
-    avatarEl.removeAttribute('src');
-    avatarEl.hidden = true;
   }
 
   function setView(name) {
@@ -1421,12 +1486,59 @@ export function renderPrivateSiteShell() {
     const svg = svgElement('svg', { viewBox: '0 0 1000 700', class: 'graph-canvas', role: 'img', 'aria-label': 'Knowledge Card graph' });
     const viewport = svgElement('g');
     svg.append(viewport);
-    const info = document.createElement('div');
-    info.className = 'graph-info';
-    info.textContent = '選取節點查看關聯。';
-    wrap.append(svg, info);
+    wrap.append(svg);
     view.append(h1, toolbar, wrap);
     app.replaceChildren(view);
+
+    let inspector = null;
+    let inspectorBackdrop = null;
+
+    function closeInspector() {
+      inspector?.remove();
+      inspectorBackdrop?.remove();
+      inspector = null;
+      inspectorBackdrop = null;
+      for (const element of nodeEls.values()) element.classList.remove('focus');
+    }
+
+    function openInspector(node) {
+      inspector?.remove();
+      inspectorBackdrop?.remove();
+
+      inspectorBackdrop = document.createElement('div');
+      inspectorBackdrop.className = 'graph-inspector-backdrop';
+      inspectorBackdrop.addEventListener('click', closeInspector);
+
+      inspector = document.createElement('aside');
+      inspector.className = 'graph-inspector';
+      inspector.tabIndex = -1;
+      inspector.setAttribute('aria-label', '圖譜節點資訊');
+
+      const head = document.createElement('div');
+      head.className = 'graph-inspector-head';
+      const heading = document.createElement('div');
+      const eyebrow = document.createElement('div');
+      eyebrow.className = 'graph-inspector-eyebrow';
+      eyebrow.textContent = node.kind === 'card' ? '已選取知識卡' : '已選取概念';
+      const title = document.createElement('h2');
+      title.textContent = node.label;
+      heading.append(eyebrow, title);
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'graph-inspector-close';
+      close.setAttribute('aria-label', '關閉節點資訊');
+      close.textContent = '×';
+      close.addEventListener('click', closeInspector);
+      head.append(heading, close);
+      inspector.append(head);
+
+      inspector.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeInspector();
+      });
+
+      document.body.append(inspectorBackdrop, inspector);
+      inspector.focus({ preventScroll: true });
+    }
 
     const nodes = new Map(payload.nodes.map((node) => [node.id, node]));
     const nodeEls = new Map();
@@ -1460,50 +1572,110 @@ export function renderPrivateSiteShell() {
       viewport.append(group);
       nodeEls.set(node.id, group);
 
-      group.addEventListener('click', async () => {
+      group.addEventListener('click', async (event) => {
+        event.stopPropagation();
         for (const element of nodeEls.values()) element.classList.remove('focus');
         group.classList.add('focus');
-        info.replaceChildren();
-        const title = document.createElement('h2');
-        title.textContent = node.label;
-        const type = document.createElement('div');
-        type.className = 'meta';
-        type.textContent = node.kind;
-        info.append(title, type);
+        openInspector(node);
 
         if (node.kind === 'card') {
-          const open = document.createElement('button');
-          open.type = 'button';
-          open.className = 'primary';
-          open.textContent = '開啟 Card';
-          open.addEventListener('click', async () => {
-            await renderCards();
-            await openCard(node.entity_id);
-          });
-          info.append(open);
-          const neighbors = payload.semantic_neighbors?.[node.entity_id] || [];
-          const section = document.createElement('h3');
-          section.textContent = 'Semantic neighbors';
-          info.append(section);
-          for (const neighbor of neighbors) {
-            const row = document.createElement('div');
-            row.className = 'meta';
-            const neighborNode = nodes.get('card:' + neighbor.card_id);
-            row.textContent = (neighborNode?.label || neighbor.card_id) + ' · similarity ' + neighbor.similarity.toFixed(3);
-            info.append(row);
+          const loading = document.createElement('div');
+          loading.className = 'empty';
+          loading.textContent = '載入 Knowledge Card…';
+          inspector.append(loading);
+
+          try {
+            const detail = await api('/api/cards/' + encodeURIComponent(node.entity_id));
+            if (!inspector || !document.body.contains(inspector)) return;
+            loading.remove();
+
+            const summary = document.createElement('p');
+            summary.className = 'graph-inspector-summary';
+            summary.textContent = detail.summary || '';
+            inspector.append(summary);
+
+            const taxonomy = document.createElement('div');
+            taxonomy.className = 'graph-inspector-taxonomy';
+            for (const item of [
+              detail.source?.type,
+              detail.resource_kind,
+              detail.status,
+              ...(detail.navigation_categories || []),
+              ...(detail.actions || [])
+            ].filter(Boolean)) {
+              const badge = document.createElement('span');
+              badge.textContent = item;
+              taxonomy.append(badge);
+            }
+            inspector.append(taxonomy);
+
+            const open = document.createElement('button');
+            open.type = 'button';
+            open.className = 'primary';
+            open.textContent = '開啟 Knowledge Card';
+            open.addEventListener('click', async () => {
+              closeInspector();
+              await renderCards();
+              await openCard(node.entity_id);
+            });
+            inspector.append(open);
+
+            const neighbors = payload.semantic_neighbors?.[node.entity_id] || [];
+            if (neighbors.length) {
+              const section = document.createElement('section');
+              section.className = 'graph-inspector-section';
+              const sectionTitle = document.createElement('h3');
+              sectionTitle.textContent = '最近語意鄰居';
+              section.append(sectionTitle);
+
+              for (const neighbor of neighbors) {
+                const neighborNode = nodes.get('card:' + neighbor.card_id);
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'graph-inspector-neighbor';
+                const label = document.createElement('strong');
+                label.textContent = neighborNode?.label || neighbor.card_id;
+                const metrics = document.createElement('span');
+                metrics.textContent = '相似度 ' + neighbor.similarity.toFixed(3) + ' · 距離 ' + neighbor.distance.toFixed(3);
+                row.append(label, metrics);
+                row.addEventListener('click', () => {
+                  const target = nodeEls.get('card:' + neighbor.card_id);
+                  target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                });
+                section.append(row);
+              }
+              inspector.append(section);
+            }
+          } catch (error) {
+            if (error.message !== 'AUTH_STOP' && inspector && document.body.contains(inspector)) {
+              loading.textContent = error.message || 'Knowledge Card 載入失敗。';
+              loading.classList.add('error');
+            }
           }
         } else {
           const connected = payload.edges.filter((edge) => edge.source === node.id || edge.target === node.id);
-          const section = document.createElement('h3');
-          section.textContent = 'Connected nodes';
-          info.append(section);
+          const section = document.createElement('section');
+          section.className = 'graph-inspector-section';
+          const sectionTitle = document.createElement('h3');
+          sectionTitle.textContent = 'Connected nodes';
+          section.append(sectionTitle);
           for (const edge of connected.slice(0, 30)) {
             const otherId = edge.source === node.id ? edge.target : edge.source;
-            const row = document.createElement('div');
-            row.className = 'meta';
-            row.textContent = (nodes.get(otherId)?.label || otherId) + ' · ' + edge.relation_type;
-            info.append(row);
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'graph-inspector-neighbor';
+            const label = document.createElement('strong');
+            label.textContent = nodes.get(otherId)?.label || otherId;
+            const relation = document.createElement('span');
+            relation.textContent = edge.relation_type;
+            row.append(label, relation);
+            row.addEventListener('click', () => {
+              const target = nodeEls.get(otherId);
+              target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            });
+            section.append(row);
           }
+          inspector.append(section);
         }
       });
     }
@@ -1538,6 +1710,7 @@ export function renderPrivateSiteShell() {
       transform();
     }, { passive: false });
     svg.addEventListener('pointerdown', (event) => {
+      if (event.target === svg) closeInspector();
       drag = { x: event.clientX, y: event.clientY, tx, ty };
       svg.setPointerCapture(event.pointerId);
     });
@@ -1568,16 +1741,8 @@ export function renderPrivateSiteShell() {
   async function bootstrap() {
     applyAuthResult();
     try {
-      const session = await api('/api/auth/session');
+      await api('/api/auth/session');
       header.hidden = false;
-      loginEl.textContent = session.user.login;
-      if (session.user.avatar_url) {
-        avatarEl.src = session.user.avatar_url;
-        avatarEl.alt = session.user.login;
-        avatarEl.hidden = false;
-      }
-      const release = await api('/api/release');
-      releaseEl.textContent = release.release_id ? 'release ' + release.release_id : 'bootstrap';
       await renderCards();
     } catch (error) {
       if (error.message === 'AUTH_STOP') return;
@@ -1594,16 +1759,6 @@ export function renderPrivateSiteShell() {
   nav.graph.addEventListener('click', () => renderGraph().catch((error) => {
     if (error.message !== 'AUTH_STOP') stateView('圖譜不可用', error.message, false, 'error');
   }));
-
-  logoutEl.addEventListener('click', async () => {
-    try {
-      await api('/api/auth/session', { method: 'POST' });
-      clearPrivateState();
-      stateView('已登出', 'GitHub user token 已撤銷。', true);
-    } catch (error) {
-      if (error.message !== 'AUTH_STOP') stateView('登出失敗', error.message, false, 'error');
-    }
-  });
 
   bootstrap();
 })();
