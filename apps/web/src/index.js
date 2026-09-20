@@ -376,6 +376,7 @@ export function renderPrivateSiteShell() {
       font-weight: 700;
     }
     .radar-empty {
+      grid-column: 1 / -1;
       padding: 50px 24px;
       border: 1px dashed var(--kc-border);
       border-radius: 20px;
