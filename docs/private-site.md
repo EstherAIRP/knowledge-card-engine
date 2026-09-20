@@ -215,16 +215,19 @@ GitHub REST request 使用 API version `2026-03-10`。
 
 ## UI
 
-`apps/web` 目前提供單頁唯讀 shell：
+`apps/web` 提供單頁唯讀 Knowledge Radar 介面：
 
-- 未登入：GitHub login。
-- cancelled / invalid / forbidden / unavailable：登入錯誤狀態。
-- 已登入：GitHub login/avatar、登出、Card list/detail、搜尋、relation / Concept、graph 與 release version。
-- 401 / 403：立即清除前端目前 private state，回到 auth UI。
-- Search / graph 只透過 authenticated API 取得；private generated index 不打包進 shell。
+- 未登入：以 Knowledge Radar 品牌頁提供 GitHub login。
+- cancelled / invalid / forbidden / unavailable：顯示同一視覺系統的登入錯誤狀態。
+- 已登入首頁：使用寬版 Radar page frame、hero、統計資訊、搜尋／篩選控制與響應式 Knowledge Card grid。
+- Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、resource kind、navigation categories、status 與日期；首頁篩選不額外下載私人正文。
+- Card detail：使用 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期，再以較窄 reading width 顯示 Markdown 正文、relation 與 Concept。
+- 搜尋與圖譜沿用同一套 page frame、surface、品牌色、控制項與 responsive layout，但資料仍只由 authenticated `/api/search`、`/api/graph` 取得。
+- header 顯示登入帳號、avatar、release version 與登出操作；401 / 403 立即清除前端目前 private state，回到 auth UI。
 - Markdown 以 DOM `textContent` 建立基本 heading / list / paragraph，不解譯 raw HTML。
+- UI 支援 light / dark color scheme；desktop Radar grid 為三欄，較窄 viewport 依序收斂為兩欄與單欄。
 
-UI shell 本身不包含任何私人 Card 內容。
+UI shell 本身不包含任何私人 Card、generated index 或 credential；外觀與版面調整不能改變 server-side authorization / release-pinned read boundary。
 
 ## Runtime configuration
 
