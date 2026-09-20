@@ -469,6 +469,17 @@ test('health exposes only safe configuration diagnostics and honors runtime depl
 });
 
 
+test('private-site shell exposes the Knowledge Radar presentation without embedding private content', () => {
+  const html = renderPrivateSiteShell();
+  assert.match(html, /<title>Knowledge Radar<\/title>/u);
+  assert.match(html, /PERSONAL TECHNOLOGY RADAR/u);
+  assert.match(html, /--kc-brand: #536bff/u);
+  assert.match(html, /radar-grid/u);
+  assert.match(html, /knowledge-detail-head/u);
+  assert.doesNotMatch(html, /Synthetic Example Project/u);
+});
+
+
 test('rendered private-site inline script compiles after HTML template rendering', () => {
   const html = renderPrivateSiteShell();
   const match = /<script>([\s\S]*?)<\/script>/u.exec(html);
