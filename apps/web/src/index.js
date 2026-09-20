@@ -1480,8 +1480,155 @@ export function renderPrivateSiteShell() {
     if (messages[result]) stateView('登入未完成', messages[result], true, result === 'forbidden' ? 'error' : '');
   }
 
+
+  function graphReviewPreviewEnabled() {
+    return new URL(location.href).searchParams.get('preview') === 'graph'
+      && /-git-[^.]+.*\.vercel\.app$/u.test(location.hostname);
+  }
+
+  function graphReviewPayload() {
+    const cards = [
+      ['agent-workflow', 'Agent Workflow', 'Agent / Harness', 'project', 5, -0.72, -0.34],
+      ['mcp-tools', 'MCP Tools', 'AI Coding / DevTools', 'reference', 5, -0.2, -0.7],
+      ['rag-memory', 'RAG / Memory', 'Memory / RAG / Knowledge', 'project', 5, 0.42, -0.42],
+      ['local-runtime', 'Local Runtime', 'Infrastructure / Security', 'tool', 4, 0.72, 0.18],
+      ['image-pipeline', 'Image Pipeline', 'Image Creation / Design', 'project', 4, 0.2, 0.68],
+      ['research-loop', 'Research Loop', 'Research / Science', 'reference', 4, -0.56, 0.48]
+    ].map(([id, label, category, resourceKind, relevance, x, y]) => ({
+      id: 'card:' + id,
+      entityId: id,
+      kind: 'card',
+      label,
+      description: 'PR visual review sample for the Knowledge Graph layout.',
+      route: '/knowledge/' + id,
+      degree: 3,
+      categories: [category],
+      semanticCategories: [category],
+      tags: ['preview', 'graph'],
+      actions: ['LEARN', 'REFERENCE'],
+      sourceType: 'github',
+      resourceKind,
+      relevance: { overall: relevance },
+      status: 'active',
+      x,
+      y
+    }));
+
+    const concepts = [
+      ['mcp', 'MCP', -0.34, -0.18],
+      ['agent', 'Agent', -0.58, 0.02],
+      ['rag', 'RAG', 0.18, -0.12],
+      ['memory', 'Memory', 0.38, 0.1],
+      ['sqlite', 'SQLite', 0.58, 0.38],
+      ['rust', 'Rust', 0.56, -0.5],
+      ['multimodal', 'Multimodal', -0.05, 0.54],
+      ['research', 'Research', -0.54, 0.62]
+    ].map(([id, label, x, y], index) => ({
+      id: 'concept:' + id,
+      entityId: id,
+      kind: 'concept',
+      conceptType: 'topic',
+      label,
+      description: 'Synthetic review concept.',
+      route: '/concepts/' + id,
+      degree: 2 + (index % 4),
+      x,
+      y
+    }));
+
+    const cardConceptPairs = [
+      ['agent-workflow', 'agent'], ['agent-workflow', 'mcp'],
+      ['mcp-tools', 'mcp'], ['mcp-tools', 'rust'],
+      ['rag-memory', 'rag'], ['rag-memory', 'memory'],
+      ['local-runtime', 'rust'], ['local-runtime', 'sqlite'],
+      ['image-pipeline', 'multimodal'], ['image-pipeline', 'memory'],
+      ['research-loop', 'research'], ['research-loop', 'rag']
+    ];
+
+    const edges = cardConceptPairs.map(([cardId, conceptId], index) => ({
+      id: 'preview-card-concept-' + index,
+      source: 'card:' + cardId,
+      target: 'concept:' + conceptId,
+      kind: 'card-concept',
+      type: 'classified-as'
+    }));
+
+    for (const [index, [source, target, type]] of [
+      ['agent-workflow', 'mcp-tools', 'integrates-with'],
+      ['mcp-tools', 'local-runtime', 'depends-on'],
+      ['rag-memory', 'research-loop', 'complements'],
+      ['image-pipeline', 'rag-memory', 'similar-to']
+    ].entries()) {
+      edges.push({
+        id: 'preview-card-card-' + index,
+        source: 'card:' + source,
+        target: 'card:' + target,
+        kind: 'card-card',
+        type
+      });
+    }
+
+    const neighborsByCard = {};
+    const distancesByCard = {};
+    for (let index = 0; index < cards.length; index += 1) {
+      const source = cards[index];
+      const others = cards
+        .filter((card) => card.entityId !== source.entityId)
+        .map((card, neighborIndex) => ({
+          cardId: card.entityId,
+          nodeId: card.id,
+          label: card.label,
+          route: card.route,
+          similarity: Number((0.91 - neighborIndex * 0.07).toFixed(3)),
+          distance: Number((0.09 + neighborIndex * 0.07).toFixed(3)),
+          relation: null
+        }));
+      neighborsByCard[source.entityId] = others;
+      distancesByCard[source.entityId] = others.map(({cardId, similarity, distance}) => ({cardId, similarity, distance}));
+    }
+
+    return {
+      release_id: 'preview-synthetic',
+      revision: 'preview-synthetic',
+      generatedAt: null,
+      layout_method: 'synthetic-review',
+      semantic_neighbors: true,
+      semantic: {
+        metric: 'cosine-distance',
+        embeddingProvider: null,
+        embeddingModel: 'synthetic-review',
+        neighborLimit: 6,
+        neighborsByCard,
+        distancesByCard
+      },
+      layout: {
+        generatedAt: null,
+        method: 'synthetic-review',
+        metric: 'cosine-distance',
+        stress: null,
+        embeddingModel: 'synthetic-review',
+        embeddingInputHash: null
+      },
+      stats: {
+        cards: cards.length,
+        concepts: concepts.length,
+        cardConceptEdges: cardConceptPairs.length,
+        conceptRelations: 0,
+        cardRelations: edges.filter((edge) => edge.kind === 'card-card').length
+      },
+      nodes: [...cards, ...concepts],
+      edges
+    };
+  }
+
   async function bootstrap() {
     applyAuthResult();
+    if (graphReviewPreviewEnabled()) {
+      header.hidden = false;
+      setView('graph');
+      renderLegacyGraph(graphReviewPayload());
+      return;
+    }
     try {
       await api('/api/auth/session');
       header.hidden = false;
