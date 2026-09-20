@@ -1,4 +1,4 @@
-export const legacyGraphCss = String.raw\`
+export const legacyGraphCss = String.raw`
 .knowledge-graph-shell {
   --vp-c-text-1: var(--kc-text);
   --vp-c-text-2: var(--kc-muted);
@@ -283,9 +283,9 @@ export const legacyGraphCss = String.raw\`
     box-shadow: 0 -14px 44px rgba(0, 0, 0, .2);
   }
 }
-\`;
+`;
 
-export const legacyGraphScript = String.raw\`
+export const legacyGraphScript = String.raw`
 function renderLegacyGraph(graph) {
   if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
 
@@ -792,4 +792,4 @@ function renderLegacyGraph(graph) {
   app.__kcGraphCleanup=cleanup;
   render();
 }
-\`;
+`;
