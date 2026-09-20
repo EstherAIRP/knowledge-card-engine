@@ -493,6 +493,12 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /Card Relations/u);
   assert.match(html, /graph-node-hit/u);
   assert.match(html, /displayNodeRadius\(node\)/u);
+  assert.match(html, /class="loading-view page-shell"/u);
+  assert.match(html, /aria-busy="true"/u);
+  assert.match(html, /正在載入知識庫/u);
+  assert.match(html, /function renderLoading\(title, detail\)/u);
+  assert.match(html, /@keyframes kc-orbit/u);
+  assert.match(html, /prefers-reduced-motion: reduce/u);
   assert.doesNotMatch(html, /class="session"/u);
   assert.doesNotMatch(html, /id="release"/u);
   assert.doesNotMatch(html, /id="avatar"/u);

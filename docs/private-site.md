@@ -220,6 +220,7 @@ GitHub REST request 使用 API version `2026-03-10`。
 - 未登入：以 Knowledge Radar 品牌頁提供 GitHub login。
 - cancelled / invalid / forbidden / unavailable：顯示同一視覺系統的登入錯誤狀態。
 - 已登入首頁：使用寬版 Radar page frame、hero、統計資訊、搜尋／篩選控制與響應式 Knowledge Card grid。
+- 初始啟動、Card collection、Card detail 與 Graph 非同步讀取期間，UI 先顯示 Knowledge Radar loading state：品牌化 radar animation、狀態文案與 skeleton surfaces；載入畫面只含公開 shell 內容，不預載私人 Card。`prefers-reduced-motion: reduce` 會停用 loading animation。
 - Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、source/resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些 metadata 篩選與排序，但不額外下載私人正文。
 - Card detail：使用 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期，再以較窄 reading width 顯示 Markdown 正文、relation 與 Concept。
 - 搜尋沿用同一套 page frame、surface、品牌色與控制項；資料只由 authenticated `/api/search` 取得。

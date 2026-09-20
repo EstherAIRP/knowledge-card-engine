@@ -121,6 +121,143 @@ export function renderPrivateSiteShell() {
       width: min(calc(100% - 2 * var(--kc-page-gutter)), var(--kc-page-max));
       margin-inline: auto;
     }
+
+    .loading-view {
+      padding-block: clamp(40px, 9vh, 88px) 64px;
+    }
+    .loading-panel {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 28px;
+      align-items: center;
+      min-height: 260px;
+      padding: clamp(28px, 5vw, 48px);
+      overflow: hidden;
+      border: 1px solid var(--kc-border);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--kc-brand) 20%, transparent), transparent 36%),
+        linear-gradient(145deg, var(--kc-bg-soft), var(--kc-bg));
+      box-shadow: 0 18px 70px rgba(34, 39, 62, .06);
+    }
+    .loading-radar {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      flex: 0 0 auto;
+    }
+    .loading-orbit,
+    .loading-orbit::before,
+    .loading-orbit::after {
+      position: absolute;
+      border: 2px solid color-mix(in srgb, var(--kc-brand) 22%, transparent);
+      border-radius: 50%;
+      content: "";
+    }
+    .loading-orbit {
+      inset: 0;
+      border-top-color: var(--kc-brand);
+      animation: kc-orbit 1.4s linear infinite;
+    }
+    .loading-orbit::before {
+      inset: 10px;
+      border-right-color: color-mix(in srgb, var(--kc-brand-2) 78%, transparent);
+      animation: kc-orbit-reverse 1.8s linear infinite;
+    }
+    .loading-orbit::after {
+      inset: 22px;
+      border-bottom-color: var(--kc-brand);
+      animation: kc-orbit 1.05s linear infinite;
+    }
+    .loading-core {
+      position: absolute;
+      inset: 31px;
+      border-radius: 50%;
+      background: var(--kc-brand);
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--kc-brand) 12%, transparent);
+      animation: kc-pulse 1.45s ease-in-out infinite;
+    }
+    .loading-kicker {
+      color: var(--kc-brand);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .16em;
+    }
+    .loading-copy h1 {
+      margin: 8px 0 10px;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+    .loading-copy p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--kc-muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .loading-progress {
+      display: flex;
+      gap: 6px;
+      margin-top: 18px;
+    }
+    .loading-progress span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--kc-brand);
+      opacity: .28;
+      animation: kc-dot 1.1s ease-in-out infinite;
+    }
+    .loading-progress span:nth-child(2) { animation-delay: .14s; }
+    .loading-progress span:nth-child(3) { animation-delay: .28s; }
+    .loading-skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .loading-skeleton-card {
+      min-height: 122px;
+      padding: 18px;
+      border: 1px solid var(--kc-border);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--kc-bg) 92%, transparent);
+    }
+    .loading-line {
+      height: 10px;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background:
+        linear-gradient(
+          100deg,
+          color-mix(in srgb, var(--kc-divider) 55%, transparent) 20%,
+          color-mix(in srgb, var(--kc-brand) 12%, transparent) 48%,
+          color-mix(in srgb, var(--kc-divider) 55%, transparent) 76%
+        );
+      background-size: 220% 100%;
+      animation: kc-shimmer 1.5s ease-in-out infinite;
+    }
+    .loading-line:first-child { width: 42%; margin-top: 0; }
+    .loading-line:nth-child(2) { width: 82%; height: 14px; margin-top: 16px; }
+    .loading-line:nth-child(3) { width: 66%; }
+    .loading-line:nth-child(4) { width: 54%; }
+
+    @keyframes kc-orbit { to { transform: rotate(360deg); } }
+    @keyframes kc-orbit-reverse { to { transform: rotate(-360deg); } }
+    @keyframes kc-pulse {
+      0%, 100% { transform: scale(.78); opacity: .62; }
+      50% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes kc-dot {
+      0%, 70%, 100% { transform: translateY(0); opacity: .28; }
+      35% { transform: translateY(-5px); opacity: 1; }
+    }
+    @keyframes kc-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
     .radar-view { padding-block: 28px 64px; }
     .radar-hero {
       position: relative;
@@ -761,10 +898,25 @@ export function renderPrivateSiteShell() {
       .radar-controls-head { align-items: flex-start; flex-direction: column; }
       .radar-search-row { grid-template-columns: 1fr; }
       .radar-grid { grid-template-columns: 1fr; }
+      .loading-panel { grid-template-columns: 1fr; gap: 20px; }
+      .loading-radar { width: 64px; height: 64px; }
+      .loading-core { inset: 26px; }
+      .loading-skeleton-grid { grid-template-columns: 1fr; }
+      .loading-skeleton-card:nth-child(n+2) { display: none; }
       .knowledge-tile { min-height: 0; }
       .relevance-grid { grid-template-columns: 1fr; }
       .knowledge-detail-top,
       .knowledge-detail-footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .loading-orbit,
+      .loading-orbit::before,
+      .loading-orbit::after,
+      .loading-core,
+      .loading-progress span,
+      .loading-line {
+        animation: none !important;
+      }
     }
     ${legacyGraphCss}
   </style>
@@ -781,7 +933,27 @@ export function renderPrivateSiteShell() {
       </nav>
     </div>
   </header>
-  <div id="app"></div>
+  <div id="app">
+    <main class="loading-view page-shell" role="status" aria-live="polite" aria-busy="true">
+      <section class="loading-panel">
+        <div class="loading-radar" aria-hidden="true">
+          <div class="loading-orbit"></div>
+          <div class="loading-core"></div>
+        </div>
+        <div class="loading-copy">
+          <div class="loading-kicker">KNOWLEDGE RADAR</div>
+          <h1>正在載入知識庫</h1>
+          <p>驗證私人 Workspace，並準備目前 release 的 Knowledge Cards、搜尋與圖譜。</p>
+          <div class="loading-progress" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+      </section>
+      <div class="loading-skeleton-grid" aria-hidden="true">
+        <div class="loading-skeleton-card"><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div></div>
+        <div class="loading-skeleton-card"><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div></div>
+        <div class="loading-skeleton-card"><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div><div class="loading-line"></div></div>
+      </div>
+    </main>
+  </div>
 </div>
 <script>
 (() => {
@@ -805,6 +977,64 @@ export function renderPrivateSiteShell() {
       if (key === name) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     }
+  }
+
+  function createLoadingView(title = '正在載入 Knowledge Radar', detail = '準備目前的私人知識內容…') {
+    const view = document.createElement('main');
+    view.className = 'loading-view page-shell';
+    view.setAttribute('role', 'status');
+    view.setAttribute('aria-live', 'polite');
+    view.setAttribute('aria-busy', 'true');
+
+    const panel = document.createElement('section');
+    panel.className = 'loading-panel';
+
+    const radar = document.createElement('div');
+    radar.className = 'loading-radar';
+    radar.setAttribute('aria-hidden', 'true');
+    const orbit = document.createElement('div');
+    orbit.className = 'loading-orbit';
+    const core = document.createElement('div');
+    core.className = 'loading-core';
+    radar.append(orbit, core);
+
+    const copy = document.createElement('div');
+    copy.className = 'loading-copy';
+    const kicker = document.createElement('div');
+    kicker.className = 'loading-kicker';
+    kicker.textContent = 'KNOWLEDGE RADAR';
+    const h1 = document.createElement('h1');
+    h1.textContent = title;
+    const p = document.createElement('p');
+    p.textContent = detail;
+    const progress = document.createElement('div');
+    progress.className = 'loading-progress';
+    progress.setAttribute('aria-hidden', 'true');
+    progress.append(document.createElement('span'), document.createElement('span'), document.createElement('span'));
+    copy.append(kicker, h1, p, progress);
+    panel.append(radar, copy);
+
+    const skeleton = document.createElement('div');
+    skeleton.className = 'loading-skeleton-grid';
+    skeleton.setAttribute('aria-hidden', 'true');
+    for (let cardIndex = 0; cardIndex < 3; cardIndex += 1) {
+      const card = document.createElement('div');
+      card.className = 'loading-skeleton-card';
+      for (let lineIndex = 0; lineIndex < 4; lineIndex += 1) {
+        const line = document.createElement('div');
+        line.className = 'loading-line';
+        card.append(line);
+      }
+      skeleton.append(card);
+    }
+
+    view.append(panel, skeleton);
+    return view;
+  }
+
+  function renderLoading(title, detail) {
+    if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
+    app.replaceChildren(createLoadingView(title, detail));
   }
 
   function stateView(title, detail, action = true, kind = '') {
@@ -1042,6 +1272,8 @@ export function renderPrivateSiteShell() {
 
   async function openCard(id) {
     try {
+      setView('cards');
+      renderLoading('正在開啟 Knowledge Card', '載入正文、關聯與 Concepts…');
       const detail = await api('/api/cards/' + encodeURIComponent(id));
       renderDetail(detail);
     } catch (error) {
@@ -1051,6 +1283,7 @@ export function renderPrivateSiteShell() {
 
   async function renderCards() {
     setView('cards');
+    renderLoading('正在載入 Knowledge Cards', '讀取目前 release 的卡片、分類與 metadata…');
     const payload = await api('/api/cards?limit=100');
     const cards = payload.items || [];
 
@@ -1462,6 +1695,7 @@ export function renderPrivateSiteShell() {
 
   async function renderGraph() {
     setView('graph');
+    renderLoading('正在建立 Knowledge Graph', '準備節點、關聯與語意鄰居…');
     const payload = await api('/api/graph');
     renderLegacyGraph(payload);
   }
