@@ -483,6 +483,11 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /knowledge-detail-head/u);
   assert.match(html, /graph-inspector-backdrop/u);
   assert.match(html, /graph-inspector-close/u);
+  assert.match(html, /function renderLegacyGraph\(graph\)/u);
+  assert.match(html, /nodeTarget=event\.target\?\.closest\?\.\('\.graph-node'\)/u);
+  assert.match(html, /pointers\.size===1&&!nodeTarget/u);
+  assert.match(html, /graph-node-interactive/u);
+  assert.match(html, /graph-explorer--inspecting/u);
   assert.doesNotMatch(html, /class="session"/u);
   assert.doesNotMatch(html, /id="release"/u);
   assert.doesNotMatch(html, /id="avatar"/u);

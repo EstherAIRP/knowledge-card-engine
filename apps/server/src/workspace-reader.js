@@ -7,6 +7,7 @@ import {
   validateCardCollection
 } from '../../../packages/core/src/index.js';
 import {
+  cosineSimilarity,
   searchGeneratedIndex,
   validateGeneratedArtifacts
 } from '../../../packages/graph/src/index.js';
@@ -168,6 +169,160 @@ function cardDetail(card, snapshot) {
     relations: relationProjection(card.data.id, snapshot),
     concepts: conceptProjection(card.data.id, snapshot),
     body: card.body
+  };
+}
+
+
+function relationPairKey(left, right) {
+  return [left, right].sort((a, b) => a.localeCompare(b)).join('::');
+}
+
+function roundedMetric(value) {
+  return Number(Number(value).toFixed(6));
+}
+
+function legacyGraphProjection(snapshot) {
+  const graph = snapshot.artifacts?.graph;
+  const concepts = snapshot.artifacts?.concepts;
+  const relations = snapshot.artifacts?.relations;
+  const vectors = snapshot.artifacts?.vectors;
+  if (!graph || !concepts || !relations || !vectors) {
+    throw new HttpError(503, 'RELEASE_REQUIRED', 'Graph requires one validated generated release.');
+  }
+
+  const generatedNodeById = new Map((graph.nodes || []).map((node) => [node.id, node]));
+  const conceptById = new Map((concepts.concepts || []).map((concept) => [concept.id, concept]));
+  const cardConceptDegree = new Map();
+  for (const edge of concepts.card_concepts || []) {
+    cardConceptDegree.set(edge.card_id, (cardConceptDegree.get(edge.card_id) || 0) + 1);
+  }
+
+  const nodes = [
+    ...snapshot.cards.map((card) => {
+      const position = generatedNodeById.get('card:' + card.data.id) || {};
+      return {
+        id: 'card:' + card.data.id,
+        entityId: card.data.id,
+        kind: 'card',
+        label: card.data.title,
+        description: card.data.summary,
+        route: '/knowledge/' + card.data.id,
+        degree: cardConceptDegree.get(card.data.id) || 0,
+        categories: effectiveOwnershipValue(card.data.navigation?.categories) || [],
+        semanticCategories: effectiveOwnershipValue(card.data.classification?.categories) || [],
+        tags: effectiveOwnershipValue(card.data.classification?.tags) || [],
+        actions: effectiveOwnershipValue(card.data.actions) || [],
+        sourceType: card.data.source?.type || null,
+        resourceKind: effectiveOwnershipValue(card.data.resource_kind),
+        relevance: effectiveRelevance(card.data.relevance),
+        status: effectiveOwnershipValue(card.data.status),
+        x: Number(position.x),
+        y: Number(position.y)
+      };
+    }),
+    ...(concepts.concepts || []).map((concept) => {
+      const position = generatedNodeById.get('concept:' + concept.id) || {};
+      return {
+        id: 'concept:' + concept.id,
+        entityId: concept.id,
+        kind: 'concept',
+        conceptType: concept.type,
+        label: concept.label,
+        description: concept.description,
+        route: '/concepts/' + concept.id,
+        degree: concept.card_count,
+        x: Number(position.x),
+        y: Number(position.y)
+      };
+    })
+  ];
+
+  const edges = (graph.edges || []).map((edge) => ({
+    ...edge,
+    type: edge.relation_type || edge.type || null
+  }));
+
+  const relationByPair = new Map(
+    (relations.edges || []).map((edge) => [relationPairKey(edge.source, edge.target), edge])
+  );
+  const vectorById = new Map(
+    (vectors.entries || []).map((entry) => [entry.card_id, entry.vector])
+  );
+  const neighborsByCard = {};
+  const distancesByCard = {};
+  const neighborLimit = 12;
+
+  for (const card of snapshot.cards) {
+    const cardId = card.data.id;
+    const sourceVector = vectorById.get(cardId);
+    const neighbors = [];
+    if (Array.isArray(sourceVector)) {
+      for (const targetCard of snapshot.cards) {
+        const targetId = targetCard.data.id;
+        if (targetId === cardId) continue;
+        const targetVector = vectorById.get(targetId);
+        if (!Array.isArray(targetVector)) continue;
+        const similarity = roundedMetric(cosineSimilarity(sourceVector, targetVector));
+        const distance = roundedMetric(Math.max(0, Math.min(2, 1 - similarity)));
+        const relation = relationByPair.get(relationPairKey(cardId, targetId));
+        neighbors.push({
+          cardId: targetId,
+          nodeId: 'card:' + targetId,
+          label: targetCard.data.title,
+          route: '/knowledge/' + targetId,
+          similarity,
+          distance,
+          relation: relation ? {
+            type: relation.type,
+            direction: relation.direction || 'undirected',
+            source: relation.source,
+            target: relation.target,
+            score: Number.isFinite(Number(relation.score)) ? Number(relation.score) : null,
+            confidence: Number.isFinite(Number(relation.confidence)) ? Number(relation.confidence) : null
+          } : null
+        });
+      }
+    }
+    neighbors.sort((left, right) =>
+      right.similarity - left.similarity || left.cardId.localeCompare(right.cardId)
+    );
+    neighborsByCard[cardId] = neighbors.slice(0, neighborLimit);
+    distancesByCard[cardId] = neighbors.map(({ cardId: targetId, similarity, distance }) => ({
+      cardId: targetId,
+      similarity,
+      distance
+    }));
+  }
+
+  return {
+    layout_method: graph.layout_method,
+    semantic_neighbors: graph.semantic_neighbors,
+    generatedAt: graph.generated_at || concepts.generated_at || null,
+    semantic: {
+      metric: 'cosine-distance',
+      embeddingProvider: null,
+      embeddingModel: vectors.method || null,
+      neighborLimit,
+      neighborsByCard,
+      distancesByCard
+    },
+    layout: {
+      generatedAt: graph.generated_at || null,
+      method: graph.layout_method || null,
+      metric: 'cosine-distance',
+      stress: null,
+      embeddingModel: vectors.method || null,
+      embeddingInputHash: vectors.input_hash || null
+    },
+    stats: {
+      cards: snapshot.cards.length,
+      concepts: (concepts.concepts || []).length,
+      cardConceptEdges: (concepts.card_concepts || []).length,
+      conceptRelations: (concepts.concept_relations || []).length,
+      cardRelations: (relations.edges || []).length
+    },
+    nodes,
+    edges
   };
 }
 
@@ -478,10 +633,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       return {
         release_id: snapshot.release.release_id,
         revision: snapshot.revision,
-        layout_method: snapshot.artifacts.graph.layout_method,
-        nodes: snapshot.artifacts.graph.nodes,
-        edges: snapshot.artifacts.graph.edges,
-        semantic_neighbors: snapshot.artifacts.graph.semantic_neighbors
+        ...legacyGraphProjection(snapshot)
       };
     },
 
