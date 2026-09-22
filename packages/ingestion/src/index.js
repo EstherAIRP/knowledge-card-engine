@@ -265,6 +265,46 @@ export async function fetchGitHubEvidence(rawUrl, {
   return validateGitHubEvidence(evidence);
 }
 
+export function validateGitHubIngestionRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'GitHub ingestion request must be an object.');
+  }
+  const keys = Object.keys(value).sort();
+  const expected = ['provider', 'schema_version', 'source_url'];
+  if (keys.length !== expected.length || keys.some((key, index) => key !== expected[index])) {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'GitHub ingestion request contains unsupported or missing fields.');
+  }
+  if (value.schema_version !== 1) {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'GitHub ingestion request schema_version must be 1.');
+  }
+  if (value.provider !== 'github') {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'GitHub ingestion request provider must be github.');
+  }
+  const source = canonicalizeSource(value.source_url);
+  if (source.provider !== 'github') {
+    fail('SOURCE_PROVIDER_UNSUPPORTED', 'Remote GitHub ingestion only accepts GitHub repository URLs.');
+  }
+  return {
+    schema_version: 1,
+    provider: 'github',
+    source_url: source.canonicalUrl,
+    source_identity: source.identity
+  };
+}
+
+export function assertGitHubEvidenceMatchesRequest(request, evidence) {
+  const normalized = validateGitHubIngestionRequest({
+    schema_version: request?.schema_version,
+    provider: request?.provider,
+    source_url: request?.source_url
+  });
+  const accepted = validateGitHubEvidence(evidence);
+  if (accepted.source_identity !== normalized.source_identity) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Accepted GitHub evidence does not match the ingestion request identity.');
+  }
+  return accepted;
+}
+
 function sameCard(a, b) {
   return a?.filePath === b?.filePath;
 }
