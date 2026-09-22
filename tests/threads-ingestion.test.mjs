@@ -138,6 +138,20 @@ test('Threads provider fails closed when known thread coverage is incomplete', a
   );
 });
 
+test('Threads provider rejects root-only evidence when the root reports replies but coverage is unverified', async () => {
+  const rootUrl = 'https://threads.com/@alice/post/ROOTONLY';
+  const html = jsonHtml({
+    posts: [post({ id: '900', code: 'ROOTONLY', text: 'Root with visible reply signal.', hasReplies: true })]
+  });
+  await assert.rejects(
+    fetchThreadsEvidence(rootUrl, {
+      fetchImpl: async (url) => response({ status: 200, url: String(url), body: html }),
+      capturedAt: '2026-09-22T08:00:00Z'
+    }),
+    (error) => error.code === 'SOURCE_INCOMPLETE'
+  );
+});
+
 test('Threads evidence validator rejects content tampering', async () => {
   const f = fixture();
   const evidence = await fetchThreadsEvidence(f.shareUrl, {
