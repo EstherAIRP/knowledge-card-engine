@@ -74,7 +74,7 @@ jobs:
           set -euo pipefail
           echo "sha=$(git -C workspace rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Run GitHub ingestion handoff
+      - name: Run source ingestion handoff
         id: handoff
         shell: bash
         env:
@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           RESULT_FILE="$RUNNER_TEMP/knowledge-card-ingest-result.json"
-          node engine/scripts/ingest-github-handoff.mjs workspace --result-file="$RESULT_FILE"
+          node engine/scripts/ingest-handoff.mjs workspace --result-file="$RESULT_FILE"
           echo "result_file=$RESULT_FILE" >> "$GITHUB_OUTPUT"
           STAGE="$(node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(r.stage || "");' "$RESULT_FILE")"
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
@@ -127,9 +127,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if [[ "${{ steps.handoff.outputs.stage }}" == "prepared" ]]; then
-            git commit -m "chore: prepare GitHub ingestion evidence"
+            git commit -m "chore: prepare source ingestion evidence"
           else
-            git commit -m "feat: apply GitHub ingestion"
+            git commit -m "feat: apply source ingestion"
           fi
           git push origin "HEAD:$GITHUB_REF_NAME"
 
