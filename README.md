@@ -9,7 +9,8 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Node.js 24 / npm workspaces 工具鏈。
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository canonicalization、repository metadata + README accepted evidence。\n- Threads post/share URL resolution、根貼文 identity、結構完整串文 accepted evidence。
+- GitHub Repository canonicalization、repository metadata + README accepted evidence。
+- Threads post/share URL resolution、根貼文 identity、結構完整串文 accepted evidence。
 - 與 accepted evidence digest 綁定的 analysis result 契約。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
@@ -76,7 +77,8 @@ npm run source-state:validate -- /path/to/workspace
 來源 ingestion CLI：
 
 ```bash
-npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json\nnpm run ingest:threads -- /path/to/workspace https://threads.com/share/token --analysis-file=analysis.json
+npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json
+npm run ingest:threads -- /path/to/workspace https://threads.com/share/token --analysis-file=analysis.json
 ```
 
 CLI 可即時取得 provider-specific evidence，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 只有在結構證據可證明完整時才接受。密鑰不得寫入 repository。
