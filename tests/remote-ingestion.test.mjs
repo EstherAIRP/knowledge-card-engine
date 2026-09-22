@@ -4,7 +4,8 @@ import test from 'node:test';
 import {
   assertGitHubEvidenceMatchesRequest,
   fetchGitHubEvidence,
-  validateGitHubIngestionRequest
+  validateGitHubIngestionRequest,
+  validateIngestionRequest
 } from '../packages/ingestion/src/index.js';
 
 function response(status, body) {
@@ -70,6 +71,28 @@ test('remote ingestion request accepts only the exact GitHub request contract', 
   );
 });
 
+
+
+test('remote ingestion request also accepts Threads share and post URLs without assigning share-token identity', () => {
+  const share = validateIngestionRequest({
+    schema_version: 1,
+    provider: 'threads',
+    source_url: 'https://www.threads.net/share/token123?utm_source=test#top'
+  });
+  assert.deepEqual(share, {
+    schema_version: 1,
+    provider: 'threads',
+    source_url: 'https://threads.com/share/token123'
+  });
+
+  const post = validateIngestionRequest({
+    schema_version: 1,
+    provider: 'threads',
+    source_url: 'https://threads.net/@alice/post/ROOT123?utm_source=test#top'
+  });
+  assert.equal(post.source_url, 'https://threads.com/@alice/post/ROOT123');
+});
+
 test('accepted evidence must match the normalized remote ingestion request', async () => {
   const request = validateGitHubIngestionRequest({
     schema_version: 1,
@@ -98,7 +121,7 @@ test('remote ingestion reusable workflow is branch-scoped and runs Node.js 24', 
   assert.match(workflow, /case "\$GITHUB_REF_NAME" in[\s\S]*chore\/ingest-\*/);
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /--reusable-workflow=ingest-workspace\.yml/);
-  assert.match(workflow, /scripts\/ingest-github-handoff\.mjs/);
+  assert.match(workflow, /scripts\/ingest-handoff\.mjs/);
   assert.doesNotMatch(workflow, /pull_request_target/);
   assert.doesNotMatch(workflow, /workflow_dispatch/);
 });

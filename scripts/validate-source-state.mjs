@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { parseCardDocument } from '../packages/core/src/index.js';
-import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';
+import { validateAcceptedSourceState } from '../packages/ingestion/src/index.js';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
 
 const workspaceRoot = process.argv[2];
@@ -34,10 +34,10 @@ async function jsonFiles(root) {
 
 try {
   const workspace = await loadWorkspace(workspaceRoot);
-  const sourceRoot = path.join(workspace.paths.state, 'sources', 'github');
+  const sourceRoot = path.join(workspace.paths.state, 'sources');
   const files = await jsonFiles(sourceRoot);
   for (const file of files) {
-    const state = validateGitHubSourceState(JSON.parse(await fs.readFile(file, 'utf8')));
+    const state = validateAcceptedSourceState(JSON.parse(await fs.readFile(file, 'utf8')));
     const cardPath = path.resolve(workspace.root, state.card_path);
     const knowledgeRoot = path.resolve(workspace.paths.knowledge) + path.sep;
     if (!cardPath.startsWith(knowledgeRoot)) {
@@ -52,7 +52,7 @@ try {
       throw error;
     }
   }
-  console.log(`Source state validation passed: ${files.length} GitHub state file(s).`);
+  console.log(`Source state validation passed: ${files.length} accepted source state file(s).`);
 } catch (error) {
   console.error(JSON.stringify({
     status: 'error',

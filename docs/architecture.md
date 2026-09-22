@@ -9,7 +9,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；private data 只由 authenticated API runtime 取得。 |
 | `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
-| `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、create/update resolution 與 GitHub source-state contract。 |
+| `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result contract；analysis 必須綁定 accepted source identity 與 evidence digest。 |
 | `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
@@ -19,18 +19,20 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 
 ## 目前資料流
 
-GitHub Repository 收錄的完整資料流是：
+支援來源共用的完整資料流是：
 
 ```text
-GitHub URL
-→ canonical repository identity
-→ repository metadata + README accepted evidence
+source URL
+→ provider-specific resolution / canonical identity
+→ provider-specific accepted evidence
 → evidence-bound analysis result
 → identity / canonical URL create-or-update resolution
 → ownership-safe Card candidate
 → full Card collection validation
 → Card + accepted source state persistence
 ```
+
+GitHub 以 repository metadata + README 建立 accepted evidence；Threads 先解析到具體貼文，再依 reply/root 關係與可用的 n/N 證據重建根貼文及完整有序串文。Threads share token、中間篇或最後一篇都不能直接成為正式來源身分。
 
 Card 與 source state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。writer 使用暫存檔寫入；若 Card 已替換但 source-state replacement 失敗，會回復 Card，避免只推進其中一側。
 
@@ -40,13 +42,13 @@ Card 與 source state 寫入前會完成 evidence、analysis binding、ownership
 - Taxonomy 的結構由公開 `schema/taxonomy.schema.json` 定義；實際受控詞彙由各 Workspace 的 `config/taxonomy.yaml` 提供。
 - Workspace 結構由 `workspace.yaml` 與 `engine.lock.json` 定義。
 - `*.user` override、穩定 `id`、`created_at` 與完整「使用者備註」屬保護狀態，一般重新分析不得修改。
-- accepted source state 是已通過來源驗證後的精簡狀態，不保存 README 全文。
+- accepted source state 是已通過來源驗證後的精簡狀態；GitHub 不保存 README 全文，Threads 不保存貼文原文，只保存必要 metadata 與內容指紋。
 
 ## Engine / Workspace 邊界
 
 Engine 接收明確的 Workspace root，不以目前工作目錄或固定私人 repository 名稱推測資料位置。Workspace 以 `engine.lock.json` 固定核准的 engine repository 與完整 commit SHA；CI 再驗證 workflow pin、lock 與實際 checkout 的 engine SHA 一致。
 
-目前 Workspace、Card、GitHub ingestion、generated data 與一致發布的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md)、[ingestion.md](./ingestion.md)、[generated-data.md](./generated-data.md) 與 [release.md](./release.md)。
+目前 Workspace、Card、source ingestion、generated data 與一致發布的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md)、[ingestion.md](./ingestion.md)、[generated-data.md](./generated-data.md) 與 [release.md](./release.md)。
 
 
 ## 私人閱覽資料流

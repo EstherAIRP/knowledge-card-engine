@@ -12,11 +12,11 @@ import {
 } from '../../core/src/index.js';
 import { validateAnalysisResult, ANALYSIS_SECTIONS } from '../../analysis/src/index.js';
 import {
-  buildGitHubSourceState,
-  githubSourceStatePath,
+  acceptedSourceStatePath,
+  buildAcceptedSourceState,
   resolveIngestionTarget,
-  validateGitHubEvidence,
-  validateGitHubSourceState
+  validateAcceptedEvidence,
+  validateAcceptedSourceState
 } from '../../ingestion/src/index.js';
 import { loadWorkspace } from './index.js';
 
@@ -51,7 +51,7 @@ function desiredAnalysisState(evidence, analysis) {
     title: analysis.title,
     canonical_url: evidence.canonical_url,
     source: {
-      type: 'github',
+      type: evidence.source_type,
       url: evidence.canonical_url,
       identity: evidence.source_identity
     },
@@ -99,6 +99,7 @@ function preserveUserWrapper(existingWrapper, aiValue, emptyUser) {
 
 function buildCardDocument({ evidence, analysis, target, capturedDate }) {
   const existing = target.existingCard;
+  const providerLabel = evidence.provider === 'github' ? 'GitHub' : evidence.provider === 'threads' ? 'Threads' : evidence.provider;
   const substantiveChange = !existing || !sameJson(normalizedAnalysisState(existing), desiredAnalysisState(evidence, analysis));
   const createdAt = existing?.data?.created_at || capturedDate;
   const updatedAt = existing && !substantiveChange ? existing.data.updated_at : capturedDate;
@@ -109,7 +110,7 @@ function buildCardDocument({ evidence, analysis, target, capturedDate }) {
     title: analysis.title,
     canonical_url: evidence.canonical_url,
     source: {
-      type: 'github',
+      type: evidence.source_type,
       url: evidence.canonical_url,
       identity: evidence.source_identity
     },
@@ -136,9 +137,9 @@ function buildCardDocument({ evidence, analysis, target, capturedDate }) {
   const notesRaw = existing ? extractSection(existing.body, '使用者備註') : '\n\n';
   let updateLogRaw = existing ? extractSection(existing.body, '更新紀錄') : null;
   if (!existing) {
-    updateLogRaw = appendUpdateLog(updateLogRaw, capturedDate, '建立自 GitHub accepted evidence。');
+    updateLogRaw = appendUpdateLog(updateLogRaw, capturedDate, `建立自 ${providerLabel} accepted evidence。`);
   } else if (substantiveChange) {
-    updateLogRaw = appendUpdateLog(updateLogRaw, capturedDate, '依 GitHub accepted evidence 更新 AI 分析。');
+    updateLogRaw = appendUpdateLog(updateLogRaw, capturedDate, `依 ${providerLabel} accepted evidence 更新 AI 分析。`);
   }
 
   const body = renderBody(analysis.title, analysis.sections, notesRaw, updateLogRaw);
@@ -166,8 +167,8 @@ async function rollbackFile(filePath, prior) {
   else await fs.writeFile(filePath, prior, 'utf8');
 }
 
-export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analysis) {
-  validateGitHubEvidence(evidence);
+export async function applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis) {
+  validateAcceptedEvidence(evidence);
   validateAnalysisResult(analysis, evidence);
   const workspace = await loadWorkspace(workspaceRoot);
   const taxonomy = await loadTaxonomyFile(path.join(workspace.paths.config, 'taxonomy.yaml'));
@@ -201,10 +202,10 @@ export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analy
     throw error;
   }
 
-  const statePath = path.join(workspace.paths.state, ...githubSourceStatePath(evidence.source_identity).split('/'));
+  const statePath = path.join(workspace.paths.state, ...acceptedSourceStatePath(evidence).split('/'));
   const stateRelative = path.relative(workspace.root, statePath).split(path.sep).join('/');
-  const state = buildGitHubSourceState(evidence, { cardId: built.card.data.id, cardPath: relativeCardPath });
-  validateGitHubSourceState(state);
+  const state = buildAcceptedSourceState(evidence, { cardId: built.card.data.id, cardPath: relativeCardPath });
+  validateAcceptedSourceState(state);
 
   await fs.mkdir(path.dirname(cardPath), { recursive: true });
   await fs.mkdir(path.dirname(statePath), { recursive: true });
@@ -241,4 +242,21 @@ export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analy
       try { return JSON.parse(statePrior).evidence_digest || null; } catch { return null; }
     })() : null
   };
+}
+
+function requireProvider(evidence, provider) {
+  if (evidence?.provider === provider) return;
+  const error = new Error(`Expected accepted evidence from provider ${provider}.`);
+  error.code = 'SOURCE_PROVIDER_UNSUPPORTED';
+  throw error;
+}
+
+export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analysis) {
+  requireProvider(evidence, 'github');
+  return applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis);
+}
+
+export async function applyAcceptedThreadsAnalysis(workspaceRoot, evidence, analysis) {
+  requireProvider(evidence, 'threads');
+  return applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis);
 }

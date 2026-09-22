@@ -96,14 +96,14 @@ Workspace = 私人權威資料與私人衍生資料
 
 ## 5. 來源收錄
 
-目前正式支援的收錄 provider 以 [GitHub 收錄契約](../docs/ingestion.md) 為準。若來源不屬於已實作 provider，應回報不支援並停止正式寫入；generic URL canonicalization 不能視為已有 generic extractor。
+目前正式支援的收錄 provider 以 [來源收錄契約](../docs/ingestion.md) 為準，目前包含 GitHub Repository 與 Threads。若來源不屬於已實作 provider，應回報不支援並停止正式寫入；generic URL canonicalization 不能視為已有 generic extractor。
 
-目前 GitHub Repository 的高階資料流是：
+支援來源共用的高階資料流是：
 
 ```text
 URL
-→ canonical repository identity
-→ repository metadata + README accepted evidence
+→ provider-specific resolution / canonical identity
+→ provider-specific accepted evidence
 → evidence-bound analysis result
 → create / update resolution
 → ownership-safe Card candidate
@@ -111,11 +111,13 @@ URL
 → Card + accepted source state persistence
 ```
 
+GitHub 以 repository metadata + README 為 accepted evidence。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 只有在結構證據可證明完整有序來源時接受；目前不以模型推測補足缺篇。
+
 ### 來源證據
 
-不得只根據 URL slug、Repository 名稱、搜尋摘要、README 片段或模型記憶產生正式分析。
+不得只根據 URL slug、Repository 名稱、Threads share token、搜尋摘要、README／貼文片段或模型記憶產生正式分析。
 
-GitHub 正式收錄必須取得並驗證 accepted evidence。來源身分、canonical URL、metadata、README 與 evidence digest 的完整條件由 `docs/ingestion.md` 與 ingestion validator 定義。
+GitHub 與 Threads 正式收錄都必須取得並驗證 provider-specific accepted evidence。來源身分、canonical URL、內容完整性與 evidence digest 的條件由 `docs/ingestion.md` 與 ingestion validator 定義。
 
 核心不變量：
 
@@ -123,11 +125,11 @@ GitHub 正式收錄必須取得並驗證 accepted evidence。來源身分、cano
 執行環境失敗 != 來源不存在或來源不完整
 ```
 
-網路、GitHub API、rate limit、授權或執行環境問題必須和明確的來源失敗分開回報。無法完成 accepted evidence 驗證時，不得建立／更新正式 Card，也不得推進 accepted source state。
+網路、GitHub API、Threads 頁面取得、rate limit、授權或執行環境問題必須和明確的來源失敗分開回報。無法完成 accepted evidence 驗證時，不得建立／更新正式 Card，也不得推進 accepted source state。
 
 ### 執行環境與 Remote Ingest
 
-若目前互動環境無法 checkout 私人 Workspace、無法執行 Workspace 鎖定 Engine 所要求的 Node.js 版本，或缺少其他必要 runtime 能力，不得因此手工建立／更新 GitHub Card，也不得把限制描述成來源不可用。
+若目前互動環境無法 checkout 私人 Workspace、無法執行 Workspace 鎖定 Engine 所要求的 Node.js 版本，或缺少其他必要 runtime 能力，不得因此手工建立／更新來源 Card，也不得把限制描述成來源不可用。
 
 當目前 Workspace 已配置核准的 Remote Ingest workflow 時，改走 Repository-defined handoff：
 
@@ -184,7 +186,7 @@ Relevance 等逐欄位 ownership 依 [Knowledge Card 契約](../docs/card-contra
 
 ## 8. 寫入與驗證
 
-GitHub Card 必須經正式 Workspace writer 寫入，不得手工繞過 writer 模擬成功。
+GitHub / Threads Card 必須經正式 Workspace writer 寫入，不得手工繞過 writer 模擬成功。
 
 Writer 在 persistence 前必須完成：
 

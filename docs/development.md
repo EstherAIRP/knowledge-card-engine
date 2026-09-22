@@ -17,7 +17,7 @@ npm run validate
 `npm run validate` 目前等於：
 
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
-2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub ingestion、ownership、source-state atomicity、private login / authorization，以及 generated-data / release / release-reader 一致性案例。
+2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub / Threads ingestion、ownership、source-state atomicity、private login / authorization，以及 generated-data / release / release-reader 一致性案例。
 
 ## Workspace 驗證
 
@@ -38,22 +38,33 @@ npm run workspace:validate -- /path/to/workspace \
   --workflow-file=.github/workflows/validate.yml
 ```
 
-## GitHub 收錄
+## 來源收錄
+
+GitHub：
 
 ```bash
 npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
   --analysis-file=analysis.json
 ```
 
-可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需驗證的 evidence；否則 CLI 透過 GitHub API 即時取得 metadata + README。需要授權時使用環境變數 `GITHUB_TOKEN`，不可提交 token。
+Threads：
 
-GitHub writer 的資料與 ownership 前置條件見 [ingestion.md](./ingestion.md) 與 [card-contract.md](./card-contract.md)。
+```bash
+npm run ingest:threads -- /path/to/workspace https://threads.com/share/token \
+  --analysis-file=analysis.json
+```
+
+兩者都可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需驗證的 evidence。GitHub CLI 否則透過 GitHub API 即時取得 metadata + README；需要授權時使用環境變數 `GITHUB_TOKEN`。Threads CLI 只有在結構證據可證明來源完整時接受，不提供語意續篇猜測。密鑰不可提交。
+
+來源 writer 的資料與 ownership 前置條件見 [ingestion.md](./ingestion.md) 與 [card-contract.md](./card-contract.md)。
 
 受控 Remote Ingest runner 使用：
 
 ```bash
-npm run ingest:github:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.json
+npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.json
 ```
+
+`npm run ingest:github:handoff` 保留為相容 alias。
 
 此 CLI 固定讀取 configured state root 下的 `ingestion/request.json`、`evidence.json`、`analysis.json`，不接受任意 handoff 路徑。沒有 evidence 時只準備 accepted evidence；已有 evidence 與 analysis 時才呼叫正式 writer。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
 
@@ -84,7 +95,7 @@ Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards 與 accepted source state。
 - `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
-- `.github/workflows/ingest-workspace.yml`：Workspace `ingest/*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 執行 accepted-evidence prepare 或 writer apply，並以 stale guard 與 changed-path allowlist 限制寫入。
+- `.github/workflows/ingest-workspace.yml`：Workspace `chore/ingest-*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 依 request provider 執行 GitHub / Threads accepted-evidence prepare 或 writer apply，並以 stale guard 與 changed-path allowlist 限制寫入。
 
 Workspace 的 validation、release 與 ingestion 薄層 workflow 都必須用完整 SHA pin 同一個 `engine.lock.json.engine_commit`。Validation workflow 會逐一驗證三個 reusable workflow pin；release / ingestion runner 也會在執行時再次驗自己的 caller pin。
 
