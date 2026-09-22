@@ -172,7 +172,8 @@ try {
       if (!hasSemanticJudgement) {
         result = {
           status: 'ok',
-          stage: 'waiting-for-semantic-judgement',
+          stage: 'waiting-for-analysis',
+          waiting_for: 'semantic-judgement',
           semantic_handoff: semanticHandoff,
           handoff_paths: handoffPaths,
           allowed_changed_paths: []
