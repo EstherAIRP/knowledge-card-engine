@@ -291,6 +291,8 @@ Vercel adapter **不允許 process-local memory session fallback**：只有同�
 
 這讓 Vercel 可以先部署取得 HTTPS hostname，再補 GitHub App callback / secrets 與 shared REST session resource；未完整配置前不能誤判成可用的私人登入站。
 
+Vercel Function 的 `maxDuration` 設為 30 秒，但 GitHub 與 shared REST session store 的單次上游 request 會在 5 秒內中止並 fail closed，不把 hosting hard timeout 當作應用層錯誤處理。Release snapshot 冷載入時，Knowledge Card 與 generated artifact blob 採最多 8 個並行讀取；仍逐檔執行既有 size、hash、Schema、ownership 與 release consistency 驗證，不因效能最佳化降低驗證門檻。
+
 ## 尚未提供的能力
 
 目前 private site 不提供：
