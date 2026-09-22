@@ -84,7 +84,7 @@ Provider 取得 README 時會解碼全文並驗證內容 hash / byte count。REA
 
 當互動環境不能安全執行目前 Workspace 鎖定的 Engine 時，Workspace 可使用 Engine 提供的 reusable `.github/workflows/ingest-workspace.yml` 作為受控遠端執行入口。Remote Ingest 不建立第二套 writer；最終 apply 仍呼叫 `applyAcceptedGitHubAnalysis(...)`。
 
-每個收錄任務使用獨立的 `ingest/*` Workspace 分支，並在 configured state root 下使用暫存目錄：
+每個收錄任務使用獨立的 `chore/ingest-*` Workspace 分支，並在 configured state root 下使用暫存目錄：
 
 ```text
 state/ingestion/request.json
@@ -104,7 +104,7 @@ state/ingestion/analysis.json
 
 執行順序：
 
-1. Agent 在 `ingest/*` 分支提交 `request.json`。
+1. Agent 在 `chore/ingest-*` 分支提交 `request.json`。
 2. Workspace 薄層 workflow 呼叫 pinned Engine 的 reusable ingestion workflow；runner 使用 Node.js 24、驗證 Workspace 與 workflow pin，取得 accepted evidence，並只寫入 `evidence.json`。
 3. Agent 讀取該 accepted evidence，依目前 Workspace Taxonomy 與允許的私人背景產生 evidence-bound `analysis.json`，再提交至同一分支。
 4. 第二次 workflow 驗證 request/evidence/analysis binding，呼叫正式 writer，執行完整 collection / ownership / source-state validation。
