@@ -15,7 +15,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub accepted source state 與 Card 對應驗證。
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
-- GitHub Remote Ingest handoff，可在 `ingest/*` Workspace 分支以 pinned Engine、Node.js 24 取得 accepted evidence，並在 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
+- GitHub Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 accepted evidence，並在 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 - Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。

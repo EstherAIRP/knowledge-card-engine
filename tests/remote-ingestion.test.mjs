@@ -95,7 +95,7 @@ test('accepted evidence must match the normalized remote ingestion request', asy
 
 test('remote ingestion reusable workflow is branch-scoped and runs Node.js 24', async () => {
   const workflow = await fs.readFile('.github/workflows/ingest-workspace.yml', 'utf8');
-  assert.match(workflow, /case "\$GITHUB_REF_NAME" in[\s\S]*ingest\/\*/);
+  assert.match(workflow, /case "\$GITHUB_REF_NAME" in[\s\S]*chore\/ingest-\*/);
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /--reusable-workflow=ingest-workspace\.yml/);
   assert.match(workflow, /scripts\/ingest-github-handoff\.mjs/);

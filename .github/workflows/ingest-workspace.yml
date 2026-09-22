@@ -29,8 +29,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF_NAME" in
-            ingest/*) ;;
-            *) echo "Remote ingestion only runs on ingest/* branches." >&2; exit 1 ;;
+            chore/ingest-*) ;;
+            *) echo "Remote ingestion only runs on chore/ingest-* branches." >&2; exit 1 ;;
           esac
 
       - name: Checkout workspace branch

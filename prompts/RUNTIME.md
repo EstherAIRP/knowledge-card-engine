@@ -132,7 +132,7 @@ GitHub 正式收錄必須取得並驗證 accepted evidence。來源身分、cano
 當目前 Workspace 已配置核准的 Remote Ingest workflow 時，改走 Repository-defined handoff：
 
 ```text
-ingest/* branch + request
+chore/ingest-* branch + request
 → pinned Engine / Node.js 24 accepted evidence
 → Agent 依 accepted evidence 產生 analysis
 → 同 branch 提交 analysis
