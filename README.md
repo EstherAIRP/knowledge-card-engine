@@ -45,6 +45,7 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 
 完整契約：
 
+- [Runtime 執行契約](./prompts/RUNTIME.md)
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [GitHub 收錄契約](./docs/ingestion.md)
