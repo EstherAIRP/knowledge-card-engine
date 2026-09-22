@@ -5,7 +5,7 @@
 | Provider | 可接受輸入 | 穩定來源身分 | Card source type | Accepted evidence |
 | --- | --- | --- | --- | --- |
 | GitHub Repository | Repository URL 與其子路徑 | `github:{owner-lower}/{repo-lower}` | `github` | Repository metadata + 非空 README |
-| Threads | `threads.com` / `threads.net` 的 post、`/share/*`、`/t/*` | `threads:{root_shortcode}` | `article` | 已解析至根貼文且結構上可證明完整的有序貼文集合 |
+| Threads | `threads.com` / `threads.net` 的 post、`/share/*`、`/t/*` | `threads:{root_shortcode}` | `article` | 已解析至根貼文，且通過結構完整性或受控高信心語意復原的有序貼文集合 |
 
 其他 HTTP(S) URL 只有 generic canonicalization helper，沒有 generic extractor；不能因 URL 可被正規化就視為可正式收錄。
 
@@ -92,23 +92,30 @@ README 全文只存在於 analysis input 的 accepted evidence；accepted source
 
 ## Threads accepted evidence
 
-正式 Threads evidence 必須通過 `validateThreadsEvidence`。目前 Engine 只接受**結構驗證（`structural`）完成**的來源；不以時間接近、模型猜測或 share token 補足缺失關係。
+正式 Threads evidence 必須通過 `validateThreadsEvidence`。Provider 先以原生結構證據重建串文；只有在結構資料不足但仍屬於可受控判定的 continuation uncertainty 時，才允許進入語意復原。任何已知缺篇、結構歧義、來源身分衝突或執行環境失敗都不能由語意判定覆蓋。
 
 Provider 的處理順序是：
 
 ```text
 Threads input URL
 → transient URL resolution when needed
-→ exact target post extraction
-→ reply/root graph reconstruction
-→ root post identity
-→ n/N / structural completeness checks
+→ public HTTP extraction
+→ public browser fallback when HTTP evidence is insufficient
+→ strict reply/root graph reconstruction
+→ structural completeness checks
+→ eligible continuation uncertainty only
+→ digest-bound semantic judgement
+→ deterministic acceptance gates
 → ordered parts[]
 → combined_text
 → accepted evidence digest
 ```
 
-Accepted evidence 必須符合：
+Browser fallback 只讀取公開 Threads 頁面的 rendered DOM 與同源公開 JSON response，不使用登入狀態、私人 cookie 或私人帳號資料。若 runner 缺少可啟動的 browser runtime、網路被阻擋或頁面無法取得，屬於 execution failure，不得降級成來源不完整。
+
+### Structural verification
+
+結構證據足夠時直接接受，不經語意判定。Accepted evidence 必須符合：
 
 - `provider: threads`、`accepted: true`、`source_type: article`。
 - 根貼文 canonical URL 與 `threads:{root_shortcode}` 完全一致。
@@ -123,11 +130,39 @@ Accepted evidence 必須符合：
 - 來源至少包含文字或媒體等可分析內容。
 - `evidence_digest` 必須符合 accepted conversation 的內容指紋。
 
-若根貼文明示仍有 replies，但目前只擷取到單篇且 conversation coverage 未被證明完整，必須 `SOURCE_INCOMPLETE`；不得把「只看到根貼文」當成「已證明只有根貼文」。
+若根貼文明示仍有 replies，但目前只擷取到單篇且 conversation coverage 未被證明完整，不能直接把「只看到根貼文」當成「已證明只有根貼文」。
 
-目前正式 runtime **沒有** LLM-assisted continuation / root-only recovery。當原生結構證據不足、同作者分支有歧義、已知總篇數缺篇或根貼文覆蓋範圍未證明完整時，保持 fail closed。未來若加入語意復原，仍必須是獨立受控能力，不能覆蓋更強且互相衝突的結構證據。
+### Controlled semantic continuation recovery
 
-Threads evidence 會保留完整有序文字與媒體資訊供 analysis 使用；accepted source state 只保存來源與各 part 的雜湊／結構指紋，不保存 Threads 原文。媒體 URL 的易變 query / fragment 不參與 evidence digest 的穩定內容識別。
+只有 strict reconstruction 已失敗，而且失敗屬於可判定的 continuation uncertainty 時，Engine 才建立候選集合。預設候選規則包含：同作者、在根貼文之後、時間差不超過 24 小時、明確 non-reply 排除，最多 8 個候選；候選另計算 deterministic metadata score。
+
+Semantic judgement 是固定資料契約，不直接決定 accepted evidence。Remote Ingest 的 judgement 必須由 `knowledge_card_agent` 產生，並包含：
+
+- `selected_shortcodes`
+- `root_only`
+- `confidence`
+- `complete`
+- `rationale`
+- 每個候選的 `candidate_labels`
+
+Engine 重新套用 deterministic gate。至少要求整體 `confidence >= 0.90`；選擇 continuation 時，第一個 selected candidate 的 metadata score 必須達最低門檻；判定 `root_only` 時，每個候選都必須明確標成高信心 `followup` 或 `unrelated`，不能有 continuation 或 uncertain candidate。
+
+語意復原成功後，accepted evidence 使用：
+
+- `thread.verification: llm_assisted`
+- `INFERRED_THREAD_HIGH_CONFIDENCE` 或 `INFERRED_SINGLE_POST_HIGH_CONFIDENCE`
+- `extraction.inferred: true`
+- `thread.recovery` 保存 confidence、選取 shortcode、candidate labels 與 ranker provenance
+
+這個能力只能處理結構資料「不足以辨識 continuation」的缺口，不能覆蓋更強且互相衝突的結構證據，也不能把已知缺篇或 ambiguous graph 推定成完整。
+
+### Digest-bound semantic handoff
+
+Remote Ingest 需要語意判定時，Engine 先輸出 `semantic-handoff.json`，其中包含公開 root/candidate evidence 與其 SHA-256 digest。Agent 回填的 `semantic-judgement.json` 必須帶同一 digest。
+
+第二次執行不直接信任先前快照；Engine 會重新取得來源、重新建立候選並重新計算 digest。若來源或候選 evidence 已改變，回報 `THREADS_CONTINUATION_HANDOFF_EVIDENCE_MISMATCH` 並停止，不得把舊 judgement 套到新來源。
+
+Threads evidence 會保留完整有序文字與媒體資訊供 analysis 使用；accepted source state 只保存來源與各 part 的雜湊／結構指紋，以及語意復原 provenance，不保存 Threads 原文。媒體 URL 的易變 query / fragment 不參與 evidence digest 的穩定內容識別。
 
 ## Fail-closed 錯誤
 
@@ -218,13 +253,17 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 
 當互動環境不能安全執行目前 Workspace 鎖定的 Engine 時，Workspace 可使用 reusable `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套 writer；最終 apply 仍走 `applyAcceptedSourceAnalysis(...)`。
 
-每個任務使用獨立 `chore/ingest-*` Workspace 分支與：
+每個任務使用獨立 `chore/ingest-*` Workspace 分支。Handoff 目錄允許的暫存檔為：
 
 ```text
 state/ingestion/request.json
+state/ingestion/semantic-handoff.json
+state/ingestion/semantic-judgement.json
 state/ingestion/evidence.json
 state/ingestion/analysis.json
 ```
+
+其中 semantic handoff / judgement 只在 Threads 的受控語意復原需要時出現。
 
 `request.json` 必須且只能包含：
 
@@ -249,12 +288,14 @@ state/ingestion/analysis.json
 執行順序：
 
 1. Agent 提交 request。
-2. pinned Engine / Node.js 24 runner 驗證 Workspace 與 workflow pin，依 provider 取得 accepted evidence，只寫 `evidence.json`。
-3. Agent 只依 accepted evidence、Taxonomy 與被允許的私人背景產生 evidence-bound `analysis.json`。
-4. 第二次 workflow 重新驗證 request/evidence/analysis binding，呼叫正式 writer。
-5. apply 成功後移除三個 handoff 暫存檔，只留下正式 Card 與 accepted source state；之後才建立或更新 PR。
+2. pinned Engine / Node.js 24 runner 驗證 Workspace 與 workflow pin，依 provider 擷取來源。Threads 會先走 HTTP，再在必要時使用公開 browser fallback，並優先嘗試 strict structural reconstruction。
+3. 若 Threads 只剩 eligible continuation uncertainty，runner 寫入 `semantic-handoff.json` 並停止在 evidence 之前。Agent 只依 handoff 內公開 evidence 產生符合固定 contract、綁定 digest 的 `semantic-judgement.json`。
+4. runner 重新擷取 live source、重建候選並驗證 digest；只有 deterministic gate 接受 judgement 時才建立 `evidence.json`。若 evidence 已改變或 gate 不通過，fail closed。
+5. Agent 只依 accepted evidence、Taxonomy 與被允許的私人背景產生 evidence-bound `analysis.json`。
+6. runner 重新驗證 request/evidence/analysis binding，呼叫正式 writer。
+7. apply 成功後移除 handoff 暫存檔，只留下正式 Card 與 accepted source state；之後才建立或更新 PR。
 
-Workflow 必須保留 stale branch guard 與 changed-path allowlist，不接受任意 shell command、輸出路徑或未定義 provider。`state/ingestion/**` 不得合併到 Workspace `main`。
+Workflow 必須保留 stale branch guard 與 changed-path allowlist，不接受任意 shell command、輸出路徑或未定義 provider。等待 judgement / analysis 的 run 不得假造 repository change；`state/ingestion/**` 不得合併到 Workspace `main`。
 
 ## CLI
 
