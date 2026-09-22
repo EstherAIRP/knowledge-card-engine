@@ -43,12 +43,25 @@ jobs:
         working-directory: engine
         run: npm ci --no-audit --no-fund
 
-      - name: Validate workspace contract and engine pin
-        run: >-
-          node engine/scripts/validate-workspace.mjs workspace
-          --engine-repository=${{ inputs.engine_repository }}
-          --engine-commit=${{ inputs.engine_sha }}
-          --workflow-file=.github/workflows/validate.yml
+      - name: Validate workspace contract and engine pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/validate-workspace.mjs workspace \
+            --engine-repository=${{ inputs.engine_repository }} \
+            --engine-commit=${{ inputs.engine_sha }} \
+            --workflow-file=.github/workflows/validate.yml \
+            --reusable-workflow=validate-workspace.yml
+          node engine/scripts/validate-workspace.mjs workspace \
+            --engine-repository=${{ inputs.engine_repository }} \
+            --engine-commit=${{ inputs.engine_sha }} \
+            --workflow-file=.github/workflows/release.yml \
+            --reusable-workflow=release-workspace.yml
+          node engine/scripts/validate-workspace.mjs workspace \
+            --engine-repository=${{ inputs.engine_repository }} \
+            --engine-commit=${{ inputs.engine_sha }} \
+            --workflow-file=.github/workflows/ingest.yml \
+            --reusable-workflow=ingest-workspace.yml
 
       - name: Validate taxonomy and Knowledge Cards
         run: node engine/scripts/validate-cards.mjs workspace
