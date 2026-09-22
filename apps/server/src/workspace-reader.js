@@ -30,6 +30,7 @@ const MAX_CARD_BYTES = 1024 * 1024;
 const MAX_TAXONOMY_BYTES = 512 * 1024;
 const MAX_RELEASE_BYTES = 512 * 1024;
 const MAX_INDEX_BYTES = 8 * 1024 * 1024;
+const BLOB_READ_CONCURRENCY = 8;
 
 function encodeCursor(revision, offset) {
   return Buffer.from(JSON.stringify({ revision, offset }), 'utf8').toString('base64url');
@@ -87,6 +88,26 @@ function parseJson(text, label) {
   } catch {
     throw new HttpError(503, 'WORKSPACE_DATA_INVALID', label + ' is invalid JSON.');
   }
+}
+
+async function mapConcurrent(values, limit, mapper) {
+  const items = [...values];
+  if (!items.length) return [];
+
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 function cardSummary(card) {
@@ -406,7 +427,19 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
     if (!taxonomyEntry) {
       throw new HttpError(503, 'WORKSPACE_TAXONOMY_MISSING', 'Workspace taxonomy is missing.');
     }
-    const taxonomyText = await readEntry(taxonomyEntry, MAX_TAXONOMY_BYTES, 'Workspace taxonomy');
+    const cardEntries = [...entries.values()]
+      .filter((entry) => CARD_PATH.test(entry.path))
+      .sort((a, b) => a.path.localeCompare(b.path));
+
+    const [taxonomyText, cardTexts] = await Promise.all([
+      readEntry(taxonomyEntry, MAX_TAXONOMY_BYTES, 'Workspace taxonomy'),
+      mapConcurrent(
+        cardEntries,
+        BLOB_READ_CONCURRENCY,
+        (entry) => readEntry(entry, MAX_CARD_BYTES, `Knowledge Card ${entry.path}`)
+      )
+    ]);
+
     let taxonomy;
     try {
       taxonomy = parseTaxonomyDocument(taxonomyText, TAXONOMY_PATH);
@@ -414,15 +447,11 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       throw new HttpError(503, 'WORKSPACE_TAXONOMY_INVALID', 'Workspace taxonomy cannot be parsed.');
     }
 
-    const cardEntries = [...entries.values()]
-      .filter((entry) => CARD_PATH.test(entry.path))
-      .sort((a, b) => a.path.localeCompare(b.path));
-
     const cards = [];
-    for (const entry of cardEntries) {
-      const text = await readEntry(entry, MAX_CARD_BYTES, `Knowledge Card ${entry.path}`);
+    for (let index = 0; index < cardEntries.length; index += 1) {
+      const entry = cardEntries[index];
       try {
-        cards.push(parseCardDocument(text, entry.path));
+        cards.push(parseCardDocument(cardTexts[index], entry.path));
       } catch {
         throw new HttpError(503, 'WORKSPACE_CARD_INVALID', 'Workspace contains an unreadable Knowledge Card.');
       }
@@ -516,11 +545,18 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
     const publishedTree = await loadTree(publishedCommit.treeSha);
     const base = await loadCardsAtTree(publishedTree, release.published_sha);
 
-    const artifactTexts = {};
-    for (const artifactPath of GENERATED_ARTIFACT_PATHS) {
-      const entry = base.entries.get(artifactPath);
-      artifactTexts[artifactPath] = await readEntry(entry, MAX_INDEX_BYTES, 'Generated artifact ' + artifactPath);
-    }
+    const artifactPairs = await mapConcurrent(
+      GENERATED_ARTIFACT_PATHS,
+      BLOB_READ_CONCURRENCY,
+      async (artifactPath) => {
+        const entry = base.entries.get(artifactPath);
+        return [
+          artifactPath,
+          await readEntry(entry, MAX_INDEX_BYTES, 'Generated artifact ' + artifactPath)
+        ];
+      }
+    );
+    const artifactTexts = Object.fromEntries(artifactPairs);
 
     try {
       validateReleaseBundle({ pointer, release, artifactTexts });

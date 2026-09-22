@@ -1,5 +1,6 @@
 import { createSign } from 'node:crypto';
 import { HttpError } from './http.js';
+import { fetchWithTimeout } from './upstream.js';
 
 export const GITHUB_API_VERSION = '2026-03-10';
 const GITHUB_API = 'https://api.github.com';
@@ -47,7 +48,8 @@ export function createInstallationTokenProvider({ config, fetchImpl = fetch, now
     const jwt = createGitHubAppJwt(config, now);
     let response;
     try {
-      response = await fetchImpl(
+      response = await fetchWithTimeout(
+        fetchImpl,
         `${GITHUB_API}/app/installations/${encodeURIComponent(config.githubInstallationId)}/access_tokens`,
         {
           method: 'POST',
@@ -80,7 +82,7 @@ export async function githubInstallationJson({ config, installationToken, fetchI
   const token = await installationToken();
   let response;
   try {
-    response = await fetchImpl(`${GITHUB_API}${path}${query}`, {
+    response = await fetchWithTimeout(fetchImpl, `${GITHUB_API}${path}${query}`, {
       headers: githubHeaders(token)
     });
   } catch {

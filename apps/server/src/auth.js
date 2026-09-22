@@ -7,6 +7,7 @@ import {
 import { GITHUB_API_VERSION, githubHeaders } from './github.js';
 import { HttpError, redirectResponse } from './http.js';
 import { assertSessionStore } from './session-store.js';
+import { fetchWithTimeout } from './upstream.js';
 
 const SESSION_COOKIE = '__Host-kc_session';
 const FLOW_COOKIE = '__Host-kc_oauth';
@@ -105,7 +106,7 @@ async function responseJson(response) {
 async function exchangeCode(config, code, verifier, fetchImpl) {
   let response;
   try {
-    response = await fetchImpl('https://github.com/login/oauth/access_token', {
+    response = await fetchWithTimeout(fetchImpl, 'https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -138,7 +139,7 @@ async function exchangeCode(config, code, verifier, fetchImpl) {
 async function githubIdentity(accessToken, fetchImpl) {
   let response;
   try {
-    response = await fetchImpl(`${GITHUB_API}/user`, {
+    response = await fetchWithTimeout(fetchImpl, `${GITHUB_API}/user`, {
       headers: githubHeaders(accessToken)
     });
   } catch {
@@ -160,7 +161,7 @@ export async function verifyWorkspaceEligibility(config, accessToken, fetchImpl 
   const url = `${GITHUB_API}/repos/${encodeURIComponent(config.workspaceOwner)}/${encodeURIComponent(config.workspaceRepo)}`;
   let response;
   try {
-    response = await fetchImpl(url, { headers: githubHeaders(accessToken) });
+    response = await fetchWithTimeout(fetchImpl, url, { headers: githubHeaders(accessToken) });
   } catch {
     throw new HttpError(503, 'AUTH_UPSTREAM_UNAVAILABLE', 'Workspace authorization could not be rechecked.');
   }
@@ -208,7 +209,8 @@ async function revokeUserToken(config, accessToken, fetchImpl) {
   const basic = Buffer.from(`${config.githubClientId}:${config.githubClientSecret}`, 'utf8').toString('base64');
   let response;
   try {
-    response = await fetchImpl(
+    response = await fetchWithTimeout(
+      fetchImpl,
       `${GITHUB_API}/applications/${encodeURIComponent(config.githubClientId)}/token`,
       {
         method: 'DELETE',
