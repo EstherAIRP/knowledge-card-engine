@@ -21,6 +21,7 @@
     "site:serve": "node apps/server/src/node-server.js",
     "generated:build": "node scripts/release-workspace.mjs build",
     "release:finalize": "node scripts/release-workspace.mjs finalize",
-    "release:validate": "node scripts/release-workspace.mjs validate"
+    "release:validate": "node scripts/release-workspace.mjs validate",
+    "ingest:github:handoff": "node scripts/ingest-github-handoff.mjs"
   }
 }

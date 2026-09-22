@@ -49,6 +49,14 @@ npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
 
 GitHub writer 的資料與 ownership 前置條件見 [ingestion.md](./ingestion.md) 與 [card-contract.md](./card-contract.md)。
 
+受控 Remote Ingest runner 使用：
+
+```bash
+npm run ingest:github:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.json
+```
+
+此 CLI 固定讀取 configured state root 下的 `ingestion/request.json`、`evidence.json`、`analysis.json`，不接受任意 handoff 路徑。沒有 evidence 時只準備 accepted evidence；已有 evidence 與 analysis 時才呼叫正式 writer。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
+
 ## 私人網站
 
 使用 `apps/server/.env.example` 建立 server-side environment 後，可啟動 Node adapter：
@@ -76,8 +84,9 @@ Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards 與 accepted source state。
 - `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
+- `.github/workflows/ingest-workspace.yml`：Workspace `ingest/*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 執行 accepted-evidence prepare 或 writer apply，並以 stale guard 與 changed-path allowlist 限制寫入。
 
-Reusable workflow 只需要 `contents: read`，並 checkout Workspace 與指定 engine SHA；私人 Workspace 的 workflow pin 必須和 `engine.lock.json` 一致。
+Workspace 的 validation、release 與 ingestion 薄層 workflow 都必須用完整 SHA pin 同一個 `engine.lock.json.engine_commit`。Validation workflow 會逐一驗證三個 reusable workflow pin；release / ingestion runner 也會在執行時再次驗自己的 caller pin。
 
 ## 正式文件政策
 

@@ -80,6 +80,40 @@ Provider 取得 README 時會解碼全文並驗證內容 hash / byte count。REA
 
 執行環境失敗不能冒充來源不存在或來源不完整。
 
+## Remote Ingest handoff
+
+當互動環境不能安全執行目前 Workspace 鎖定的 Engine 時，Workspace 可使用 Engine 提供的 reusable `.github/workflows/ingest-workspace.yml` 作為受控遠端執行入口。Remote Ingest 不建立第二套 writer；最終 apply 仍呼叫 `applyAcceptedGitHubAnalysis(...)`。
+
+每個收錄任務使用獨立的 `ingest/*` Workspace 分支，並在 configured state root 下使用暫存目錄：
+
+```text
+state/ingestion/request.json
+state/ingestion/evidence.json
+state/ingestion/analysis.json
+```
+
+`request.json` 必須且只能包含：
+
+```json
+{
+  "schema_version": 1,
+  "provider": "github",
+  "source_url": "https://github.com/owner/repo"
+}
+```
+
+執行順序：
+
+1. Agent 在 `ingest/*` 分支提交 `request.json`。
+2. Workspace 薄層 workflow 呼叫 pinned Engine 的 reusable ingestion workflow；runner 使用 Node.js 24、驗證 Workspace 與 workflow pin，取得 accepted evidence，並只寫入 `evidence.json`。
+3. Agent 讀取該 accepted evidence，依目前 Workspace Taxonomy 與允許的私人背景產生 evidence-bound `analysis.json`，再提交至同一分支。
+4. 第二次 workflow 驗證 request/evidence/analysis binding，呼叫正式 writer，執行完整 collection / ownership / source-state validation。
+5. apply 成功後移除三個 handoff 暫存檔，只留下正式 Card 與 accepted source state；之後才建立或更新 PR。
+
+Remote Ingest workflow 必須執行 stale branch guard 與 changed-path allowlist。它不得接受任意 shell command、任意輸出路徑或未定義 provider。accepted evidence 內的 README 全文只存在私人 handoff 分支供分析使用，不寫入 accepted source state、不輸出到公開 Engine，也不得在 Actions log 展開。
+
+`state/ingestion/**` 不得合併到 Workspace `main`。如果 evidence 尚未產生、analysis 與 evidence 不匹配、workflow pin 不一致、runner 被阻擋或 writer 驗證失敗，正式 Card/source state 都不得以手工檔案寫入補救。
+
 ## Analysis result contract
 
 Analysis provider 不屬於 ingestion。Engine 目前不固定任何特定 LLM 供應商。

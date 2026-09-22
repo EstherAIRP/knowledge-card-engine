@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node engine/scripts/validate-workspace.mjs workspace             --engine-repository=${{ inputs.engine_repository }}             --engine-commit=${{ inputs.engine_sha }}             --workflow-file=.github/workflows/validate.yml
+          node engine/scripts/validate-workspace.mjs workspace             --engine-repository=${{ inputs.engine_repository }}             --engine-commit=${{ inputs.engine_sha }}             --workflow-file=.github/workflows/release.yml --reusable-workflow=release-workspace.yml
           node engine/scripts/validate-cards.mjs workspace
           node engine/scripts/validate-source-state.mjs workspace
 

@@ -134,6 +134,19 @@ test('workflow reusable pin must match engine.lock.json', async () => {
     () => assertWorkflowPin(invalid, lock),
     (error) => error.code === 'WORKFLOW_PIN_COMMIT_MISMATCH'
   );
+
+  const ingest = `jobs:
+  ingest:
+    uses: EstherAIRP/knowledge-card-engine/.github/workflows/ingest-workspace.yml@1111111111111111111111111111111111111111
+`;
+  assert.deepEqual(assertWorkflowPin(ingest, lock, 'ingest-workspace.yml'), {
+    repository: 'EstherAIRP/knowledge-card-engine',
+    commit: lock.engine_commit
+  });
+  assert.throws(
+    () => assertWorkflowPin(ingest, lock, 'release-workspace.yml'),
+    (error) => error.code === 'WORKFLOW_PIN_INVALID'
+  );
 });
 
 test('missing configured directory fails closed', async () => {
