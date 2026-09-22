@@ -111,7 +111,7 @@ URL
 → Card + accepted source state persistence
 ```
 
-GitHub 以 repository metadata + README 為 accepted evidence。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 只有在結構證據可證明完整有序來源時接受；目前不以模型推測補足缺篇。
+GitHub 以 repository metadata + README 為 accepted evidence。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
 
 ### 來源證據
 
@@ -135,7 +135,9 @@ GitHub 與 Threads 正式收錄都必須取得並驗證 provider-specific accept
 
 ```text
 chore/ingest-* branch + request
-→ pinned Engine / Node.js 24 accepted evidence
+→ pinned Engine / Node.js 24 source verification
+→ optional Threads semantic handoff / digest-bound judgement
+→ accepted evidence
 → Agent 依 accepted evidence 產生 analysis
 → 同 branch 提交 analysis
 → pinned Engine writer apply + full validation
@@ -143,7 +145,9 @@ chore/ingest-* branch + request
 → PR
 ```
 
-Agent 只負責建立受控 request、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
+Threads 需要語意 continuation 判定時，runner 先把公開 root/candidate evidence 與 digest 寫入受控 handoff；Agent 只回填固定 contract 的 judgement。後續 run 必須重新取得 live source、重建候選並確認 digest 未變，再由 Engine 的 deterministic gate 決定能否形成 accepted evidence。
+
+Agent 只負責建立受控 request、必要時產生 digest-bound semantic judgement、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
 
 ## 6. 分析結果
 

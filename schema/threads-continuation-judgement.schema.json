@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EstherAIRP/knowledge-card-engine/schema/threads-continuation-judgement.schema.json",
+  "title": "Threads Continuation Judgement",
+  "description": "Canonical machine-readable output contract for Threads semantic continuation/root-only classifiers. Acceptance thresholds and evidence-dependent gates remain in trusted validation code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "selected_shortcodes",
+    "root_only",
+    "confidence",
+    "complete",
+    "rationale",
+    "candidate_labels"
+  ],
+  "properties": {
+    "selected_shortcodes": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/shortcode" }
+    },
+    "root_only": { "type": "boolean" },
+    "confidence": { "$ref": "#/$defs/confidence" },
+    "complete": { "type": "boolean" },
+    "rationale": { "type": "string", "maxLength": 1000 },
+    "candidate_labels": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/candidateLabel" }
+    }
+  },
+  "$defs": {
+    "shortcode": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "candidateLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shortcode", "label", "confidence"],
+      "properties": {
+        "shortcode": { "$ref": "#/$defs/shortcode" },
+        "label": { "enum": ["continuation", "followup", "unrelated", "uncertain"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    }
+  }
+}

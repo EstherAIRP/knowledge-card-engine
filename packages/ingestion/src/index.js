@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { classifyThreadsUrl, normalizeThreadsPostUrl, resolveThreadsUrl } from './threads/resolve-url.js';
-import { extractResolvedThreadsConversation } from './threads/conversation.js';
+import { extractResolvedThreadsConversationWithRecovery } from './threads/conversation-recovery.js';
+import { extractThreadsViaBrowser, resolveThreadsUrlViaBrowser } from './threads/browser-adapter.js';
 
 export const moduleId = 'ingestion';
 export const moduleKind = 'package';
@@ -483,26 +484,57 @@ function threadsDigestPart(part) {
 }
 
 function threadsEvidenceDigest(evidence) {
+  const thread = {
+    status: evidence.thread?.status,
+    total: evidence.thread?.total,
+    detected_parts: evidence.thread?.detected_parts,
+    verification: evidence.thread?.verification
+  };
+  if (evidence.thread?.verification === 'llm_assisted') {
+    thread.recovery = {
+      confidence: evidence.thread?.recovery?.confidence ?? null,
+      selected_shortcodes: evidence.thread?.recovery?.selected_shortcodes || [],
+      root_only: evidence.thread?.recovery?.root_only === true,
+      candidate_labels: evidence.thread?.recovery?.candidate_labels || [],
+      ranker: evidence.thread?.recovery?.ranker || null
+    };
+  }
   return sha256(JSON.stringify({
     source_identity: evidence.source_identity,
     canonical_url: evidence.canonical_url,
     author: evidence.author,
-    thread: {
-      status: evidence.thread?.status,
-      total: evidence.thread?.total,
-      detected_parts: evidence.thread?.detected_parts,
-      verification: evidence.thread?.verification
-    },
+    thread,
     parts: evidence.parts.map(threadsDigestPart),
     combined_text: evidence.combined_text
   }));
 }
 
+function findThreadsSemanticHandoff(error) {
+  let current = error;
+  for (let depth = 0; current && depth < 8; depth += 1) {
+    if (current.semantic_handoff) return current.semantic_handoff;
+    if (!current.cause || current.cause === current) break;
+    current = current.cause;
+  }
+  return null;
+}
+
 function mapThreadsProviderError(error) {
   if (error instanceof IngestionError) return error;
   const code = String(error?.code || '');
+  const semanticHandoff = findThreadsSemanticHandoff(error);
+  if (semanticHandoff) {
+    const wrapped = new IngestionError(
+      'THREADS_SEMANTIC_HANDOFF_REQUIRED',
+      'Threads structural evidence requires a semantic continuation judgement before accepted evidence can be produced.',
+      { provider_code: code || null }
+    );
+    wrapped.semantic_handoff = semanticHandoff;
+    wrapped.cause = error;
+    return wrapped;
+  }
   if (code.includes('INCOMPLETE') || code.includes('AMBIGUOUS')) {
-    return new IngestionError('SOURCE_INCOMPLETE', 'Threads source could not be proven complete from structural evidence.', { provider_code: code || null });
+    return new IngestionError('SOURCE_INCOMPLETE', 'Threads source could not be proven complete from accepted structural or semantic evidence.', { provider_code: code || null });
   }
   if (code.includes('MISMATCH') || code.includes('UNSAFE_REDIRECT')) {
     return new IngestionError('SOURCE_IDENTITY_MISMATCH', 'Threads source identity changed or left the trusted Threads origin.', { provider_code: code || null });
@@ -539,8 +571,37 @@ export function validateThreadsEvidence(evidence) {
     fail('SOURCE_IDENTITY_MISMATCH', 'Threads direct post request does not match the resolved input post.');
   }
   if (!Array.isArray(evidence.parts) || evidence.parts.length < 1) fail('SOURCE_INCOMPLETE', 'Threads evidence must contain at least one post.');
-  if (evidence.thread?.complete !== true || evidence.thread?.verification !== 'structural') fail('SOURCE_INCOMPLETE', 'Threads evidence is not structurally complete.');
-  if (!['SINGLE_POST', 'COMPLETE_THREAD'].includes(evidence.thread?.status)) fail('SOURCE_INCOMPLETE', 'Threads evidence thread status is not accepted.');
+  const verification = evidence.thread?.verification;
+  const structural = verification === 'structural';
+  const inferred = verification === 'llm_assisted';
+  if (evidence.thread?.complete !== true || (!structural && !inferred)) fail('SOURCE_INCOMPLETE', 'Threads evidence is not complete under an accepted verification method.');
+  const acceptedStatuses = structural
+    ? ['SINGLE_POST', 'COMPLETE_THREAD']
+    : ['INFERRED_SINGLE_POST_HIGH_CONFIDENCE', 'INFERRED_THREAD_HIGH_CONFIDENCE'];
+  if (!acceptedStatuses.includes(evidence.thread?.status)) fail('SOURCE_INCOMPLETE', 'Threads evidence thread status is not accepted for its verification method.');
+  if (inferred) {
+    const recovery = evidence.thread?.recovery;
+    if (!recovery || !Number.isFinite(recovery.confidence) || recovery.confidence < 0.9 || recovery.confidence > 1) {
+      fail('SOURCE_INCOMPLETE', 'Threads semantic recovery confidence is invalid or below the acceptance threshold.');
+    }
+    if (typeof recovery.root_only !== 'boolean' || !Array.isArray(recovery.selected_shortcodes) || !Array.isArray(recovery.candidate_labels)) {
+      fail('SOURCE_INCOMPLETE', 'Threads semantic recovery metadata is incomplete.');
+    }
+    if (!recovery.ranker || !['agent_semantic_handoff', 'openai_compatible_chat'].includes(recovery.ranker.method)) {
+      fail('SOURCE_INCOMPLETE', 'Threads semantic recovery ranker provenance is invalid.');
+    }
+    if (evidence.extraction?.inferred !== true) fail('SOURCE_INCOMPLETE', 'Threads semantic evidence must be marked as inferred.');
+    if (recovery.root_only) {
+      if (evidence.thread.status !== 'INFERRED_SINGLE_POST_HIGH_CONFIDENCE' || evidence.parts.length !== 1 || recovery.selected_shortcodes.length !== 0) {
+        fail('SOURCE_INCOMPLETE', 'Threads root-only semantic recovery is inconsistent.');
+      }
+    } else {
+      const selected = evidence.parts.slice(1).map((part) => part.shortcode);
+      if (evidence.thread.status !== 'INFERRED_THREAD_HIGH_CONFIDENCE' || selected.length < 1 || JSON.stringify(selected) !== JSON.stringify(recovery.selected_shortcodes)) {
+        fail('SOURCE_INCOMPLETE', 'Threads semantic continuation selection does not match accepted parts.');
+      }
+    }
+  }
   if (!Number.isInteger(evidence.thread?.total) || evidence.thread.total !== evidence.parts.length) fail('SOURCE_INCOMPLETE', 'Threads evidence thread total does not match parts.');
   if (!Number.isInteger(evidence.thread?.detected_parts) || evidence.thread.detected_parts !== evidence.parts.length) fail('SOURCE_INCOMPLETE', 'Threads evidence detected part count does not match parts.');
   if (!Number.isInteger(evidence.thread?.input_index) || evidence.thread.input_index < 1 || evidence.thread.input_index > evidence.parts.length) fail('SOURCE_INCOMPLETE', 'Threads evidence input index is invalid.');
@@ -548,7 +609,7 @@ export function validateThreadsEvidence(evidence) {
   if (typeof evidence.author !== 'string' || !evidence.author.trim()) fail('SOURCE_INCOMPLETE', 'Threads evidence author is missing.');
 
   const root = evidence.parts[0];
-  if (evidence.parts.length === 1 && root?.has_replies === true && evidence.extraction?.conversation_coverage_complete !== true) {
+  if (structural && evidence.parts.length === 1 && root?.has_replies === true && evidence.extraction?.conversation_coverage_complete !== true) {
     fail('SOURCE_INCOMPLETE', 'Threads root post reports replies but conversation coverage is not proven complete.');
   }
   for (let index = 0; index < evidence.parts.length; index += 1) {
@@ -596,7 +657,11 @@ export async function fetchThreadsEvidence(rawUrl, {
   apiExtractor = null,
   browserExtractor = null,
   apiConversationExtractor = null,
-  browserConversationExtractor = null
+  browserConversationExtractor = null,
+  browserFallback = false,
+  browserOptions = {},
+  continuationRanker = null,
+  continuationCandidates = null
 } = {}) {
   if (typeof fetchImpl !== 'function') fail('INGESTION_EXECUTION_FAILED', 'No fetch implementation is available for Threads source verification.');
   if (Number.isNaN(Date.parse(capturedAt))) fail('SOURCE_CAPTURE_TIME_INVALID', 'capturedAt must be a valid ISO timestamp.');
@@ -604,19 +669,42 @@ export async function fetchThreadsEvidence(rawUrl, {
   if (requested.provider !== 'threads') fail('SOURCE_PROVIDER_UNSUPPORTED', 'Threads provider only accepts threads.com or threads.net URLs.');
 
   try {
+    const effectiveUrlBrowserResolver = urlBrowserResolver || (browserFallback
+      ? async (url) => resolveThreadsUrlViaBrowser(url, browserOptions)
+      : null);
     const resolved = await resolveThreadsUrl(requested.canonicalUrl, {
       fetchImpl,
       timeoutMs,
       maxRedirects,
-      browserResolver: urlBrowserResolver
+      browserResolver: effectiveUrlBrowserResolver
     });
-    const source = await extractResolvedThreadsConversation(resolved.canonical_url, {
+
+    const browserCache = new Map();
+    const getBrowserResult = async (url) => {
+      if (!browserCache.has(url)) {
+        browserCache.set(url, extractThreadsViaBrowser(url, browserOptions));
+      }
+      return browserCache.get(url);
+    };
+    const effectiveBrowserExtractor = browserExtractor || (browserFallback
+      ? async ({ canonical_url: canonicalUrl, shortcode }) => {
+          const result = await getBrowserResult(canonicalUrl);
+          return result.posts.find((post) => post?.shortcode === shortcode) || null;
+        }
+      : null);
+    const effectiveBrowserConversationExtractor = browserConversationExtractor || (browserFallback
+      ? async ({ canonical_url: canonicalUrl }) => getBrowserResult(canonicalUrl)
+      : null);
+
+    const source = await extractResolvedThreadsConversationWithRecovery(resolved.canonical_url, {
       fetchImpl,
       timeoutMs,
       apiExtractor,
-      browserExtractor,
+      browserExtractor: effectiveBrowserExtractor,
       apiConversationExtractor,
-      browserConversationExtractor,
+      browserConversationExtractor: effectiveBrowserConversationExtractor,
+      continuationRanker,
+      continuationCandidates,
       requireComplete: true
     });
     if (!source?.source_identity?.startsWith('threads:') || source.source_identity.startsWith('threads-id:') || !source.root_shortcode) {
@@ -647,14 +735,16 @@ export async function fetchThreadsEvidence(rawUrl, {
         complete: true,
         confidence: source.thread.confidence,
         indicator: source.thread.indicator || null,
-        verification: 'structural'
+        verification: source.thread.verification || 'structural',
+        ...(source.thread.recovery ? { recovery: source.thread.recovery } : {})
       },
       parts,
       combined_text: parts.map((part) => part.text).filter(Boolean).join('\n\n'),
       extraction: {
         method: source.extraction?.method || 'unknown',
         conversation_complete: true,
-        conversation_coverage_complete: Boolean(source.extraction?.conversation_coverage_complete)
+        conversation_coverage_complete: Boolean(source.extraction?.conversation_coverage_complete),
+        inferred: Boolean(source.extraction?.inferred)
       }
     };
     evidence.evidence_digest = threadsEvidenceDigest(evidence);
@@ -731,7 +821,16 @@ export function buildThreadsSourceState(evidence, { cardId, cardPath }) {
     thread: {
       status: evidence.thread.status,
       total: evidence.thread.total,
-      verification: evidence.thread.verification
+      verification: evidence.thread.verification,
+      ...(evidence.thread.recovery ? {
+        recovery: {
+          confidence: evidence.thread.recovery.confidence,
+          selected_shortcodes: evidence.thread.recovery.selected_shortcodes || [],
+          root_only: evidence.thread.recovery.root_only === true,
+          candidate_labels: evidence.thread.recovery.candidate_labels || [],
+          ranker: evidence.thread.recovery.ranker || null
+        }
+      } : {})
     },
     parts: evidence.parts.map(threadsStatePart),
     card_id: cardId,
@@ -746,7 +845,15 @@ export function validateThreadsSourceState(state) {
   if (Number.isNaN(Date.parse(state.captured_at || ''))) fail('SOURCE_STATE_INVALID', 'Threads source state captured_at is invalid.');
   if (!/^[0-9a-f]{64}$/.test(state.evidence_digest || '')) fail('SOURCE_STATE_INVALID', 'Threads source state evidence digest is invalid.');
   if (!state.author || !state.card_id || !state.card_path) fail('SOURCE_STATE_INVALID', 'Threads source state is incomplete.');
-  if (!['SINGLE_POST', 'COMPLETE_THREAD'].includes(state.thread?.status) || state.thread?.verification !== 'structural') fail('SOURCE_STATE_INVALID', 'Threads source state thread verification is invalid.');
+  const structuralState = state.thread?.verification === 'structural' && ['SINGLE_POST', 'COMPLETE_THREAD'].includes(state.thread?.status);
+  const inferredState = state.thread?.verification === 'llm_assisted' && ['INFERRED_SINGLE_POST_HIGH_CONFIDENCE', 'INFERRED_THREAD_HIGH_CONFIDENCE'].includes(state.thread?.status);
+  if (!structuralState && !inferredState) fail('SOURCE_STATE_INVALID', 'Threads source state thread verification is invalid.');
+  if (inferredState) {
+    const recovery = state.thread?.recovery;
+    if (!recovery || !Number.isFinite(recovery.confidence) || recovery.confidence < 0.9 || typeof recovery.root_only !== 'boolean' || !Array.isArray(recovery.selected_shortcodes) || !Array.isArray(recovery.candidate_labels) || !recovery.ranker) {
+      fail('SOURCE_STATE_INVALID', 'Threads source state semantic recovery provenance is invalid.');
+    }
+  }
   if (!Number.isInteger(state.thread?.total) || state.thread.total < 1 || !Array.isArray(state.parts) || state.parts.length !== state.thread.total) fail('SOURCE_STATE_INVALID', 'Threads source state part count is invalid.');
   for (let index = 0; index < state.parts.length; index += 1) {
     const part = state.parts[index];
