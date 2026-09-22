@@ -10,7 +10,7 @@
 
 ## 開工前
 
-1. 先讀 README、AGENTS、[docs/index.md](./docs/index.md) 及本次相關程式。
+1. 先讀 README、AGENTS、[`prompts/RUNTIME.md`](./prompts/RUNTIME.md)、[docs/index.md](./docs/index.md) 及本次相關程式。
 2. 確認 `main`、既有分支、PR 與相關修改，避免覆蓋或重複開發。
 3. 以目前 Schema、runtime、tests 與正式規格交叉確認行為；若彼此衝突，先把衝突視為缺陷處理，不自行猜測。
 
