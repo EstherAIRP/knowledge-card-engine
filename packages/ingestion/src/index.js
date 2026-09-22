@@ -535,6 +535,9 @@ export function validateThreadsEvidence(evidence) {
     fail('SOURCE_IDENTITY_MISMATCH', 'Threads evidence resolved_input_url is invalid.');
   }
   if (evidence.input_shortcode !== resolvedInput.shortcode) fail('SOURCE_IDENTITY_MISMATCH', 'Threads evidence input shortcode does not match resolved input URL.');
+  if (requested.inputKind === 'post' && requested.shortcode !== resolvedInput.shortcode) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Threads direct post request does not match the resolved input post.');
+  }
   if (!Array.isArray(evidence.parts) || evidence.parts.length < 1) fail('SOURCE_INCOMPLETE', 'Threads evidence must contain at least one post.');
   if (evidence.thread?.complete !== true || evidence.thread?.verification !== 'structural') fail('SOURCE_INCOMPLETE', 'Threads evidence is not structurally complete.');
   if (!['SINGLE_POST', 'COMPLETE_THREAD'].includes(evidence.thread?.status)) fail('SOURCE_INCOMPLETE', 'Threads evidence thread status is not accepted.');
@@ -564,6 +567,15 @@ export function validateThreadsEvidence(evidence) {
   }
   if (`threads:${root.shortcode}` !== evidence.source_identity || root.canonical_url !== evidence.canonical_url) {
     fail('SOURCE_IDENTITY_MISMATCH', 'Threads evidence root post does not match source identity.');
+  }
+  const inputMatches = evidence.parts
+    .map((part, index) => part.shortcode === evidence.input_shortcode ? index + 1 : null)
+    .filter(Boolean);
+  if (inputMatches.length !== 1) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Threads evidence resolved input post must appear exactly once in the accepted conversation.');
+  }
+  if (evidence.thread.input_index !== inputMatches[0]) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Threads evidence input_index does not match the resolved input post position.');
   }
   const combinedText = evidence.parts.map((part) => part.text).filter(Boolean).join('\n\n');
   if (evidence.combined_text !== combinedText) fail('SOURCE_INCOMPLETE', 'Threads evidence combined_text does not match ordered parts.');
