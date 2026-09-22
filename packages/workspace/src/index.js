@@ -206,16 +206,25 @@ export function assertEngineCompatibility(engineLock, {
   }
 }
 
-export function assertWorkflowPin(workflowText, engineLock) {
+export function assertWorkflowPin(workflowText, engineLock, reusableWorkflow = 'validate-workspace.yml') {
   if (typeof workflowText !== 'string' || !workflowText.trim()) {
     fail('WORKFLOW_PIN_MISSING', 'Workspace workflow content is required to validate the engine pin.');
   }
-  const pattern = /^\s*uses:\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/\.github\/workflows\/validate-workspace\.yml@([0-9a-f]{40})\s*$/gm;
+  if (typeof reusableWorkflow !== 'string' || !/^[A-Za-z0-9_.-]+\.yml$/.test(reusableWorkflow)) {
+    fail('WORKFLOW_PIN_TARGET_INVALID', 'Reusable workflow name must be a .yml file name.');
+  }
+  const escapedWorkflow = reusableWorkflow.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    '^\\s*uses:\\s*([A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+)\\/\\.github\\/workflows\\/' +
+      escapedWorkflow +
+      '@([0-9a-f]{40})\\s*$',
+    'gm'
+  );
   const matches = [...workflowText.matchAll(pattern)];
   if (matches.length !== 1) {
     fail(
       'WORKFLOW_PIN_INVALID',
-      `Expected exactly one validate-workspace reusable workflow pin, found ${matches.length}.`
+      `Expected exactly one ${reusableWorkflow} reusable workflow pin, found ${matches.length}.`
     );
   }
   const [, repository, commit] = matches[0];
