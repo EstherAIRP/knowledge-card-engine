@@ -22,6 +22,7 @@ const requiredFiles = [
   'docs/generated-data.md',
   'docs/release.md',
   'docs/private-site.md',
+  'prompts/RUNTIME.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
   'schema/knowledge-card.schema.json',
@@ -81,6 +82,7 @@ const documentationFiles = [
     .map((entry) => 'docs/' + entry.name),
   'schema/README.md',
   'prompts/README.md',
+  'prompts/RUNTIME.md',
   'defaults/README.md',
   ...['README.md', 'config/README.md', 'content/knowledge/README.md', 'profile/README.md', 'projects/README.md', 'state/README.md', 'data/README.md', 'releases/README.md']
     .map((relative) => 'examples/synthetic-workspace/' + relative)
