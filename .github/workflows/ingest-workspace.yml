@@ -1,0 +1,142 @@
+name: Ingest Workspace
+
+on:
+  workflow_call:
+    inputs:
+      engine_repository:
+        description: Engine repository pinned by engine.lock.json
+        required: true
+        type: string
+      engine_sha:
+        description: Full engine commit SHA pinned by engine.lock.json
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: knowledge-card-ingest-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require dedicated ingestion branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF_NAME" in
+            ingest/*) ;;
+            *) echo "Remote ingestion only runs on ingest/* branches." >&2; exit 1 ;;
+          esac
+
+      - name: Checkout workspace branch
+        uses: actions/checkout@v5
+        with:
+          path: workspace
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Checkout pinned engine
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.engine_repository }}
+          ref: ${{ inputs.engine_sha }}
+          path: engine
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+
+      - name: Install engine dependencies
+        working-directory: engine
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate workspace and ingestion workflow pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/validate-workspace.mjs workspace             --engine-repository=${{ inputs.engine_repository }}             --engine-commit=${{ inputs.engine_sha }}             --workflow-file=.github/workflows/ingest.yml             --reusable-workflow=ingest-workspace.yml
+          node engine/scripts/validate-cards.mjs workspace
+          node engine/scripts/validate-source-state.mjs workspace
+
+      - name: Capture branch source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "sha=$(git -C workspace rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Run GitHub ingestion handoff
+        id: handoff
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RESULT_FILE="$RUNNER_TEMP/knowledge-card-ingest-result.json"
+          node engine/scripts/ingest-github-handoff.mjs workspace --result-file="$RESULT_FILE"
+          echo "result_file=$RESULT_FILE" >> "$GITHUB_OUTPUT"
+          STAGE="$(node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(r.stage || "");' "$RESULT_FILE")"
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Guard and persist handoff changes
+        if: steps.handoff.outputs.stage != 'waiting-for-analysis'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULT_FILE="${{ steps.handoff.outputs.result_file }}"
+          mapfile -t ALLOWED < <(node -e '
+            const fs=require("fs");
+            const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+            for (const p of r.allowed_changed_paths || []) console.log(p);
+          ' "$RESULT_FILE")
+          mapfile -t CHANGED < <(git -C workspace status --porcelain=v1 --untracked-files=all | sed -E 's/^.. //')
+
+          if (( ${#CHANGED[@]} == 0 )); then
+            echo "Ingestion handoff produced no repository changes." >&2
+            exit 1
+          fi
+
+          for changed in "${CHANGED[@]}"; do
+            ok=false
+            for allowed in "${ALLOWED[@]}"; do
+              if [[ "$changed" == "$allowed" ]]; then ok=true; break; fi
+            done
+            if [[ "$ok" != true ]]; then
+              echo "Remote ingestion changed forbidden path: $changed" >&2
+              exit 1
+            fi
+          done
+
+          REMOTE_SHA="$(git -C workspace ls-remote origin "refs/heads/$GITHUB_REF_NAME" | awk '{print $1}')"
+          if [[ "$REMOTE_SHA" != "${{ steps.source.outputs.sha }}" ]]; then
+            echo "Stale ingestion run: remote branch is $REMOTE_SHA, expected ${{ steps.source.outputs.sha }}" >&2
+            exit 1
+          fi
+
+          cd workspace
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if [[ "${{ steps.handoff.outputs.stage }}" == "prepared" ]]; then
+            git commit -m "chore: prepare GitHub ingestion evidence"
+          else
+            git commit -m "feat: apply GitHub ingestion"
+          fi
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      - name: Validate applied result
+        if: steps.handoff.outputs.stage == 'applied'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/validate-cards.mjs workspace
+          node engine/scripts/validate-source-state.mjs workspace
