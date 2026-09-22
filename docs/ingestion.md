@@ -113,6 +113,7 @@ Accepted evidence 必須符合：
 - `provider: threads`、`accepted: true`、`source_type: article`。
 - 根貼文 canonical URL 與 `threads:{root_shortcode}` 完全一致。
 - `requested_url` 與 `resolved_input_url` 可追溯本次輸入與實際貼文。
+- `resolved_input_url` / `input_shortcode` 指向的實際輸入貼文必須在 accepted `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接 post request 不得解析成另一個 shortcode。
 - `thread.complete: true` 且 `thread.verification: structural`。
 - thread status 只能是 `SINGLE_POST` 或 `COMPLETE_THREAD`。
 - `thread.total`、`detected_parts` 與 `parts.length` 一致。
