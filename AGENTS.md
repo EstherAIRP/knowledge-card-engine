@@ -18,7 +18,7 @@
 
 - 只修改本次任務必要範圍；保留與本次任務無關的既有修改。
 - Knowledge Card 必須遵守 [docs/card-contract.md](./docs/card-contract.md)。
-- GitHub 收錄必須遵守 [docs/ingestion.md](./docs/ingestion.md)；不得以 URL slug、repo 名稱或模型記憶取代 accepted evidence。
+- GitHub / Threads 收錄必須遵守 [docs/ingestion.md](./docs/ingestion.md)；不得以 URL slug、share token、時間接近、repo 名稱或模型記憶取代 accepted evidence。Threads 未證明完整串文時必須 fail closed。
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` override 或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Card update；identity / canonical URL 衝突必須 fail closed。
 - accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。
