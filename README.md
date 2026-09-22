@@ -10,13 +10,13 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
 - GitHub Repository canonicalization、repository metadata + README accepted evidence。
-- Threads post/share URL resolution、根貼文 identity、結構完整串文 accepted evidence。
+- Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
 - 與 accepted evidence digest 綁定的 analysis result 契約。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
-- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 GitHub 或 Threads accepted evidence，並在 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
+- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 GitHub 或 Threads accepted evidence；Threads 需要語意 continuation 判定時先建立 digest-bound handoff，再於 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 - Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。
@@ -24,7 +24,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Authenticated `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
 - Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
 
-目前尚未實作 GitHub / Threads 之外的來源 provider、Threads 的 LLM-assisted continuation recovery、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
+目前尚未實作 GitHub / Threads 之外的來源 provider、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
 
 ## 模組責任
 
@@ -81,7 +81,7 @@ npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --anal
 npm run ingest:threads -- /path/to/workspace https://threads.com/share/token --analysis-file=analysis.json
 ```
 
-CLI 可即時取得 provider-specific evidence，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 只有在結構證據可證明完整時才接受。密鑰不得寫入 repository。
+CLI 可即時取得 provider-specific evidence，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 必須通過 strict structural verification，或在限定 continuation uncertainty 下通過受控語意 judgement 與 deterministic acceptance gates。密鑰不得寫入 repository。
 
 啟動私人 Node HTTP adapter：
 
