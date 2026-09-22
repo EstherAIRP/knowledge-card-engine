@@ -95,20 +95,19 @@ Workspace 不追隨 engine `main`。升級 engine 時必須以新的不可變 co
 
 ## GitHub Actions engine pin
 
-Engine 提供 reusable workflow：`.github/workflows/validate-workspace.yml`。Workspace 的薄層 workflow 必須用完整 SHA 引用：
+Engine 提供三個 Workspace reusable workflow：
+
+- `.github/workflows/validate-workspace.yml`
+- `.github/workflows/release-workspace.yml`
+- `.github/workflows/ingest-workspace.yml`
+
+Workspace 對應的 validation、release 與 ingestion 薄層 workflow 都必須以完整 SHA 引用，且三者必須和 `engine.lock.json.engine_commit` 完全一致。例如：
 
 ```yaml
-uses: EstherAIRP/knowledge-card-engine/.github/workflows/validate-workspace.yml@<40-sha>
+uses: EstherAIRP/knowledge-card-engine/.github/workflows/ingest-workspace.yml@<40-sha>
 ```
 
-Workspace 驗證會同時核對：
-
-- workflow `uses @SHA`。
-- `engine.lock.json.engine_repository` / `engine_commit`。
-- reusable workflow input 的 `engine_repository` / `engine_sha`。
-- 實際 checkout 的 engine commit。
-
-repository 與 SHA 必須一致。
+Workflow pin 驗證同時核對 reusable workflow 名稱、repository 與 commit。Validation runner 會驗三個 Workspace caller；release 與 ingestion runner 也會再次驗證自己的 caller pin與實際 checkout 的 Engine SHA。任何 repository、workflow 名稱或 SHA 不一致都 fail closed。
 
 ## 驗證命令
 
@@ -118,7 +117,8 @@ repository 與 SHA 必須一致。
 npm run workspace:validate -- /path/to/workspace \
   --engine-repository=EstherAIRP/knowledge-card-engine \
   --engine-commit=<40-sha> \
-  --workflow-file=.github/workflows/validate.yml
+  --workflow-file=.github/workflows/ingest.yml \
+  --reusable-workflow=ingest-workspace.yml
 ```
 
 完整 Workspace CI 還會執行 Card / Taxonomy 與 accepted source-state 驗證；詳見 [development.md](./development.md)。
