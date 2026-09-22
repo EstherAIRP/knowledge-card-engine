@@ -125,6 +125,24 @@ GitHub 正式收錄必須取得並驗證 accepted evidence。來源身分、cano
 
 網路、GitHub API、rate limit、授權或執行環境問題必須和明確的來源失敗分開回報。無法完成 accepted evidence 驗證時，不得建立／更新正式 Card，也不得推進 accepted source state。
 
+### 執行環境與 Remote Ingest
+
+若目前互動環境無法 checkout 私人 Workspace、無法執行 Workspace 鎖定 Engine 所要求的 Node.js 版本，或缺少其他必要 runtime 能力，不得因此手工建立／更新 GitHub Card，也不得把限制描述成來源不可用。
+
+當目前 Workspace 已配置核准的 Remote Ingest workflow 時，改走 Repository-defined handoff：
+
+```text
+ingest/* branch + request
+→ pinned Engine / Node.js 24 accepted evidence
+→ Agent 依 accepted evidence 產生 analysis
+→ 同 branch 提交 analysis
+→ pinned Engine writer apply + full validation
+→ 清除 handoff 暫存資料
+→ PR
+```
+
+Agent 只負責建立受控 request、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
+
 ## 6. 分析結果
 
 Analysis 與 ingestion 是不同責任層。Engine 不固定特定模型供應商，但正式 analysis result 必須符合目前鎖定 Engine 的 analysis contract。
