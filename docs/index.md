@@ -14,4 +14,4 @@
 8. [私人網站與授權](./private-site.md)：GitHub App 登入、session、授權、Card/search/graph/release API 與唯讀 UI。
 9. [開發與驗證](./development.md)：Node/npm、CLI、CI、Workspace release workflow 與文件治理。
 
-目前可用來源 provider 是 GitHub Repository 與 Threads；Threads 只接受可由結構證據證明完整的來源。私人網站可在已驗證 release 上提供 Card list/detail、搜尋、圖譜與 release version。
+目前可用來源 provider 是 GitHub Repository 與 Threads；Threads 優先使用結構證據，並可在限定 continuation uncertainty 下使用受控高信心語意復原。私人網站可在已驗證 release 上提供 Card list/detail、搜尋、圖譜與 release version。
