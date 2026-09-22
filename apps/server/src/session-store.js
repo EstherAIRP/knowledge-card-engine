@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { fetchWithTimeout } from './upstream.js';
 
 const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 
@@ -57,7 +58,7 @@ function restConfig(env) {
 async function redisCommand(config, command, fetchImpl) {
   let response;
   try {
-    response = await fetchImpl(config.url, {
+    response = await fetchWithTimeout(fetchImpl, config.url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.token}`,
