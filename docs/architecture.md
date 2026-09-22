@@ -22,15 +22,17 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 支援來源共用的完整資料流是：
 
 ```text
-GitHub URL
-→ canonical repository identity
-→ repository metadata + README accepted evidence
+source URL
+→ provider-specific resolution / canonical identity
+→ provider-specific accepted evidence
 → evidence-bound analysis result
 → identity / canonical URL create-or-update resolution
 → ownership-safe Card candidate
 → full Card collection validation
 → Card + accepted source state persistence
 ```
+
+GitHub 以 repository metadata + README 建立 accepted evidence；Threads 先解析到具體貼文，再依 reply/root 關係與可用的 n/N 證據重建根貼文及完整有序串文。Threads share token、中間篇或最後一篇都不能直接成為正式來源身分。
 
 Card 與 source state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。writer 使用暫存檔寫入；若 Card 已替換但 source-state replacement 失敗，會回復 Card，避免只推進其中一側。
 
