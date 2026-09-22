@@ -9,13 +9,13 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Node.js 24 / npm workspaces 工具鏈。
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository URL canonicalization、repository metadata + README accepted evidence。
+- GitHub Repository canonicalization、repository metadata + README accepted evidence。\n- Threads post/share URL resolution、根貼文 identity、結構完整串文 accepted evidence。
 - 與 accepted evidence digest 綁定的 analysis result 契約。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
-- GitHub accepted source state 與 Card 對應驗證。
+- GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
-- GitHub Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 accepted evidence，並在 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
+- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 GitHub 或 Threads accepted evidence，並在 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 - Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。
@@ -23,14 +23,14 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Authenticated `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
 - Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
 
-目前尚未實作其他來源 provider、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
+目前尚未實作 GitHub / Threads 之外的來源 provider、Threads 的 LLM-assisted continuation recovery、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
 
 ## 模組責任
 
 - `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
 - `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
-- `packages/ingestion`：來源 canonicalization、GitHub evidence、create/update resolution 與 GitHub source-state contract。
+- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、create/update resolution 與 provider-specific source-state contract。
 - `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
@@ -49,7 +49,7 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Runtime 執行契約](./prompts/RUNTIME.md)
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
-- [GitHub 收錄契約](./docs/ingestion.md)
+- [來源收錄契約](./docs/ingestion.md)
 - [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
 - [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
@@ -73,13 +73,13 @@ npm run cards:validate -- /path/to/workspace
 npm run source-state:validate -- /path/to/workspace
 ```
 
-GitHub ingestion CLI：
+來源 ingestion CLI：
 
 ```bash
-npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json
+npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json\nnpm run ingest:threads -- /path/to/workspace https://threads.com/share/token --analysis-file=analysis.json
 ```
 
-CLI 可即時取得 GitHub metadata + README，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。需要 GitHub 授權時使用環境變數 `GITHUB_TOKEN`；密鑰不得寫入 repository。
+CLI 可即時取得 provider-specific evidence，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 只有在結構證據可證明完整時才接受。密鑰不得寫入 repository。
 
 啟動私人 Node HTTP adapter：
 
