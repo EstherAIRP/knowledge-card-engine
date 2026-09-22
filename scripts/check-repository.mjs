@@ -3,7 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
 import { loadCardDocuments, loadTaxonomyFile, validateCardCollection, parseCardDocument } from '../packages/core/src/index.js';
-import { validateGitHubSourceState } from '../packages/ingestion/src/index.js';
+import { validateAcceptedSourceState } from '../packages/ingestion/src/index.js';
 import { findCurrentOnlyDocumentationIssues } from './documentation-policy.mjs';
 
 const root = process.cwd();
@@ -32,6 +32,8 @@ const requiredFiles = [
   '.github/workflows/release-workspace.yml',
   '.github/workflows/ingest-workspace.yml',
   'scripts/ingest-github.mjs',
+  'scripts/ingest-threads.mjs',
+  'scripts/ingest-handoff.mjs',
   'scripts/ingest-github-handoff.mjs',
   'scripts/validate-source-state.mjs',
   'scripts/release-workspace.mjs',
@@ -60,6 +62,7 @@ const requiredFiles = [
   'apps/server/src/workspace-reader.js',
   'apps/server/src/node-server.js',
   'tests/remote-ingestion.test.mjs',
+  'tests/threads-ingestion.test.mjs',
   'tests/private-site.test.mjs',
   'tests/session-store.test.mjs',
   'tests/graph-release.test.mjs',
@@ -144,7 +147,7 @@ try {
   }
 
   const statePath = path.join(workspace.paths.state, 'sources/github/example--synthetic-example.json');
-  const state = validateGitHubSourceState(JSON.parse(fs.readFileSync(statePath, 'utf8')));
+  const state = validateAcceptedSourceState(JSON.parse(fs.readFileSync(statePath, 'utf8')));
   const cardPath = path.resolve(workspace.root, state.card_path);
   const card = parseCardDocument(fs.readFileSync(cardPath, 'utf8'), cardPath);
   if (card.data.id !== state.card_id) errors.push('Synthetic source state card_id does not match Card.');
@@ -166,5 +169,5 @@ if (errors.length) {
 
 console.log(
   'Repository check passed: ' + requiredFiles.length +
-  ' required files, Workspace/Card/Taxonomy contracts, GitHub ingestion, generated/release contracts, private site authorization, source state, and current-only documentation policy verified.'
+  ' required files, Workspace/Card/Taxonomy contracts, GitHub/Threads ingestion, generated/release contracts, private site authorization, source state, and current-only documentation policy verified.'
 );
