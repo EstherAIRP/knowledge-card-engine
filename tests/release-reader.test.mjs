@@ -107,7 +107,7 @@ async function fixture() {
   };
 }
 
-async function harness({ tamper = null, removePointer = false } = {}) {
+async function harness({ tamper = null, removePointer = false, blobDelayMs = 0 } = {}) {
   const data = await fixture();
   if (tamper) data.artifactTexts[tamper] += ' ';
 
@@ -123,6 +123,8 @@ async function harness({ tamper = null, removePointer = false } = {}) {
 
   let blobCounter = 0;
   const blobs = new Map();
+  let activeBlobReads = 0;
+  let maxActiveBlobReads = 0;
   function addBlob(text) {
     const sha = (++blobCounter).toString(16).padStart(40, '0');
     blobs.set(sha, text);
@@ -191,14 +193,26 @@ async function harness({ tamper = null, removePointer = false } = {}) {
     }
 
     const blobMatch = pathname.match(/\/repos\/example-owner\/example-workspace\/git\/blobs\/([0-9a-f]{40})$/u);
-    if (blobMatch && blobs.has(blobMatch[1])) return response(200, blob(blobs.get(blobMatch[1])));
+    if (blobMatch && blobs.has(blobMatch[1])) {
+      activeBlobReads += 1;
+      maxActiveBlobReads = Math.max(maxActiveBlobReads, activeBlobReads);
+      try {
+        if (blobDelayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, blobDelayMs));
+        }
+        return response(200, blob(blobs.get(blobMatch[1])));
+      } finally {
+        activeBlobReads -= 1;
+      }
+    }
 
     throw new Error('Unexpected GitHub route: ' + pathname + ' ' + (options.method || 'GET'));
   }
 
   return {
     reader: createWorkspaceRepositoryReader({ config, fetchImpl }),
-    data
+    data,
+    maxActiveBlobReads: () => maxActiveBlobReads
   };
 }
 
@@ -237,6 +251,13 @@ test('release-pinned reader keeps cards search graph and release on one publishe
   assert.equal(detail.revision, P);
   assert.ok(Array.isArray(detail.relations));
   assert.ok(Array.isArray(detail.concepts));
+});
+
+test('release reader bounds blob concurrency instead of serializing every private file read', async () => {
+  const h = await harness({ blobDelayMs: 5 });
+  await h.reader.listCards();
+  assert.ok(h.maxActiveBlobReads() > 1);
+  assert.ok(h.maxActiveBlobReads() <= 8);
 });
 
 test('manifest mismatch fails closed instead of mixing current Cards with stale indexes', async () => {
