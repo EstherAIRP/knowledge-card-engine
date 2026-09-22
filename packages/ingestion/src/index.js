@@ -696,7 +696,7 @@ function threadsStatePart(part) {
     root_post: part.root_post,
     text_sha256: sha256(part.text),
     text_bytes: Buffer.byteLength(part.text, 'utf8'),
-    media_sha256: sha256(JSON.stringify(part.media)),
+    media_sha256: sha256(JSON.stringify(threadsDigestPart(part).media)),
     references_sha256: sha256(JSON.stringify({
       quoted_post: part.quoted_post,
       reposted_post: part.reposted_post,
@@ -739,6 +739,10 @@ export function validateThreadsSourceState(state) {
   for (let index = 0; index < state.parts.length; index += 1) {
     const part = state.parts[index];
     if (part?.index !== index + 1 || !part?.shortcode || !part?.canonical_url) fail('SOURCE_STATE_INVALID', 'Threads source state part metadata is invalid.');
+    const partCanonical = canonicalizeSource(part.canonical_url);
+    if (partCanonical.provider !== 'threads' || partCanonical.inputKind !== 'post' || partCanonical.shortcode !== part.shortcode) {
+      fail('SOURCE_STATE_INVALID', 'Threads source state part canonical URL does not match its shortcode.');
+    }
     if (!/^[0-9a-f]{64}$/.test(part.text_sha256 || '') || !Number.isInteger(part.text_bytes) || part.text_bytes < 0) fail('SOURCE_STATE_INVALID', 'Threads source state text fingerprint is invalid.');
     if (!/^[0-9a-f]{64}$/.test(part.media_sha256 || '') || !/^[0-9a-f]{64}$/.test(part.references_sha256 || '')) fail('SOURCE_STATE_INVALID', 'Threads source state content fingerprint is invalid.');
   }
