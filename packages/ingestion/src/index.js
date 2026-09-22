@@ -459,6 +459,29 @@ function acceptedThreadsPart(part, index) {
   };
 }
 
+function stableThreadsMediaUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(String(value));
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return String(value);
+  }
+}
+
+function threadsDigestPart(part) {
+  return {
+    ...part,
+    media: (part.media || []).map((item) => ({
+      ...item,
+      url: stableThreadsMediaUrl(item.url),
+      thumbnail_url: stableThreadsMediaUrl(item.thumbnail_url)
+    }))
+  };
+}
+
 function threadsEvidenceDigest(evidence) {
   return sha256(JSON.stringify({
     source_identity: evidence.source_identity,
@@ -470,7 +493,7 @@ function threadsEvidenceDigest(evidence) {
       detected_parts: evidence.thread?.detected_parts,
       verification: evidence.thread?.verification
     },
-    parts: evidence.parts,
+    parts: evidence.parts.map(threadsDigestPart),
     combined_text: evidence.combined_text
   }));
 }
@@ -522,6 +545,9 @@ export function validateThreadsEvidence(evidence) {
   if (typeof evidence.author !== 'string' || !evidence.author.trim()) fail('SOURCE_INCOMPLETE', 'Threads evidence author is missing.');
 
   const root = evidence.parts[0];
+  if (evidence.parts.length === 1 && root?.has_replies === true && evidence.extraction?.conversation_coverage_complete !== true) {
+    fail('SOURCE_INCOMPLETE', 'Threads root post reports replies but conversation coverage is not proven complete.');
+  }
   for (let index = 0; index < evidence.parts.length; index += 1) {
     const part = evidence.parts[index];
     if (!part || part.index !== index + 1 || !part.shortcode || !part.canonical_url || !part.username) {
