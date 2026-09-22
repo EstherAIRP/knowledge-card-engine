@@ -2,12 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import {
-  assertGitHubEvidenceMatchesRequest,
-  fetchGitHubEvidence,
-  validateGitHubEvidence,
-  validateGitHubIngestionRequest
+  assertAcceptedEvidenceMatchesRequest,
+  fetchAcceptedEvidence,
+  validateAcceptedEvidence,
+  validateIngestionRequest
 } from '../packages/ingestion/src/index.js';
-import { applyAcceptedGitHubAnalysis } from '../packages/workspace/src/card-store.js';
+import { applyAcceptedSourceAnalysis } from '../packages/workspace/src/card-store.js';
 import { loadWorkspace } from '../packages/workspace/src/index.js';
 
 const HANDOFF_FILES = Object.freeze({
@@ -70,7 +70,7 @@ async function assertHandoffDirectory(handoffDir) {
   try {
     entries = await fs.readdir(handoffDir, { withFileTypes: true });
   } catch (error) {
-    if (error?.code === 'ENOENT') fail('REMOTE_INGEST_REQUEST_MISSING', 'GitHub ingestion handoff directory does not exist.');
+    if (error?.code === 'ENOENT') fail('REMOTE_INGEST_REQUEST_MISSING', 'Source ingestion handoff directory does not exist.');
     throw error;
   }
   for (const entry of entries) {
@@ -91,7 +91,7 @@ async function writeResult(resultFile, result) {
 
 const args = parseArgs(process.argv.slice(2));
 if (!args.workspaceRoot) {
-  console.error('Usage: npm run ingest:github:handoff -- <workspace-root> [--result-file=<path>]');
+  console.error('Usage: npm run ingest:handoff -- <workspace-root> [--result-file=<path>]');
   process.exit(2);
 }
 
@@ -103,7 +103,7 @@ try {
   const requestPath = path.join(handoffDir, HANDOFF_FILES.request);
   const evidencePath = path.join(handoffDir, HANDOFF_FILES.evidence);
   const analysisPath = path.join(handoffDir, HANDOFF_FILES.analysis);
-  const request = validateGitHubIngestionRequest(
+  const request = validateIngestionRequest(
     await readJson(requestPath, 'REMOTE_INGEST_REQUEST_MISSING')
   );
 
@@ -120,10 +120,10 @@ try {
     if (hasAnalysis) {
       fail('REMOTE_INGEST_HANDOFF_INVALID', 'analysis.json cannot exist before accepted evidence is prepared.');
     }
-    const evidence = await fetchGitHubEvidence(request.source_url, {
+    const evidence = await fetchAcceptedEvidence(request, {
       token: process.env.GITHUB_TOKEN || null
     });
-    assertGitHubEvidenceMatchesRequest(request, evidence);
+    assertAcceptedEvidenceMatchesRequest(request, evidence);
     await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2) + '\n', 'utf8');
     result = {
       status: 'ok',
@@ -134,10 +134,10 @@ try {
       allowed_changed_paths: [handoffPaths.evidence]
     };
   } else {
-    const evidence = validateGitHubEvidence(
+    const evidence = validateAcceptedEvidence(
       await readJson(evidencePath, 'REMOTE_INGEST_EVIDENCE_MISSING')
     );
-    assertGitHubEvidenceMatchesRequest(request, evidence);
+    assertAcceptedEvidenceMatchesRequest(request, evidence);
 
     if (!hasAnalysis) {
       result = {
@@ -150,7 +150,7 @@ try {
       };
     } else {
       const analysis = await readJson(analysisPath, 'REMOTE_INGEST_ANALYSIS_MISSING');
-      const applied = await applyAcceptedGitHubAnalysis(workspace.root, evidence, analysis);
+      const applied = await applyAcceptedSourceAnalysis(workspace.root, evidence, analysis);
       await Promise.all([
         fs.rm(requestPath, { force: true }),
         fs.rm(evidencePath, { force: true }),
