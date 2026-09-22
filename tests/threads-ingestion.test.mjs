@@ -152,6 +152,43 @@ test('Threads provider rejects root-only evidence when the root reports replies 
   );
 });
 
+test('Threads evidence validator binds resolved input post to accepted parts and input_index', async () => {
+  const f = fixture();
+  const evidence = await fetchThreadsEvidence(f.shareUrl, {
+    fetchImpl: f.fetchImpl,
+    capturedAt: '2026-09-22T08:00:00Z'
+  });
+
+  const missingInput = structuredClone(evidence);
+  missingInput.resolved_input_url = 'https://threads.com/@alice/post/OUTSIDE';
+  missingInput.input_shortcode = 'OUTSIDE';
+  assert.throws(
+    () => validateThreadsEvidence(missingInput),
+    (error) => error.code === 'SOURCE_IDENTITY_MISMATCH'
+  );
+
+  const wrongIndex = structuredClone(evidence);
+  wrongIndex.thread.input_index = 1;
+  assert.throws(
+    () => validateThreadsEvidence(wrongIndex),
+    (error) => error.code === 'SOURCE_IDENTITY_MISMATCH'
+  );
+});
+
+test('Threads direct post evidence cannot resolve to a different requested post', async () => {
+  const f = fixture({ input: 'middle' });
+  const evidence = await fetchThreadsEvidence(f.middleUrl, {
+    fetchImpl: f.fetchImpl,
+    capturedAt: '2026-09-22T08:00:00Z'
+  });
+  const mismatched = structuredClone(evidence);
+  mismatched.requested_url = f.finalUrl;
+  assert.throws(
+    () => validateThreadsEvidence(mismatched),
+    (error) => error.code === 'SOURCE_IDENTITY_MISMATCH'
+  );
+});
+
 test('Threads evidence validator rejects content tampering', async () => {
   const f = fixture();
   const evidence = await fetchThreadsEvidence(f.shareUrl, {
