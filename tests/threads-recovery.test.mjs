@@ -6,7 +6,6 @@ import {
   resolveThreadsUrlViaBrowser
 } from '../packages/ingestion/src/threads/browser-adapter.js';
 import {
-  createThreadsSemanticHandoff,
   createThreadsSemanticHandoffCaptureRanker,
   createThreadsSemanticHandoffRanker
 } from '../packages/ingestion/src/threads/semantic-handoff.js';
@@ -286,67 +285,30 @@ test('semantic recovery produces llm_assisted accepted evidence with provenance'
   });
   const rootUrl = 'https://threads.com/@alice/post/SEMROOT2';
 
-  const bootstrap = createThreadsSemanticHandoff(
-    {
-      provider: 'threads',
-      canonical_url: rootUrl,
-      id: '3000',
-      shortcode: 'SEMROOT2',
-      username: 'alice',
-      text: '咒語放在留言',
-      timestamp: '2026-09-22T04:00:00Z',
-      media: [],
-      is_reply: false,
-      reply_to: null,
-      root_post: null,
-      has_replies: true
-    },
-    [
-      {
-        post: {
-          provider: 'threads',
-          canonical_url: 'https://threads.com/@alice/post/SEMCONT2',
-          id: '3001',
-          shortcode: 'SEMCONT2',
-          username: 'alice',
-          text: '這是留言中的正文。',
-          timestamp: '2026-09-22T04:01:00Z',
-          media: [],
-          is_reply: true,
-          reply_to: null,
-          root_post: null,
-          has_replies: false
-        },
-        shortcode: 'SEMCONT2',
-        delta_seconds: 60,
-        metadata_score: 0.83
-      },
-      {
-        post: {
-          provider: 'threads',
-          canonical_url: 'https://threads.com/@alice/post/SEMFOLLOW2',
-          id: '3002',
-          shortcode: 'SEMFOLLOW2',
-          username: 'alice',
-          text: '後續解釋。',
-          timestamp: '2026-09-22T05:00:00Z',
-          media: [],
-          is_reply: true,
-          reply_to: null,
-          root_post: null,
-          has_replies: false
-        },
-        shortcode: 'SEMFOLLOW2',
-        delta_seconds: 3600,
-        metadata_score: 0.68
-      }
-    ]
+  const html = `<!doctype html><html><body><script type="application/json">${JSON.stringify({ post: rootRaw })}</script></body></html>`;
+  const browserConversationExtractor = async () => ({
+    posts: [rootRaw, continuationRaw, followupRaw],
+    complete: false
+  });
+
+  let semanticHandoff = null;
+  await assert.rejects(
+    () => fetchThreadsEvidence(rootUrl, {
+      fetchImpl: async (url) => httpResponse({ status: 200, url: String(url), body: html }),
+      browserConversationExtractor,
+      continuationRanker: createThreadsSemanticHandoffCaptureRanker(),
+      capturedAt: '2026-09-22T06:00:00Z'
+    }),
+    (error) => {
+      semanticHandoff = error.semantic_handoff;
+      return error.code === 'THREADS_SEMANTIC_HANDOFF_REQUIRED' && Boolean(semanticHandoff?.evidence_digest);
+    }
   );
 
   const ranker = createThreadsSemanticHandoffRanker({
     schema_version: 1,
     producer: 'knowledge_card_agent',
-    evidence_digest: bootstrap.evidence_digest,
+    evidence_digest: semanticHandoff.evidence_digest,
     judgement: {
       selected_shortcodes: ['SEMCONT2'],
       root_only: false,
@@ -360,13 +322,9 @@ test('semantic recovery produces llm_assisted accepted evidence with provenance'
     }
   });
 
-  const html = `<!doctype html><html><body><script type="application/json">${JSON.stringify({ post: rootRaw })}</script></body></html>`;
   const evidence = await fetchThreadsEvidence(rootUrl, {
     fetchImpl: async (url) => httpResponse({ status: 200, url: String(url), body: html }),
-    browserConversationExtractor: async () => ({
-      posts: [rootRaw, continuationRaw, followupRaw],
-      complete: false
-    }),
+    browserConversationExtractor,
     continuationRanker: ranker,
     capturedAt: '2026-09-22T06:00:00Z'
   });
