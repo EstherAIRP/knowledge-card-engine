@@ -123,7 +123,7 @@ Card validator 保證：
 - `updated_at >= created_at`
 - `last_checked_at >= created_at`
 
-GitHub writer 的目前行為：
+Accepted-source writer 的目前行為：
 
 - create 時三個日期使用 accepted evidence 的 captured date。
 - update 若 AI analysis / canonical source state 有實質變更，`updated_at` 更新為 captured date。
