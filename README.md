@@ -11,7 +11,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
 - GitHub Repository canonicalization、repository metadata + README accepted evidence。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
-- 與 accepted evidence digest 綁定的 analysis result 契約。
+- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence / structured coverage 可使用的 analysis version 2 驗證契約；正式 ingestion writer 目前仍使用 version 1。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
@@ -32,7 +32,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
 - `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、create/update resolution 與 provider-specific source-state contract。
-- `packages/analysis`：與來源 evidence 綁定的 provider-neutral analysis result contract。
+- `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
 - `packages/release`：E／S／P、manifest、release pointer / description 與 published lineage 驗證。
@@ -51,6 +51,7 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [來源收錄契約](./docs/ingestion.md)
+- [Analysis 與 Research 契約](./docs/analysis.md)
 - [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
 - [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
