@@ -659,7 +659,9 @@ export function renderPrivateSiteShell() {
     .knowledge-reading p { color: var(--kc-text); }
     .knowledge-reading li + li { margin-top: 6px; }
     .knowledge-reading h2,
-    .knowledge-reading h3 { scroll-margin-top: 88px; }
+    .knowledge-reading h3,
+    .knowledge-concepts-head h2,
+    .knowledge-relations-head h2 { scroll-margin-top: 88px; }
     .knowledge-reading a {
       color: var(--kc-brand);
       text-decoration: underline;
@@ -1649,8 +1651,8 @@ export function renderPrivateSiteShell() {
     }
   }
 
-  function createDetailOutline(article) {
-    const headings = [...article.querySelectorAll('h2, h3')].filter((heading) => heading.id);
+  function createDetailOutline(headingElements) {
+    const headings = [...headingElements].filter((heading) => heading?.id);
     if (!headings.length) return null;
 
     const aside = document.createElement('aside');
@@ -1854,6 +1856,7 @@ export function renderPrivateSiteShell() {
       const conceptKicker = document.createElement('span');
       conceptKicker.textContent = 'PHASE 3 · CONCEPTS';
       const conceptTitle = document.createElement('h2');
+      conceptTitle.id = 'concept-neighborhood';
       conceptTitle.textContent = 'Concept Neighborhood';
       conceptTitleBlock.append(conceptKicker, conceptTitle);
       const graphLink = document.createElement('button');
@@ -1915,6 +1918,7 @@ export function renderPrivateSiteShell() {
       const relationKicker = document.createElement('span');
       relationKicker.textContent = 'SEMANTIC RELATION INDEX';
       const relationTitle = document.createElement('h2');
+      relationTitle.id = 'related-knowledge';
       relationTitle.textContent = 'Related Knowledge';
       relationTitleBlock.append(relationKicker, relationTitle);
       const count = document.createElement('small');
@@ -2020,10 +2024,16 @@ export function renderPrivateSiteShell() {
     if (conceptSection) mainColumn.append(conceptSection);
     if (relationSection) mainColumn.append(relationSection);
 
+    const outlineHeadings = [
+      ...article.querySelectorAll('h2, h3'),
+      conceptSection?.querySelector('.knowledge-concepts-head h2'),
+      relationSection?.querySelector('.knowledge-relations-head h2')
+    ].filter(Boolean);
+
     const layout = document.createElement('div');
     layout.className = 'knowledge-detail-layout';
     layout.append(mainColumn);
-    const outline = createDetailOutline(article);
+    const outline = createDetailOutline(outlineHeadings);
     if (outline) layout.append(outline);
 
     view.append(back, layout);
@@ -2031,7 +2041,7 @@ export function renderPrivateSiteShell() {
 
     if (location.hash) {
       const requestedId = decodeURIComponent(location.hash.slice(1));
-      const target = article.querySelector('#' + CSS.escape(requestedId));
+      const target = mainColumn.querySelector('#' + CSS.escape(requestedId));
       if (target) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
     }
   }
