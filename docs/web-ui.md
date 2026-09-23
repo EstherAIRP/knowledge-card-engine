@@ -15,10 +15,10 @@ Web shell 由 `apps/web/src/index.js` 組合。樣式位於 `apps/web/src/styles
 | `radar.js` | loading、Radar hero / stats / filter 與 Knowledge Card grid。 |
 | `detail.js` | Card metadata、Markdown reading typography、outline content、Concept 與 Related Knowledge。 |
 | `search.js` | Search heading、result presentation 與 search-only state。 |
-| `graph.js` | Graph surface、toolbar、canvas、inspector、node / edge presentation 與 compatibility presentation。 |
+| `graph.js` | Graph surface、toolbar、canvas、inspector、node / edge presentation 與 Graph-specific presentation。 |
 | `index.js` | 依 `order` 組合 style fragments，維持 cascade 順序並輸出 `siteCss`。 |
 
-Graph interaction script 位於 `apps/web/src/legacy-graph.js`。該檔只負責 Graph behavior；Graph presentation 由 `styles/graph.js` 擁有。
+Graph interaction script 位於 `apps/web/src/graph-runtime.js`。該檔只負責 Graph behavior；Graph presentation 由 `styles/graph.js` 擁有。
 
 ## Style ownership
 
