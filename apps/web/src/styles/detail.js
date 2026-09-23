@@ -241,39 +241,40 @@ export const detailStyles = [
   },
   {
     order: 13,
-    css: String.raw`.knowledge-outline-toggle {
-      display: flex;
-      width: 100%;
-      min-height: 44px;
+    css: String.raw`.detail-outline-header-toggle {
+      display: none;
+      min-height: 38px;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 0 6px;
+      gap: 7px;
+      padding: 7px 0;
       border: 0;
       background: transparent;
       color: var(--kc-text);
+      font-size: 14px;
+      font-weight: 750;
       text-align: left;
-      cursor: pointer;
+      white-space: nowrap;
     }
 
-.knowledge-outline-toggle:hover { color: var(--kc-brand); }
+.detail-outline-header-toggle:hover { color: var(--kc-brand); }
 
-.knowledge-outline-label {
-      color: inherit;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-.knowledge-outline-chevron {
+.detail-outline-header-chevron {
       color: var(--kc-subtle);
-      font-size: 20px;
+      font-size: 15px;
       line-height: 1;
       transition: transform .16s ease, color .16s ease;
     }
 
-.knowledge-outline.is-open .knowledge-outline-chevron {
-      transform: rotate(90deg);
+.detail-outline-header-toggle[aria-expanded="true"] .detail-outline-header-chevron {
+      transform: rotate(180deg);
       color: var(--kc-brand);
+    }
+
+.knowledge-outline-label {
+      margin-bottom: 10px;
+      color: var(--kc-text);
+      font-size: 12px;
+      font-weight: 800;
     }`
   },
   {
