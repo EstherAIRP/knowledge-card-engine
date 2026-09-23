@@ -22,7 +22,7 @@
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` override 或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Card update；identity / canonical URL 衝突必須 fail closed。
 - accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。GitHub research-bound analysis 的 research provenance state 必須和 Card / accepted source state 同一交易推進；不得永久保存 selected source text。
-- Remote Ingest handoff 只能在專用 `chore/ingest-*` Workspace 分支執行；`state/ingestion/` 的 request、accepted evidence、Threads semantic handoff、GitHub research plan / research evidence 與 analysis 都是暫存交換資料，正式 apply 成功後必須移除，不得進入 Workspace `main`。GitHub research evidence handoff 可暫存 selected source text 供分析，但正式 research state 只能保留 compact provenance。
+- Remote Ingest handoff 只能在專用 `chore/ingest-*` Workspace 分支執行；`state/ingestion/` 的 request、accepted evidence、Threads semantic handoff、GitHub research plan / research evidence 與 analysis 都是暫存交換資料，正式 apply 成功後必須移除，不得進入 Workspace `main`。Agent 的 request / judgement / research-plan / analysis 提交必須遵守單一輸入檔與 runner-parent lineage 守門，不得修改 runner-owned evidence state。GitHub research evidence handoff可暫存 selected source text 供分析，但正式 research state 只能保留 compact provenance。
 - Private API 必須在讀取 server-side Workspace/release cache 前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
 - Search、vector、relation、Concept、graph 與 release metadata 都是 generated/private data；真實產物不得進公開 engine、PR、測試、log 或 build artifact。
 - Navigation taxonomy 與 semantic relation 不得混為同一維度；manual relation block/pin/override 必須優先於 generated result。
