@@ -17,7 +17,7 @@ npm run validate
 `npm run validate` 目前等於：
 
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
-2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、analysis / research contract、GitHub accepted / research evidence、Threads ingestion、ownership、source-state atomicity、private login / authorization、Web UI layout contract，以及 generated-data / release / release-reader 一致性案例。
+2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、analysis / research contract、GitHub accepted / research evidence、research provenance persistence / ownership / state binding、Threads ingestion、source-state atomicity、private login / authorization、Web UI layout contract，以及 generated-data / release / release-reader 一致性案例。
 
 Web UI layout contract 可單獨執行：
 
@@ -35,6 +35,7 @@ npm run ui:verify
 npm run workspace:validate -- /path/to/workspace
 npm run cards:validate -- /path/to/workspace
 npm run source-state:validate -- /path/to/workspace
+npm run research-state:validate -- /path/to/workspace
 ```
 
 若要同時驗證 engine pin 與薄層 workflow：
@@ -101,7 +102,7 @@ Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、
 ## GitHub Actions
 
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
-- `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards 與 accepted source state。
+- `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards、accepted source state 與 research provenance state。
 - `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
 - `.github/workflows/ingest-workspace.yml`：Workspace `chore/ingest-*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 依 request provider 執行 GitHub / Threads accepted-evidence prepare 或 writer apply，並以 stale guard 與 changed-path allowlist 限制寫入。
 
