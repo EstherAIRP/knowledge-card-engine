@@ -251,6 +251,11 @@ test('release-pinned reader keeps cards search graph and release on one publishe
   assert.equal(detail.revision, P);
   assert.ok(Array.isArray(detail.relations));
   assert.ok(Array.isArray(detail.concepts));
+  assert.equal(detail.relations.length > 0, true);
+  assert.equal(typeof detail.relations[0].other_summary, 'string');
+  assert.equal('evidence' in detail.relations[0], true);
+  assert.equal(typeof detail.relations[0].manual, 'boolean');
+  assert.equal('note' in detail.relations[0], true);
 });
 
 test('release reader bounds blob concurrency instead of serializing every private file read', async () => {
