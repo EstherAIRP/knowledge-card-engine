@@ -75,6 +75,8 @@ const requiredFiles = [
   'tests/github-research.test.mjs',
   'tests/research-state.test.mjs',
   'tests/remote-ingestion.test.mjs',
+  'tests/remote-research-e2e.test.mjs',
+  'tests/fixtures/github-research-handoff-fetch.mjs',
   'tests/threads-ingestion.test.mjs',
   'tests/private-site.test.mjs',
   'tests/web-ui-layout.test.mjs',
