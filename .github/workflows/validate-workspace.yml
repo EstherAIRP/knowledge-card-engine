@@ -68,3 +68,6 @@ jobs:
 
       - name: Validate accepted source state
         run: node engine/scripts/validate-source-state.mjs workspace
+
+      - name: Validate research provenance state
+        run: node engine/scripts/validate-research-state.mjs workspace

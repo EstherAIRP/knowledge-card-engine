@@ -42,6 +42,7 @@ const requiredFiles = [
   'packages/ingestion/src/threads/extract-post.js',
   'packages/ingestion/src/threads/conversation.js',
   'scripts/validate-source-state.mjs',
+  'scripts/validate-research-state.mjs',
   'scripts/release-workspace.mjs',
   'scripts/documentation-policy.mjs',
   'tests/documentation-policy.test.mjs',
@@ -61,6 +62,7 @@ const requiredFiles = [
     'packages/' + name + '/src/index.js'
   ]),
   'packages/workspace/src/card-store.js',
+  'packages/workspace/src/research-state.js',
   'apps/server/.env.example',
   'apps/server/src/auth.js',
   'apps/server/src/config.js',
@@ -71,6 +73,7 @@ const requiredFiles = [
   'apps/server/src/node-server.js',
   'tests/analysis-contract.test.mjs',
   'tests/github-research.test.mjs',
+  'tests/research-state.test.mjs',
   'tests/remote-ingestion.test.mjs',
   'tests/threads-ingestion.test.mjs',
   'tests/private-site.test.mjs',

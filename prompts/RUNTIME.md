@@ -47,7 +47,7 @@ Engine 任務以目標分支目前內容為準。開工前至少讀取：
 
 ### Workspace 任務
 
-私人背景、專案資料、Knowledge Cards、人工設定、accepted source state、generated data 與 release 紀錄屬於私人 Workspace。
+私人背景、專案資料、Knowledge Cards、人工設定、accepted source state、research provenance state、generated data 與 release 紀錄屬於私人 Workspace。
 
 Workspace 任務開工前至少讀取：
 
@@ -104,14 +104,15 @@ Workspace = 私人權威資料與私人衍生資料
 URL
 → provider-specific resolution / canonical identity
 → provider-specific accepted evidence
+→ optional provider-specific research evidence
 → evidence-bound analysis result
 → create / update resolution
 → ownership-safe Card candidate
 → full collection validation
-→ Card + accepted source state persistence
+→ Card + accepted source state + optional research provenance persistence
 ```
 
-GitHub 以 repository metadata + README 為 accepted evidence。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
+GitHub 以 repository metadata + README 為 accepted evidence；需要超出 README 的研究型分析時，可另外固定同一 repository revision、從 bounded candidate set 擷取 selected primary-source evidence，形成獨立 Analysis Evidence Bundle。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
 
 ### 來源證據
 
@@ -147,7 +148,7 @@ chore/ingest-* branch + request
 
 Threads 需要語意 continuation 判定時，runner 先把公開 root/candidate evidence 與 digest 寫入受控 handoff；Agent 只回填固定 contract 的 judgement。後續 run 必須重新取得 live source、重建候選並確認 digest 未變，再由 Engine 的 deterministic gate 決定能否形成 accepted evidence。
 
-Agent 只負責建立受控 request、必要時產生 digest-bound semantic judgement、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
+Agent 只負責建立受控 request、必要時產生 digest-bound semantic judgement、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。現行 Remote Ingest 尚未交換 GitHub research plan / Analysis Evidence Bundle，因此仍使用 analysis version 1；不得把 writer 已支援 version 2 誤認為 Remote Ingest 已支援深度研究流程。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
 
 ## 6. 分析結果
 
@@ -156,13 +157,14 @@ Analysis 與 ingestion 是不同責任層。Engine 不固定特定模型供應�
 Analysis 必須：
 
 - 綁定本次 accepted evidence 的 `source_identity`。
-- 綁定本次 accepted evidence 的 `evidence_digest`。
+- Version 1 綁定 accepted evidence 的 `evidence_digest`。
+- GitHub Version 2 同時綁定 `source_evidence_digest` 與 validated Analysis Evidence Bundle 的 `analysis_evidence_digest`，並通過 structured research quality gate。
 - 使用 Workspace Taxonomy 中有效的受控值。
 - 提供 Card contract 要求的 AI-owned metadata 與正文段落。
 - 區分來源可驗證事實與分析推論。
 - 不臆造功能、架構、授權、相容性、成熟度、基準測試或維護狀態。
 
-舊 evidence 產生的 analysis 不得套用到新的 evidence digest。binding 不一致時必須停止寫入。
+舊 source evidence 或舊 research bundle 產生的 analysis 不得套用到新的 digest。Version 2 缺 bundle、digest stale、coverage / finding evidence 不成立時必須停止寫入。Threads 目前只使用 version 1。
 
 ## 7. Create / Update 與 Ownership
 
@@ -196,13 +198,15 @@ Writer 在 persistence 前必須完成：
 
 1. accepted evidence 驗證
 2. analysis/evidence binding 驗證
-3. Workspace 與 Taxonomy 載入
-4. create/update resolution
-5. ownership-safe merge
-6. 完整 Card collection 驗證
-7. accepted source state 驗證
+3. GitHub version 2 的 Analysis Evidence Bundle、structured research report 與 quality gate 驗證
+4. Workspace 與 Taxonomy 載入
+5. create/update resolution
+6. ownership-safe merge
+7. 完整 Card collection 驗證
+8. accepted source state 驗證
+9. GitHub version 2 research provenance state 驗證
 
-Card 與 source state 必須維持一致；任一驗證失敗不得把來源狀態推進成已接受。
+Card、accepted source state 與 research provenance 必須維持一致。GitHub version 2 三者在同一檔案交易推進；後續 version 1 更新會同交易清除既有 research state。任一驗證失敗不得推進其中任何正式狀態。
 
 指定 Workspace 的基礎驗證命令由目前鎖定 Engine 提供，例如：
 
@@ -210,6 +214,7 @@ Card 與 source state 必須維持一致；任一驗證失敗不得把來源狀�
 npm run workspace:validate -- /path/to/workspace
 npm run cards:validate -- /path/to/workspace
 npm run source-state:validate -- /path/to/workspace
+npm run research-state:validate -- /path/to/workspace
 ```
 
 實際可用命令與參數以鎖定 Engine 的 `docs/development.md` 為準，不得從其他 revision 混用 CLI。
@@ -254,7 +259,7 @@ Generated-only 或 pointer-only 的機器提交不應形成 release loop；人�
 - 來源 provider 未支援。
 - accepted evidence 不完整或 identity 衝突。
 - analysis 與 evidence binding 不一致。
-- Schema、Taxonomy、ownership、collection uniqueness 或 source-state 驗證失敗。
+- Schema、Taxonomy、ownership、collection uniqueness、source-state 或 research-state 驗證失敗。
 - release manifest、lineage、stale guard 或 current pointer 驗證失敗。
 - 任何會造成私人資料進入公開 Engine 的情況。
 
@@ -282,7 +287,8 @@ Knowledge Card 收錄／更新時，可再包含 Card 名稱、有效分類、�
 - 受控詞彙：Workspace `config/taxonomy.yaml`。
 - Card ownership、正文、唯一性與 stable path：`docs/card-contract.md` 與 Core validator。
 - Workspace 結構與 Engine pin：`docs/workspace.md` 與 Workspace loader。
-- 來源 identity、accepted evidence、analysis binding 與 source state：`docs/ingestion.md` 與 ingestion validator。
+- 來源 identity、accepted evidence、GitHub research capture 與 source state：`docs/ingestion.md` 與 ingestion validator。
+- Analysis version、research bundle、structured quality gate 與 research provenance binding：`docs/analysis.md`、analysis validator 與 Workspace research-state validator。
 - Generated data：`docs/generated-data.md` 與 graph/generated-data validator。
 - E／S／P 與發布一致性：`docs/release.md` 與 release validator。
 - 登入、授權與私人讀取：`docs/private-site.md` 與 server implementation/tests。

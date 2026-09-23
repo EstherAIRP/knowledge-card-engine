@@ -21,7 +21,7 @@
 - GitHub / Threads 收錄必須遵守 [docs/ingestion.md](./docs/ingestion.md)；不得以 URL slug、share token、時間接近、repo 名稱或模型記憶取代 accepted evidence。Threads 未證明完整串文時必須 fail closed。
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` override 或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Card update；identity / canonical URL 衝突必須 fail closed。
-- accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。
+- accepted source state 只能在 evidence、analysis binding、ownership 與完整 Card collection 驗證成功後推進。GitHub research-bound analysis 的 research provenance state 必須和 Card / accepted source state 同一交易推進；不得永久保存 selected source text。
 - Remote Ingest handoff 只能在專用 `chore/ingest-*` Workspace 分支執行；`state/ingestion/` 的 request/evidence/analysis 是暫存交換資料，正式 apply 成功後必須移除，不得進入 Workspace `main`。
 - Private API 必須在讀取 server-side Workspace/release cache 前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
 - Search、vector、relation、Concept、graph 與 release metadata 都是 generated/private data；真實產物不得進公開 engine、PR、測試、log 或 build artifact。

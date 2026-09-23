@@ -182,11 +182,17 @@ research == validated structured research report
 
 `bindResearchAnalysisToEvidence(...)` 可建立上述 binding；`validateAnalysisResult(...)` 在 version 2 時必須同時取得 validated-compatible analysis evidence bundle。
 
-## Current writer boundary
+## Workspace writer boundary
 
-目前 `packages/workspace` 的正式 `applyAcceptedSourceAnalysis(...)` 仍只收到 accepted source evidence 與 analysis result，沒有 analysis evidence bundle / research-state persistence 參數。因此正式 GitHub / Threads Card ingestion 仍使用 `analysis_version: 1`。
+`packages/workspace` 的 `applyAcceptedSourceAnalysis(...)` 可接受可選的 `analysisEvidenceBundle`：
 
-`analysis_version: 2` 現在已可搭配 ingestion 層產生的 revision-pinned GitHub Analysis Evidence Bundle 做完整 contract validation；但在 Workspace writer、research provenance state 與 Remote Ingest handoff 明確接入前，仍不得以 version 2 繞過現行 writer 或手工寫 Card。
+- `analysis_version: 1` 不得傳入 analysis evidence bundle；writer 維持既有 accepted-source analysis 行為。
+- GitHub `analysis_version: 2` 必須傳入與 accepted evidence 綁定的 Analysis Evidence Bundle；writer 重新執行 analysis / bundle contract 驗證後，才可建立 Card 與 research provenance state。
+- Threads 目前沒有 research evidence bundle contract，因此正式 writer 仍只接受其 version 1 analysis。
+
+GitHub version 2 成功寫入時，Workspace 只保存 compact research provenance，不永久保存 evidence item 的 `text`、structured findings 或 unknowns。若之後同一 GitHub Card 以 version 1 成功更新，舊 research provenance state 會在同一寫入交易中移除，避免過期 provenance 繼續被視為目前 Card 的研究依據。
+
+目前 Remote Ingest handoff 尚未交換 research plan / Analysis Evidence Bundle，因此現有 ingestion CLI / Remote Ingest 仍使用 version 1。Version 2 不得以手工 Card 寫入繞過 writer。
 
 ## 錯誤語意
 
