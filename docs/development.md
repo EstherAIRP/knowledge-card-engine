@@ -17,7 +17,7 @@ npm run validate
 `npm run validate` 目前等於：
 
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
-2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、GitHub / Threads ingestion、ownership、source-state atomicity、private login / authorization、Web UI layout contract，以及 generated-data / release / release-reader 一致性案例。
+2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、analysis / research contract、GitHub / Threads ingestion、ownership、source-state atomicity、private login / authorization、Web UI layout contract，以及 generated-data / release / release-reader 一致性案例。
 
 Web UI layout contract 可單獨執行：
 
