@@ -139,8 +139,10 @@ chore/ingest-* branch + request
 → pinned Engine / Node.js 24 source verification
 → optional Threads semantic handoff / digest-bound judgement
 → accepted evidence
-→ Agent 依 accepted evidence 產生 analysis
-→ 同 branch 提交 analysis
+→ GitHub: revision-pinned discovery + research progress
+→ GitHub: Agent research plan + selected candidate paths
+→ GitHub: bounded evidence expansion（最多兩輪）
+→ GitHub analysis_version: 2 / Threads analysis_version: 1
 → pinned Engine writer apply + full validation
 → 清除 handoff 暫存資料
 → PR
@@ -148,7 +150,9 @@ chore/ingest-* branch + request
 
 Threads 需要語意 continuation 判定時，runner 先把公開 root/candidate evidence 與 digest 寫入受控 handoff；Agent 只回填固定 contract 的 judgement。後續 run 必須重新取得 live source、重建候選並確認 digest 未變，再由 Engine 的 deterministic gate 決定能否形成 accepted evidence。
 
-Agent 只負責建立受控 request、必要時產生 digest-bound semantic judgement、讀取 accepted evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state 寫入仍由 runner 內的 Engine writer 完成。現行 Remote Ingest 尚未交換 GitHub research plan / Analysis Evidence Bundle，因此仍使用 analysis version 1；不得把 writer 已支援 version 2 誤認為 Remote Ingest 已支援深度研究流程。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
+GitHub accepted evidence 建立後，runner 同時固定 repository revision、產生 candidate discovery 與空的 research progress。Agent 只能從 discovery candidate 選擇 evidence，將固定 contract 的 `research-plan.json` 寫回 handoff；runner 驗 plan、prior research digest、round / item / byte budget、重複 path 與 candidate relevance 後才更新 cumulative `research-evidence.json`。一輪後可直接提交 analysis，或在 budget 允許時提交第二份 digest-bound research plan；不得自由增加第三輪或繞過 candidate / budget 守門。
+
+Agent 只負責建立受控 request、必要時產生 Threads digest-bound semantic judgement、為 GitHub 產生 research plan / selected paths、讀取 accepted / research evidence、產生 evidence-bound analysis 與後續 PR 編排；正式 Card/source-state/research-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
 
 ## 6. 分析結果
 
