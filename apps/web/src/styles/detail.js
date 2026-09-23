@@ -109,8 +109,17 @@ export const detailStyles = [
     }
 
 .knowledge-reading {
-      width: min(100%, var(--kc-reading-max));
-      margin-inline: auto;
+      width: 100%;
+      margin-inline: 0;
+    }
+
+.knowledge-reading > p,
+    .knowledge-reading > ul,
+    .knowledge-reading > ol,
+    .knowledge-reading > blockquote,
+    .knowledge-reading > .knowledge-code-block,
+    .knowledge-reading > table {
+      max-width: var(--kc-reading-max);
     }
 
 .knowledge-reading h1 {
