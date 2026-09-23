@@ -481,6 +481,11 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /--kc-brand: #536bff/u);
   assert.match(html, /radar-grid/u);
   assert.match(html, /knowledge-detail-head/u);
+  assert.match(html, /knowledge-reading/u);
+  assert.match(html, /Concept Neighborhood/u);
+  assert.match(html, /knowledge-concept-grid/u);
+  assert.match(html, /Related Knowledge/u);
+  assert.match(html, /knowledge-relations-grid/u);
   assert.match(html, /graph-inspector-backdrop/u);
   assert.match(html, /graph-inspector-close/u);
   assert.match(html, /function renderLegacyGraph\(graph\)/u);
