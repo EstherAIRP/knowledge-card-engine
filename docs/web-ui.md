@@ -90,7 +90,7 @@ Breakpoint 只有在具有相同結構語意時才共用；component-specific co
 - `prefers-reduced-motion: reduce` 會停用 loading radar、progress 與 skeleton animation。
 - Form control 的 focus state使用一致 brand border / ring。
 - Header navigation 可在窄 viewport 水平捲動，避免截斷導覽按鈕。
-- Card Detail 小尺寸目錄整合進主 sticky header，以 `button` 控制 `aria-expanded`；dropdown 與桌機 outline 共用章節 active-state，並保留 reduced-motion scroll 行為。
+- Card Detail 小尺寸目錄整合進主 sticky header，以 `button` 控制 `aria-expanded`；收合時 chevron 朝左、展開時朝下，使用同一個固定尺寸 icon slot 只做中心旋轉，不因狀態切換改變位置；dropdown 與桌機 outline 共用章節 active-state，並保留 reduced-motion scroll 行為。
 - Markdown code block 自己管理 horizontal overflow，不要求整頁跟著水平捲動。
 
 ## 驗證
