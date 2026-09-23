@@ -168,7 +168,7 @@ Discovery 若因 budget 或 GitHub truncated response 未完整走完，會把 `
 
 Binary、非 UTF-8、超過單檔／總 bundle budget 的內容 fail closed。
 
-最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state；目前正式 Workspace writer / Remote Ingest 尚未接入 research bundle，因此正式 Card apply 仍使用 analysis version 1。
+最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 可將 bundle 交給正式 Workspace writer，writer 只永久保存 compact research provenance；目前 Remote Ingest handoff 尚未交換 research plan / bundle，因此 Remote Ingest 仍使用 version 1。
 
 ## Threads accepted evidence
 
@@ -273,16 +273,14 @@ Threads evidence 會保留完整有序文字與媒體資訊供 analysis 使用�
 
 Analysis provider 不屬於 ingestion。Engine 不固定特定 LLM 供應商。
 
-正式 analysis result 必須：
+正式 analysis result 必須符合 [Analysis 與 Research 契約](./analysis.md)：
 
-- 使用 `analysis_version: 1`。
-- `source_identity` 與 accepted evidence 完全一致。
-- `evidence_digest` 與 accepted evidence 完全一致。
-- 提供 title、summary、resource kind、navigation categories、classification categories、tags、relevance、actions、status。
-- 提供 Card 契約要求的 10 個 AI 分析段落。
-- summary 不超過 600 字元；relevance score 為 1–5 整數。
+- Version 1 綁定 `source_identity + evidence_digest`；GitHub / Threads 現有 CLI 與 Remote Ingest 使用此格式。
+- GitHub Version 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供 validated Analysis Evidence Bundle 與 structured research report。
+- 兩種版本都提供 Card 契約要求的 AI-owned metadata 與 10 個正文段落；summary 不超過 600 字元，relevance score 為 1–5 整數。
+- Threads 目前沒有 research evidence bundle contract，因此不得使用 version 2。
 
-舊 evidence 產生的 analysis 不能套用到不同 digest 的新 evidence；不一致時回報 `ANALYSIS_EVIDENCE_STALE` 或其他 analysis contract error，且不得寫入 Card/source state。
+舊 source evidence 或舊 research bundle 產生的 analysis 不能套用到新的 digest；binding 不一致時 fail closed，且不得寫入 Card / accepted source state / research state。
 
 ## Create / update resolution
 
@@ -302,20 +300,21 @@ Create 依 Card contract 建立 stable path。Update 保留原 path、`id`、`cr
 
 ## Writer 驗證與 persistence
 
-`applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis)` 是 provider-neutral 正式 writer；`applyAcceptedGitHubAnalysis` 與 `applyAcceptedThreadsAnalysis` 是 provider-specific guard / compatibility entry。
+`applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, options)` 是 provider-neutral 正式 writer；GitHub version 2 透過 `options.analysisEvidenceBundle` 傳入 research bundle。`applyAcceptedGitHubAnalysis` 與 `applyAcceptedThreadsAnalysis` 是 provider-specific guard / compatibility entry。
 
 任何正式寫入前會：
 
 1. 驗證 provider-specific accepted evidence。
-2. 驗證 analysis 與 evidence identity/digest binding。
+2. 驗證 analysis 與 source evidence binding；GitHub version 2 另外驗 Analysis Evidence Bundle / research digest / structured quality gate。
 3. 載入 Workspace、Taxonomy 與完整 Card collection。
 4. 解析 create / update target。
 5. 建立合併後 Card candidate。
 6. update 時比較 user/stable-owned state。
 7. 對候選的完整 collection 執行 Card / Taxonomy / uniqueness 驗證。
 8. 建立並驗證對應 provider 的 accepted source state。
+9. GitHub version 2 建立並驗證 compact research provenance state。
 
-只有全部通過後才進入檔案替換。Writer 先寫 temp file；若 Card replacement 成功但 source-state replacement 失敗，會回復 Card。驗證在 temp write 前失敗時，既有 accepted source state 不前進。
+全部驗證完成後，writer 將 Card、accepted source state 與需要的 research state 視為同一檔案交易。任一 replacement 失敗時會回復已提交項目；驗證失敗時三者都不前進。若同一 GitHub Card 後續成功套用 version 1，既有 research state 會在同一交易移除，避免過期 provenance 被誤認為目前 Card 的研究依據。
 
 ## Accepted source state
 
@@ -336,6 +335,18 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 保存根來源 identity / canonical URL、author、thread status / total / verification、每一 part 的 shortcode / canonical / reply-root 結構、文字 byte count 與文字／媒體／引用 SHA-256，以及 Card 對應；不保存 Threads 原文。
 
 `npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援 provider，並確認 `card_path` 位於 configured knowledge root，且 state 的 Card id / identity / canonical URL 與實際 Card 相同。
+
+### GitHub research provenance state
+
+GitHub version 2 成功寫入後，另保存：
+
+```text
+state/research/github/{owner-lower}--{repo-lower}.json
+```
+
+此 state 只保存 source / research digest、repository revision、evidence item 的 path / kind / blob SHA / content hash / bytes、coverage 狀態、分析時間與 Card 對應；不保存 evidence `text`、structured findings、unknowns 或 credential。
+
+`npm run research-state:validate` 會驗證 research state 自身結構、固定路徑，並交叉確認目前 accepted source state 的 evidence digest / captured time / Card mapping，以及實際 Card 的 id / identity / canonical URL。GitHub material coverage 不可在持久 state 中改成 `not_applicable`。
 
 ## Remote Ingest handoff
 
