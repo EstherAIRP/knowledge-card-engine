@@ -10,7 +10,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README accepted evidence、固定 revision 的 GitHub research candidate / selected evidence capture、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
-| `packages/analysis` | provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract；research-bound analysis 可同時綁定 source evidence 與 analysis evidence digest。 |
+| `packages/analysis` | provider-neutral analysis result、research plan、analysis evidence bundle、structured research report 與 evidence-backed quality gate；research-bound analysis 可同時綁定 source evidence 與 analysis evidence digest。 |
 | `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
 | `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
