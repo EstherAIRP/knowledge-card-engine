@@ -15,14 +15,15 @@
 source URL
 → provider-specific resolution / canonical identity
 → accepted evidence
+→ optional GitHub research evidence bundle
 → evidence-bound analysis result
 → create / update resolution
 → ownership-safe Card candidate
 → full collection validation
-→ Card + accepted source state persistence
+→ Card + accepted source state + optional research provenance persistence
 ```
 
-Ingestion、analysis 與 Workspace persistence 是不同責任層：ingestion 驗證外部來源並建立 accepted evidence；analysis 只產生與該 evidence 的 identity / digest 綁定的 AI-owned 結果；Workspace writer 才能把合法結果合併進 Card 與 source state。
+Ingestion、analysis 與 Workspace persistence 是不同責任層：ingestion 驗證外部來源、建立 accepted evidence，並可為 GitHub 擷取固定 revision 的受控 research evidence；analysis 產生與 source / research digest 綁定的 AI-owned 結果；Workspace writer 才能把合法結果合併進 Card、accepted source state 與必要的 compact research provenance。
 
 來源擷取失敗與來源本身不完整必須分開。網路、rate limit、runner 能力或其他執行環境問題不能冒充來源不存在或來源不完整。
 
