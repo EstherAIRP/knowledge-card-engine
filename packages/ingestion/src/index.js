@@ -378,7 +378,7 @@ function githubHeaders(token) {
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'knowledge-card-engine'
   };
-  if (token) headers.Authorization = \`Bearer \${token}\`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
@@ -388,7 +388,7 @@ function normalizeGitHubResearchLimits(overrides = {}) {
   }
   const allowed = Object.keys(GITHUB_RESEARCH_LIMITS);
   for (const key of Object.keys(overrides)) {
-    if (!allowed.includes(key)) fail('GITHUB_RESEARCH_LIMIT_INVALID', \`Unsupported GitHub research limit: \${key}.\`);
+    if (!allowed.includes(key)) fail('GITHUB_RESEARCH_LIMIT_INVALID', `Unsupported GitHub research limit: ${key}.`);
   }
   const result = {};
   for (const key of allowed) {
@@ -398,7 +398,7 @@ function normalizeGitHubResearchLimits(overrides = {}) {
       continue;
     }
     if (!Number.isInteger(requested) || requested < 1) {
-      fail('GITHUB_RESEARCH_LIMIT_INVALID', \`GitHub research limit \${key} must be a positive integer.\`);
+      fail('GITHUB_RESEARCH_LIMIT_INVALID', `GitHub research limit ${key} must be a positive integer.`);
     }
     result[key] = Math.min(requested, GITHUB_RESEARCH_LIMITS[key]);
   }
@@ -409,7 +409,7 @@ function githubResearchApiBase(evidence) {
   const fullName = String(evidence.repository?.full_name || '');
   const parts = fullName.split('/');
   if (parts.length !== 2 || !parts[0] || !parts[1]) fail('SOURCE_IDENTITY_MISMATCH', 'GitHub research repository full_name is invalid.');
-  return \`https://api.github.com/repos/\${encodeURIComponent(parts[0])}/\${encodeURIComponent(parts[1])}\`;
+  return `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
 }
 
 function safeResearchPath(value) {
@@ -535,7 +535,7 @@ function validateGitHubResearchCandidate(candidate) {
   }
   safeResearchPath(candidate.path);
   if (!RESEARCH_EVIDENCE_KINDS.includes(candidate.kind)) {
-    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', \`GitHub research candidate kind is invalid: \${candidate.kind}.\`);
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `GitHub research candidate kind is invalid: ${candidate.kind}.`);
   }
   if (typeof candidate.blob_sha !== 'string' || !/^[0-9a-f]{40}$/u.test(candidate.blob_sha)) {
     fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research candidate blob_sha is invalid.');
@@ -575,7 +575,7 @@ export function validateGitHubResearchDiscovery(discovery, evidence) {
   const paths = new Set();
   for (const candidate of discovery.candidates) {
     validateGitHubResearchCandidate(candidate);
-    if (paths.has(candidate.path)) fail('GITHUB_RESEARCH_DISCOVERY_INVALID', \`Duplicate GitHub research candidate path: \${candidate.path}.\`);
+    if (paths.has(candidate.path)) fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `Duplicate GitHub research candidate path: ${candidate.path}.`);
     paths.add(candidate.path);
   }
   if (!discovery.discovery || typeof discovery.discovery !== 'object' || Array.isArray(discovery.discovery)) {
@@ -586,7 +586,7 @@ export function validateGitHubResearchDiscovery(discovery, evidence) {
   }
   for (const field of ['tree_requests', 'tree_entries', 'candidate_count', 'excluded_directories', 'excluded_files']) {
     if (!Number.isInteger(discovery.discovery[field]) || discovery.discovery[field] < 0) {
-      fail('GITHUB_RESEARCH_DISCOVERY_INVALID', \`GitHub research discovery \${field} is invalid.\`);
+      fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `GitHub research discovery ${field} is invalid.`);
     }
   }
   if (discovery.discovery.candidate_count !== discovery.candidates.length) {
@@ -608,7 +608,7 @@ export async function discoverGitHubResearchCandidates(evidence, {
 
   const revisionPayload = await fetchJson(
     fetchImpl,
-    \`\${apiBase}/commits/\${encodeURIComponent(accepted.repository.default_branch)}\`,
+    `${apiBase}/commits/${encodeURIComponent(accepted.repository.default_branch)}`,
     headers,
     'research-revision'
   );
@@ -620,7 +620,7 @@ export async function discoverGitHubResearchCandidates(evidence, {
 
   const readmeAtRevision = await fetchJson(
     fetchImpl,
-    \`\${apiBase}/readme?ref=\${encodeURIComponent(repositoryRevision)}\`,
+    `${apiBase}/readme?ref=${encodeURIComponent(repositoryRevision)}`,
     headers,
     'research-readme'
   );
@@ -647,7 +647,7 @@ export async function discoverGitHubResearchCandidates(evidence, {
     treeRequests += 1;
     const treePayload = await fetchJson(
       fetchImpl,
-      \`\${apiBase}/git/trees/\${encodeURIComponent(current.sha)}\`,
+      `${apiBase}/git/trees/${encodeURIComponent(current.sha)}`,
       headers,
       'research-tree'
     );
@@ -666,7 +666,7 @@ export async function discoverGitHubResearchCandidates(evidence, {
         excludedFiles += 1;
         continue;
       }
-      const fullPath = current.path ? \`\${current.path}/\${entry.path}\` : String(entry.path);
+      const fullPath = current.path ? `${current.path}/${entry.path}` : String(entry.path);
       safeResearchPath(fullPath);
 
       if (entry.type === 'tree') {
@@ -753,23 +753,23 @@ function decodeGitHubResearchBlob(payload, candidate, limits) {
     || typeof payload?.content !== 'string'
     || String(payload?.sha || '').toLowerCase() !== candidate.blob_sha
   ) {
-    fail('SOURCE_INCOMPLETE', \`GitHub research blob response is incomplete for \${candidate.path}.\`);
+    fail('SOURCE_INCOMPLETE', `GitHub research blob response is incomplete for ${candidate.path}.`);
   }
   let buffer;
   try {
     buffer = Buffer.from(payload.content.replace(/\s/gu, ''), 'base64');
   } catch (cause) {
-    const error = new IngestionError('SOURCE_INCOMPLETE', \`GitHub research blob could not be decoded for \${candidate.path}.\`);
+    const error = new IngestionError('SOURCE_INCOMPLETE', `GitHub research blob could not be decoded for ${candidate.path}.`);
     error.cause = cause;
     throw error;
   }
   if (buffer.length > limits.max_item_bytes) {
-    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', \`GitHub research item exceeds max_item_bytes: \${candidate.path}.\`);
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', `GitHub research item exceeds max_item_bytes: ${candidate.path}.`);
   }
-  if (buffer.includes(0)) fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', \`GitHub research item is binary: \${candidate.path}.\`);
+  if (buffer.includes(0)) fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', `GitHub research item is binary: ${candidate.path}.`);
   const text = buffer.toString('utf8');
   if (!Buffer.from(text, 'utf8').equals(buffer)) {
-    fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', \`GitHub research item is not valid UTF-8 text: \${candidate.path}.\`);
+    fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', `GitHub research item is not valid UTF-8 text: ${candidate.path}.`);
   }
   return { buffer, text };
 }
@@ -797,7 +797,7 @@ export async function fetchGitHubResearchEvidence(evidence, discovery, selectedP
   const selected = [...selectedPaths].sort().map((pathValue) => {
     safeResearchPath(pathValue);
     const candidate = candidateByPath.get(pathValue);
-    if (!candidate) fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', \`GitHub research path is not an approved discovery candidate: \${pathValue}.\`);
+    if (!candidate) fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', `GitHub research path is not an approved discovery candidate: ${pathValue}.`);
     return candidate;
   });
   const estimatedTotal = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
@@ -812,7 +812,7 @@ export async function fetchGitHubResearchEvidence(evidence, discovery, selectedP
   for (const candidate of selected) {
     const blobPayload = await fetchJson(
       fetchImpl,
-      \`\${apiBase}/git/blobs/\${encodeURIComponent(candidate.blob_sha)}\`,
+      `${apiBase}/git/blobs/${encodeURIComponent(candidate.blob_sha)}`,
       headers,
       'research-blob'
     );
@@ -822,7 +822,7 @@ export async function fetchGitHubResearchEvidence(evidence, discovery, selectedP
       fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research evidence exceeds max_total_bytes.');
     }
     items.push({
-      evidence_id: \`file-\${sha256(candidate.path).slice(0, 16)}\`,
+      evidence_id: `file-${sha256(candidate.path).slice(0, 16)}`,
       path: candidate.path,
       kind: candidate.kind,
       blob_sha: candidate.blob_sha,
