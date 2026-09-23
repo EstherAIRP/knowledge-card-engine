@@ -241,11 +241,39 @@ export const detailStyles = [
   },
   {
     order: 13,
-    css: String.raw`.knowledge-outline-label {
-      margin-bottom: 10px;
+    css: String.raw`.knowledge-outline-toggle {
+      display: flex;
+      width: 100%;
+      min-height: 44px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 6px;
+      border: 0;
+      background: transparent;
       color: var(--kc-text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+.knowledge-outline-toggle:hover { color: var(--kc-brand); }
+
+.knowledge-outline-label {
+      color: inherit;
       font-size: 12px;
       font-weight: 800;
+    }
+
+.knowledge-outline-chevron {
+      color: var(--kc-subtle);
+      font-size: 20px;
+      line-height: 1;
+      transition: transform .16s ease, color .16s ease;
+    }
+
+.knowledge-outline.is-open .knowledge-outline-chevron {
+      transform: rotate(90deg);
+      color: var(--kc-brand);
     }`
   },
   {
