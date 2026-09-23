@@ -35,6 +35,8 @@ Research contract 不降低 accepted source evidence 的 provider-specific 驗�
 
 目前 analysis evidence bundle 只定義 GitHub Repository 形式；其他 provider 若沒有正式 research bundle contract，validator 會 fail closed。
 
+GitHub research evidence 由 ingestion 層的受控 capture API 產生：先固定 default-branch commit 並建立 bounded candidate set，再只讀取被選定的 candidate blob。完整 revision pin、tree budget、path guard 與 binary / UTF-8 規則見 [來源收錄契約](./ingestion.md)。
+
 ## Research plan
 
 `validateResearchPlan(plan, evidence)` 驗證研究問題與後續證據需求。
@@ -157,7 +159,7 @@ research == validated structured research report
 
 目前 `packages/workspace` 的正式 `applyAcceptedSourceAnalysis(...)` 仍只收到 accepted source evidence 與 analysis result，沒有 analysis evidence bundle / research-state persistence 參數。因此正式 GitHub / Threads Card ingestion 仍使用 `analysis_version: 1`。
 
-`analysis_version: 2` 現在是可驗證的 analysis/research contract；在 Workspace writer、research provenance state 與 Remote Ingest handoff 明確接入前，不得以 version 2 繞過現行 writer 或手工寫 Card。
+`analysis_version: 2` 現在已可搭配 ingestion 層產生的 revision-pinned GitHub Analysis Evidence Bundle 做完整 contract validation；但在 Workspace writer、research provenance state 與 Remote Ingest handoff 明確接入前，仍不得以 version 2 繞過現行 writer 或手工寫 Card。
 
 ## 錯誤語意
 
