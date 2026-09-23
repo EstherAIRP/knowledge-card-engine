@@ -140,6 +140,33 @@ Research-bound analysis 必須附結構化 `research` report。固定 coverage d
 
 `unknowns` 是可為空的唯一字串陣列，用來保留研究完成後仍不能由目前 primary-source evidence 驗證的 material unknown。
 
+### Structured findings 與品質守門
+
+Coverage 只回答「證據是否足夠」，不能單獨證明分析有把證據拆成可用知識。因此 research report 另外必須提供固定 `findings` 群組：
+
+- `core_models`：核心 abstraction / model，包含名稱、描述與 evidence refs。
+- `architecture_components`：主要元件及其責任。
+- `flows`：具名稱、至少兩個 ordered steps 的資料／控制／工作流程。
+- `implementation_checks`：文件或產品 claim 的實作判定；status 為 `implemented`、`partial`、`planned` 或 `unclear`，並附 assessment。
+- `technical_mechanisms`：每一項同時描述 `mechanism`、`why_it_matters` 與 `tradeoff`。
+- `limitations`：project-specific limitation 與實際 impact。
+
+每一個 finding 都必須引用存在於 Analysis Evidence Bundle 的 `evidence_id`。這個守門驗的是結構化知識與證據關聯，不要求固定字數、固定段落長度或固定 bullet 數。
+
+GitHub research 的下列 coverage 維度不能用 `not_applicable` 直接略過：
+
+- `problem`
+- `core_model`
+- `architecture`
+- `flow`
+- `implementation_vs_claim`
+- `technical_mechanisms`
+- `limitations`
+
+若 bounded research 仍找不到，必須用 `unavailable` 加明確原因。若上述維度是 `supported` 或 `partial`，對應的 structured finding 群組不得為空。這可阻止只有「用了哪些技術」的 stack inventory 在 architecture / mechanism 已宣稱有證據時通過 quality gate。
+
+`security`、`license`、`deployment` 仍可依專案實際情況使用 `not_applicable`；不能為了填滿 Card 臆造內容。
+
 ## Analysis version 2
 
 Version 2 必須同時符合：
@@ -173,6 +200,7 @@ Research contract 使用既有 analysis fail-closed 原則，主要錯誤包含�
 | `ANALYSIS_RESEARCH_INVALID` | Research plan、bundle、report 或其欄位無效。 |
 | `ANALYSIS_RESEARCH_PROVIDER_UNSUPPORTED` | Provider 尚未定義 research evidence contract。 |
 | `ANALYSIS_RESEARCH_EVIDENCE_STALE` | Analysis evidence bundle digest 或 analysis research digest 已不相符。 |
+| `ANALYSIS_QUALITY_GATE_FAILED` | Research coverage 宣稱有材料，但缺少對應 structured findings，或 GitHub material coverage 被不當標成 not_applicable。 |
 
 ## 驗證
 
@@ -182,5 +210,6 @@ Repository 的 `npm test` 會執行 analysis contract tests，包含：
 - research plan path / evidence request guard。
 - revision-pinned evidence bundle hash / byte / digest 驗證。
 - research coverage evidence refs 與 unavailable reason。
+- structured core model / architecture / flow / implementation / mechanism / limitation findings 與 GitHub quality gate。
 - version 2 source + research digest binding。
 - 尚未支援 provider 的 fail-closed 行為。
