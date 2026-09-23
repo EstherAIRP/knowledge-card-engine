@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import {
   assertAcceptedEvidenceMatchesRequest,
   createGitHubResearchProgress,
@@ -35,6 +37,8 @@ const HANDOFF_FILES = Object.freeze({
   analysis: 'analysis.json'
 });
 const ALLOWED_HANDOFF_FILES = new Set(Object.values(HANDOFF_FILES));
+const execFileAsync = promisify(execFile);
+const INGEST_BOT_EMAIL = '41898282+github-actions[bot]@users.noreply.github.com';
 
 function fail(code, message) {
   const error = new Error(message);
@@ -120,6 +124,86 @@ function exactObjectKeys(value, expected, label) {
   const wanted = [...expected].sort();
   if (actual.length !== wanted.length || actual.some((key, index) => key !== wanted[index])) {
     fail('REMOTE_INGEST_HANDOFF_INVALID', `${label} must contain exactly: ${wanted.join(', ')}.`);
+  }
+}
+
+
+async function gitLines(workspaceRoot, args, code) {
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync('git', ['-C', workspaceRoot, ...args], {
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024
+    }));
+  } catch (cause) {
+    const error = new Error('Remote ingestion could not validate handoff commit lineage.');
+    error.code = code;
+    error.cause = cause;
+    throw error;
+  }
+  return String(stdout || '')
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+async function assertSubmittedHandoffCommit(workspaceRoot, state) {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+
+  const [latestCommitter] = await gitLines(
+    workspaceRoot,
+    ['log', '-1', '--format=%ae', 'HEAD'],
+    'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+  );
+  if (latestCommitter === INGEST_BOT_EMAIL) return;
+
+  let expectedPath;
+  let requiresRunnerParent = false;
+
+  if (!state.hasEvidence) {
+    if (state.hasSemanticJudgement) {
+      expectedPath = state.handoffPaths.semantic_judgement;
+      requiresRunnerParent = true;
+    } else {
+      expectedPath = state.handoffPaths.request;
+    }
+  } else if (state.hasResearchPlan) {
+    expectedPath = state.handoffPaths.research_plan;
+    requiresRunnerParent = true;
+  } else if (state.hasAnalysis) {
+    expectedPath = state.handoffPaths.analysis;
+    requiresRunnerParent = true;
+  } else {
+    fail(
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+      'Remote ingestion submission does not contain an allowed Agent input file.'
+    );
+  }
+
+  const changedPaths = await gitLines(
+    workspaceRoot,
+    ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'],
+    'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+  );
+  if (changedPaths.length !== 1 || changedPaths[0] !== expectedPath) {
+    fail(
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+      'Remote ingestion Agent commit must change exactly ' + expectedPath + '.'
+    );
+  }
+
+  if (requiresRunnerParent) {
+    const [parentCommitter] = await gitLines(
+      workspaceRoot,
+      ['log', '-1', '--format=%ae', 'HEAD^'],
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+    );
+    if (parentCommitter !== INGEST_BOT_EMAIL) {
+      fail(
+        'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+        'Remote ingestion Agent input must directly follow the last runner-managed handoff commit.'
+      );
+    }
   }
 }
 
@@ -253,6 +337,14 @@ try {
     research_evidence: relative(workspace.root, researchEvidencePath),
     analysis: relative(workspace.root, analysisPath)
   };
+
+  await assertSubmittedHandoffCommit(workspace.root, {
+    hasEvidence,
+    hasSemanticJudgement,
+    hasResearchPlan,
+    hasAnalysis,
+    handoffPaths
+  });
 
   if (request.provider !== 'threads' && (hasSemanticHandoff || hasSemanticJudgement)) {
     fail('REMOTE_INGEST_HANDOFF_INVALID', 'Semantic continuation handoff is only valid for Threads ingestion.');
