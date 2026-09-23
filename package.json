@@ -18,6 +18,7 @@
     "workspace:validate": "node scripts/validate-workspace.mjs",
     "cards:validate": "node scripts/validate-cards.mjs",
     "source-state:validate": "node scripts/validate-source-state.mjs",
+    "research-state:validate": "node scripts/validate-research-state.mjs",
     "ingest:github": "node scripts/ingest-github.mjs",
     "site:serve": "node apps/server/src/node-server.js",
     "generated:build": "node scripts/release-workspace.mjs build",
