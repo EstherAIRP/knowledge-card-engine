@@ -31,7 +31,7 @@ test('web UI styles have explicit ownership and preserve ordered composition', (
   }
 
   const indexSource = read('apps/web/src/index.js');
-  const graphBehaviorSource = read('apps/web/src/legacy-graph.js');
+  const graphBehaviorSource = read('apps/web/src/graph-runtime.js');
   assert.doesNotMatch(indexSource, /--kc-page-max/u);
   assert.doesNotMatch(graphBehaviorSource, /legacyGraphCss/u);
   assert.doesNotMatch(graphBehaviorSource, /\.knowledge-graph-shell/u);
