@@ -56,7 +56,7 @@ Card Markdown 主要閱讀區使用：
 --kc-reading-max: 920px;
 ```
 
-`.knowledge-reading` 最大不超過 reading width；在較窄 viewport 退回可用寬度。Card metadata、Concept Neighborhood 與 Related Knowledge 仍使用較寬內容區，不強制壓入文章欄寬。
+`knowledge-reading` 外層與 Card metadata、Concept Neighborhood、Related Knowledge 使用同一個 Detail 主欄寬度與左邊界；Markdown 的段落、列表、引用、code block 與 table 再以 `--kc-reading-max` 限制閱讀行寬。Heading 與 section divider 保持主欄寬度，因此 Detail 三個主要區塊的版面基準線一致。
 
 ### Card Detail outline
 

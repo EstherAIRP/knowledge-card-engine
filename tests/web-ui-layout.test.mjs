@@ -45,7 +45,8 @@ test('web UI layout contract retains shared frame, reading width, responsive gri
   assert.match(siteCss, /--kc-reading-max:\s*920px/u);
   assert.match(siteCss, /--kc-page-gutter:\s*clamp\(16px, 3vw, 32px\)/u);
   assert.match(siteCss, /\.page-shell\s*\{[\s\S]*?var\(--kc-page-max\)/u);
-  assert.match(siteCss, /\.knowledge-reading\s*\{[\s\S]*?var\(--kc-reading-max\)/u);
+  assert.match(siteCss, /\.knowledge-reading\s*\{[\s\S]*?width:\s*100%/u);
+  assert.match(siteCss, /\.knowledge-reading > p,[\s\S]*?max-width:\s*var\(--kc-reading-max\)/u);
   assert.match(siteCss, /\.radar-grid\s*\{[\s\S]*?repeat\(3, minmax\(0, 1fr\)\)/u);
   assert.match(siteCss, /@media \(max-width: 1080px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/u);
   assert.match(siteCss, /@media \(max-width: 680px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*1fr/u);
