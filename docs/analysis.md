@@ -62,6 +62,8 @@ Research plan 使用 `research_version: 1`，並固定十個 research question�
 
 只有 `needs_evidence` 可要求 `evidence_kinds` 或 `path_hints`。Path hint 必須是安全的 repository-relative path；它只是研究提示，不是可直接執行的外部 URL、shell command 或 fetch 權限。
 
+GitHub multi-round expansion 在 ingestion 層另有 retry binding：第一輪 plan 不帶 `prior_analysis_evidence_digest`；已取得一輪 cumulative bundle 後，下一份 plan 必須把 `prior_analysis_evidence_digest` 設為目前 bundle 的 `analysis_evidence_digest`。這個欄位用來證明新的 material-question 判定是基於目前研究證據，而不是較舊 bundle。
+
 目前可表達的 evidence kind 包含 README、documentation、manifest、configuration、entrypoint、API、data model、auth、security、background job、deployment、license、source、test 與 other。
 
 ## GitHub Analysis Evidence Bundle
@@ -105,6 +107,8 @@ Validator 會確認：
 - `analysis_evidence_digest` 與 repository revision 及全部 evidence item metadata / content hash 一致。
 
 Digest 計算會對 evidence item 做穩定排序，因此相同 revision 與相同 item 集合不因輸入陣列順序不同而改變。
+
+GitHub bounded expansion 每次成功取得新 evidence 後，都把既有 items 與新 items 合併成新的 cumulative bundle，再重算 `analysis_evidence_digest`。Round budget、累計 item/byte budget、重複 path 與 plan retry digest 由 ingestion contract 驗證；analysis package 不自行抓下一輪來源。
 
 ## Structured Research Report
 
