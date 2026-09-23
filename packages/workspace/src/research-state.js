@@ -1,4 +1,5 @@
 import {
+  GITHUB_MATERIAL_COVERAGE_DIMENSIONS,
   RESEARCH_COVERAGE_DIMENSIONS,
   RESEARCH_COVERAGE_STATUSES,
   RESEARCH_EVIDENCE_KINDS,
@@ -6,7 +7,11 @@ import {
   validateAnalysisEvidenceBundle,
   validateAnalysisResult
 } from '../../analysis/src/index.js';
-import { canonicalizeSource, validateAcceptedEvidence } from '../../ingestion/src/index.js';
+import {
+  canonicalizeSource,
+  validateAcceptedEvidence,
+  validateGitHubSourceState
+} from '../../ingestion/src/index.js';
 
 export const RESEARCH_STATE_SCHEMA_VERSION = 1;
 
@@ -209,7 +214,53 @@ export function validateResearchState(state) {
     }
   }
 
+  for (const dimension of GITHUB_MATERIAL_COVERAGE_DIMENSIONS) {
+    if (state.coverage[dimension].status === 'not_applicable') {
+      fail(
+        'RESEARCH_STATE_INVALID',
+        `GitHub research state coverage ${dimension} cannot be not_applicable.`
+      );
+    }
+  }
+
   if (typeof state.card_id !== 'string' || !state.card_id) fail('RESEARCH_STATE_INVALID', 'Research state card_id is required.');
   safeRelativePath(state.card_path, 'research state.card_path');
   return state;
+}
+
+export function validateResearchStateLinks(state, { card, sourceState }) {
+  const validated = validateResearchState(state);
+  let acceptedState;
+  try {
+    acceptedState = validateGitHubSourceState(sourceState);
+  } catch (cause) {
+    const error = new ResearchStateError(
+      'RESEARCH_STATE_SOURCE_MISMATCH',
+      'Research state requires a valid GitHub accepted source state.'
+    );
+    error.cause = cause;
+    throw error;
+  }
+
+  if (
+    acceptedState.source_identity !== validated.source_identity
+    || acceptedState.canonical_url !== validated.canonical_url
+    || acceptedState.evidence_digest !== validated.source_evidence_digest
+    || acceptedState.card_id !== validated.card_id
+    || acceptedState.card_path !== validated.card_path
+    || acceptedState.captured_at !== validated.analyzed_at
+  ) {
+    fail('RESEARCH_STATE_SOURCE_MISMATCH', 'Research state does not match its accepted source state.');
+  }
+
+  if (
+    !card?.data
+    || card.data.id !== validated.card_id
+    || card.data.source?.identity !== validated.source_identity
+    || card.data.canonical_url !== validated.canonical_url
+  ) {
+    fail('RESEARCH_STATE_CARD_MISMATCH', 'Research state does not match its referenced Knowledge Card.');
+  }
+
+  return validated;
 }
