@@ -9,7 +9,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Node.js 24 / npm workspaces 工具鏈。
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository canonicalization、repository metadata + README accepted evidence。
+- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery / selected primary-source evidence bundle。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
 - 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence / structured coverage 可使用的 analysis version 2 驗證契約；正式 ingestion writer 目前仍使用 version 1。
 - 依 source identity / canonical URL 判斷 create 或 update。
