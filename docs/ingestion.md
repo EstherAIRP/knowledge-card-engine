@@ -95,16 +95,23 @@ README 全文只存在於 analysis input 的 accepted evidence；accepted source
 
 GitHub accepted evidence 只回答來源是否可接受；需要超出 README 的技術分析時，可另外建立固定 revision 的 research evidence。這個 research 階段不改變 accepted source evidence，也不把「研究深度不足」變成 source acceptance failure。
 
-目前 Engine 提供兩個步驟：
+Engine 提供固定 revision 的 discovery / fetch primitives，以及可驗證的 bounded expansion loop：
 
 ```text
 accepted GitHub evidence
 → discoverGitHubResearchCandidates(...)
 → fixed repository revision + bounded candidate set
-→ fetchGitHubResearchEvidence(...)
-→ selected primary-source blobs
-→ Analysis Evidence Bundle
+→ research plan
+→ createGitHubResearchProgress(...)
+→ evaluateGitHubResearchContinuation(...)
+→ fetchGitHubResearchExpansion(...)
+→ cumulative Analysis Evidence Bundle
+→ optional second research plan bound to prior analysis_evidence_digest
+→ optional second expansion
+→ deterministic stop
 ```
+
+`fetchGitHubResearchEvidence(...)` 仍可直接建立單次 selected evidence bundle；需要多輪 material-question expansion 時，必須使用 research progress / continuation contract，不能由呼叫端自行忽略 round / cumulative budget。
 
 ### Revision pin 與 stale guard
 
@@ -139,9 +146,10 @@ Discovery 有硬上限；目前預設：
 | tree entries | 4000 |
 | candidates | 500 |
 | directory depth | 5 |
-| selected evidence items | 20 |
+| expansion rounds | 2 |
+| selected evidence items（累計） | 20 |
 | single item | 163840 bytes |
-| selected bundle total | 786432 bytes |
+| selected bundle total（累計） | 786432 bytes |
 
 呼叫端只能把上限調低，不能透過 options 提高 Engine 上限。
 
@@ -168,6 +176,42 @@ Discovery 若因 budget 或 GitHub truncated response 未完整走完，會把 `
 - `text`
 
 Binary、非 UTF-8、超過單檔／總 bundle budget 的內容 fail closed。
+
+### Bounded evidence expansion
+
+`createGitHubResearchProgress(...)` 建立 round 0 進度；此時尚無 selected research item。Progress 綁定 accepted source digest 與 discovery 的 repository revision，並記錄：
+
+- `completed_rounds`
+- 已選 path
+- 累計 item 數
+- 累計 bytes
+- 目前 `analysis_evidence_digest`
+
+`evaluateGitHubResearchContinuation(...)` 只依 validated research plan、current progress、current bundle 與 discovery budget 決定是否繼續。結果只有：
+
+- `needs_evidence`：仍有 research question 明確要求證據，而且 round / item / byte budget 都還有額度。
+- `plan_complete`：目前 plan 沒有任何 `needs_evidence`。
+- `round_budget_exhausted`：已完成最大 expansion rounds。
+- `item_budget_exhausted`：累計 selected item 已達上限。
+- `byte_budget_exhausted`：累計 evidence bytes 已達上限。
+
+第一輪 plan 不得帶 prior research digest。完成一輪後，下一份 plan 若仍要求 evidence，必須帶：
+
+```text
+prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
+```
+
+digest 不一致時回報 `GITHUB_RESEARCH_PLAN_STALE`，不得把舊 material-question judgement 套到新的 cumulative evidence。
+
+`fetchGitHubResearchExpansion(...)` 另外限制：
+
+- 每輪 selected path 必須仍在同一 discovery candidate set。
+- 已在先前 round 使用的 path 不可重複擷取。
+- selected candidate 必須符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
+- item / byte budget 以累計 bundle 計算，不會因拆成多輪而重置。
+- 每次成功 expansion 都重新計算 cumulative `analysis_evidence_digest`。
+
+目前預設最多兩個 expansion rounds。第二輪後即使仍有 material unknown，也必須停止 expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
 
 最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 可將 bundle 交給正式 Workspace writer，writer 只永久保存 compact research provenance；目前 Remote Ingest handoff 尚未交換 research plan / bundle，因此 Remote Ingest 仍使用 version 1。
 
@@ -266,7 +310,12 @@ Threads evidence 會保留完整有序文字與媒體資訊供 analysis 使用�
 | `GITHUB_RESEARCH_PATH_INVALID` | Research path 不是安全 repository-relative path。 |
 | `GITHUB_RESEARCH_PATH_NOT_CANDIDATE` | 要求擷取的 path 不在受控 discovery candidate set。 |
 | `GITHUB_RESEARCH_SELECTION_INVALID` | Selected path 集合為空、重複或形狀無效。 |
-| `GITHUB_RESEARCH_BUDGET_EXCEEDED` | Selected research evidence 超過 item / byte budget。 |
+| `GITHUB_RESEARCH_SELECTION_REPEATED` | Multi-round research 再次要求已取得的 path。 |
+| `GITHUB_RESEARCH_SELECTION_NOT_REQUESTED` | Selected candidate 不符合任何目前 `needs_evidence` question。 |
+| `GITHUB_RESEARCH_PLAN_STALE` | Retry plan 綁定的 prior analysis evidence digest 已過期或缺失。 |
+| `GITHUB_RESEARCH_PROGRESS_INVALID` | Research progress 與 accepted source、revision、bundle、item/byte totals 不一致。 |
+| `GITHUB_RESEARCH_EXPANSION_STOPPED` | Continuation 已依 plan / budget 判定必須停止，仍嘗試擷取下一輪 evidence。 |
+| `GITHUB_RESEARCH_BUDGET_EXCEEDED` | Selected research evidence 超過單輪可用或累計 item / byte budget。 |
 | `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | Selected blob 不是可接受的 UTF-8 文字內容。 |
 | `INGESTION_IDENTITY_CONFLICT` | Workspace 內 identity / canonical URL 對應互相衝突或已有重複資料。 |
 

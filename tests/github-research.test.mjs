@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  createGitHubResearchProgress,
   discoverGitHubResearchCandidates,
+  evaluateGitHubResearchContinuation,
   fetchGitHubEvidence,
   fetchGitHubResearchEvidence,
-  validateGitHubResearchDiscovery
+  fetchGitHubResearchExpansion,
+  validateGitHubResearchDiscovery,
+  validateGitHubResearchProgress
 } from '../packages/ingestion/src/index.js';
-import { validateAnalysisEvidenceBundle } from '../packages/analysis/src/index.js';
+import {
+  RESEARCH_QUESTION_IDS,
+  validateAnalysisEvidenceBundle
+} from '../packages/analysis/src/index.js';
 
 function response(status, body, headers = {}) {
   return {
@@ -141,6 +148,46 @@ async function acceptedEvidence(fetchImpl = githubResearchFetch()) {
   });
 }
 
+function researchPlan({
+  priorAnalysisEvidenceDigest = null,
+  needs = {
+    architecture: {
+      evidence_kinds: ['documentation', 'source'],
+      path_hints: ['docs/architecture.md']
+    }
+  }
+} = {}) {
+  const plan = {
+    research_version: 1,
+    provider: 'github',
+    source_identity: 'github:example/research-project',
+    source_evidence_digest: null,
+    questions: Object.fromEntries(RESEARCH_QUESTION_IDS.map((questionId) => {
+      const request = needs[questionId];
+      return [questionId, {
+        status: request ? 'needs_evidence' : 'already_supported',
+        rationale: request
+          ? `Additional primary-source evidence is required for ${questionId}.`
+          : `Accepted or accumulated evidence already supports ${questionId}.`,
+        evidence_kinds: request?.evidence_kinds || [],
+        path_hints: request?.path_hints || []
+      }];
+    }))
+  };
+  if (priorAnalysisEvidenceDigest != null) {
+    plan.prior_analysis_evidence_digest = priorAnalysisEvidenceDigest;
+  }
+  return plan;
+}
+
+function bindPlan(plan, evidence) {
+  return {
+    ...plan,
+    source_identity: evidence.source_identity,
+    source_evidence_digest: evidence.evidence_digest
+  };
+}
+
 test('GitHub research discovery pins one revision and prioritizes bounded primary-source candidates', async () => {
   const fetchImpl = githubResearchFetch();
   const evidence = await acceptedEvidence(fetchImpl);
@@ -219,5 +266,243 @@ test('GitHub research fails closed when README changed after accepted source evi
   await assert.rejects(
     discoverGitHubResearchCandidates(evidence, { fetchImpl }),
     (error) => error.code === 'SOURCE_RESEARCH_STALE'
+  );
+});
+
+
+test('GitHub bounded research expansion accumulates evidence across at most two digest-bound rounds', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
+  const initialProgress = createGitHubResearchProgress(evidence, discovery);
+
+  const firstPlan = bindPlan(researchPlan(), evidence);
+  const firstDecision = evaluateGitHubResearchContinuation(
+    firstPlan,
+    evidence,
+    discovery,
+    initialProgress
+  );
+  assert.equal(firstDecision.action, 'expand');
+  assert.equal(firstDecision.reason, 'needs_evidence');
+  assert.equal(firstDecision.next_round, 1);
+  assert.equal(firstDecision.remaining.rounds, 2);
+
+  const first = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    firstPlan,
+    initialProgress,
+    ['docs/architecture.md'],
+    { fetchImpl }
+  );
+  assert.equal(first.round, 1);
+  assert.equal(first.progress.completed_rounds, 1);
+  assert.deepEqual(first.progress.selected_paths, ['docs/architecture.md']);
+  assert.equal(first.bundle.items.length, 1);
+  assert.equal(validateGitHubResearchProgress(first.progress, evidence, discovery, first.bundle), first.progress);
+
+  const secondPlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
+    needs: {
+      implementation_support: {
+        evidence_kinds: ['auth', 'source'],
+        path_hints: ['src/auth.js']
+      }
+    }
+  }), evidence);
+  const secondDecision = evaluateGitHubResearchContinuation(
+    secondPlan,
+    evidence,
+    discovery,
+    first.progress,
+    first.bundle
+  );
+  assert.equal(secondDecision.action, 'expand');
+  assert.equal(secondDecision.next_round, 2);
+
+  const second = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    secondPlan,
+    first.progress,
+    ['src/auth.js'],
+    { previousBundle: first.bundle, fetchImpl }
+  );
+  assert.equal(second.progress.completed_rounds, 2);
+  assert.deepEqual(second.progress.selected_paths, ['docs/architecture.md', 'src/auth.js']);
+  assert.deepEqual(second.bundle.items.map((item) => item.path), ['docs/architecture.md', 'src/auth.js']);
+  assert.notEqual(second.bundle.analysis_evidence_digest, first.bundle.analysis_evidence_digest);
+
+  const stillNeedsEvidence = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: second.bundle.analysis_evidence_digest,
+    needs: {
+      flow: {
+        evidence_kinds: ['background_job'],
+        path_hints: ['src/jobs.js']
+      }
+    }
+  }), evidence);
+  const stopped = evaluateGitHubResearchContinuation(
+    stillNeedsEvidence,
+    evidence,
+    discovery,
+    second.progress,
+    second.bundle
+  );
+  assert.equal(stopped.action, 'stop');
+  assert.equal(stopped.reason, 'round_budget_exhausted');
+  assert.equal(stopped.remaining.rounds, 0);
+});
+
+test('GitHub research retry rejects stale plans, repeated paths, and evidence unrelated to needs_evidence questions', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
+  const initial = createGitHubResearchProgress(evidence, discovery);
+  const firstPlan = bindPlan(researchPlan(), evidence);
+  const first = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    firstPlan,
+    initial,
+    ['docs/architecture.md'],
+    { fetchImpl }
+  );
+
+  const stalePlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: 'f'.repeat(64),
+    needs: {
+      implementation_support: {
+        evidence_kinds: ['auth'],
+        path_hints: ['src/auth.js']
+      }
+    }
+  }), evidence);
+  assert.throws(
+    () => evaluateGitHubResearchContinuation(
+      stalePlan,
+      evidence,
+      discovery,
+      first.progress,
+      first.bundle
+    ),
+    (error) => error.code === 'GITHUB_RESEARCH_PLAN_STALE'
+  );
+
+  const unrelatedPlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
+    needs: {
+      architecture: {
+        evidence_kinds: ['documentation'],
+        path_hints: ['docs/architecture.md']
+      }
+    }
+  }), evidence);
+  await assert.rejects(
+    fetchGitHubResearchExpansion(
+      evidence,
+      discovery,
+      unrelatedPlan,
+      first.progress,
+      ['src/auth.js'],
+      { previousBundle: first.bundle, fetchImpl }
+    ),
+    (error) => error.code === 'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED'
+  );
+
+  const repeatPlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
+    needs: {
+      architecture: {
+        evidence_kinds: ['documentation'],
+        path_hints: ['docs/architecture.md']
+      }
+    }
+  }), evidence);
+  await assert.rejects(
+    fetchGitHubResearchExpansion(
+      evidence,
+      discovery,
+      repeatPlan,
+      first.progress,
+      ['docs/architecture.md'],
+      { previousBundle: first.bundle, fetchImpl }
+    ),
+    (error) => error.code === 'GITHUB_RESEARCH_SELECTION_REPEATED'
+  );
+});
+
+test('GitHub research continuation stops deterministically for complete plans and cumulative budgets', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, {
+    fetchImpl,
+    limits: { max_selected_items: 1 }
+  });
+  const initial = createGitHubResearchProgress(evidence, discovery);
+
+  const completePlan = bindPlan(researchPlan({ needs: {} }), evidence);
+  const complete = evaluateGitHubResearchContinuation(
+    completePlan,
+    evidence,
+    discovery,
+    initial
+  );
+  assert.equal(complete.action, 'stop');
+  assert.equal(complete.reason, 'plan_complete');
+
+  const firstPlan = bindPlan(researchPlan(), evidence);
+  const first = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    firstPlan,
+    initial,
+    ['docs/architecture.md'],
+    { fetchImpl }
+  );
+  const retryPlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
+    needs: {
+      implementation_support: {
+        evidence_kinds: ['auth'],
+        path_hints: ['src/auth.js']
+      }
+    }
+  }), evidence);
+  const exhausted = evaluateGitHubResearchContinuation(
+    retryPlan,
+    evidence,
+    discovery,
+    first.progress,
+    first.bundle
+  );
+  assert.equal(exhausted.action, 'stop');
+  assert.equal(exhausted.reason, 'item_budget_exhausted');
+  assert.equal(exhausted.remaining.items, 0);
+});
+
+test('GitHub research progress is derived from the current cumulative bundle and fails closed on tampering', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
+  const initial = createGitHubResearchProgress(evidence, discovery);
+  const plan = bindPlan(researchPlan(), evidence);
+  const first = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    plan,
+    initial,
+    ['docs/architecture.md'],
+    { fetchImpl }
+  );
+
+  const tampered = {
+    ...first.progress,
+    total_bytes: first.progress.total_bytes + 1
+  };
+  assert.throws(
+    () => validateGitHubResearchProgress(tampered, evidence, discovery, first.bundle),
+    (error) => error.code === 'GITHUB_RESEARCH_PROGRESS_INVALID'
   );
 });
