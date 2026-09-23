@@ -1,4 +1,10 @@
 import crypto from 'node:crypto';
+import {
+  ANALYSIS_RESEARCH_VERSION,
+  RESEARCH_EVIDENCE_KINDS,
+  computeAnalysisEvidenceDigest,
+  validateAnalysisEvidenceBundle
+} from '../../analysis/src/index.js';
 import { classifyThreadsUrl, normalizeThreadsPostUrl, resolveThreadsUrl } from './threads/resolve-url.js';
 import { extractResolvedThreadsConversationWithRecovery } from './threads/conversation-recovery.js';
 import { extractThreadsViaBrowser, resolveThreadsUrlViaBrowser } from './threads/browser-adapter.js';
@@ -143,9 +149,13 @@ function responseHeader(response, name) {
 function classifyHttpFailure(response, stage) {
   const status = Number(response?.status || 0);
   if (status === 404) {
-    return stage === 'repository'
-      ? new IngestionError('SOURCE_NOT_FOUND', 'GitHub repository was not found.', { status, stage })
-      : new IngestionError('SOURCE_INCOMPLETE', 'GitHub repository does not provide an accepted README.', { status, stage });
+    if (stage === 'repository') {
+      return new IngestionError('SOURCE_NOT_FOUND', 'GitHub repository was not found.', { status, stage });
+    }
+    if (stage === 'readme') {
+      return new IngestionError('SOURCE_INCOMPLETE', 'GitHub repository does not provide an accepted README.', { status, stage });
+    }
+    return new IngestionError('SOURCE_INCOMPLETE', `GitHub ${stage} resource was not found.`, { status, stage });
   }
   if (status === 401) return new IngestionError('SOURCE_ACCESS_DENIED', 'GitHub source requires authorization.', { status, stage });
   if (status === 403) {
@@ -298,6 +308,553 @@ export async function fetchGitHubEvidence(rawUrl, {
     evidence_digest: digestEvidencePayload(repository, readme)
   };
   return validateGitHubEvidence(evidence);
+}
+
+
+export const GITHUB_RESEARCH_LIMITS = Object.freeze({
+  max_tree_requests: 64,
+  max_tree_entries: 4000,
+  max_candidates: 500,
+  max_depth: 5,
+  max_selected_items: 20,
+  max_item_bytes: 163840,
+  max_total_bytes: 786432
+});
+
+export const GITHUB_RESEARCH_STOP_REASONS = Object.freeze([
+  'tree_request_budget_exhausted',
+  'tree_entry_budget_exhausted',
+  'candidate_budget_exhausted',
+  'depth_budget_exhausted',
+  'github_tree_truncated'
+]);
+
+const GITHUB_RESEARCH_SKIP_DIRECTORIES = new Set([
+  '.git',
+  '.cache',
+  '.next',
+  '.nuxt',
+  'node_modules',
+  'vendor',
+  'vendors',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  'target',
+  'obj',
+  'generated',
+  'tmp',
+  'temp'
+]);
+
+const GITHUB_RESEARCH_LOCKFILES = new Set([
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lock',
+  'bun.lockb',
+  'poetry.lock',
+  'cargo.lock',
+  'go.sum'
+]);
+
+const GITHUB_RESEARCH_SOURCE_EXTENSIONS = new Set([
+  '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx',
+  '.py', '.go', '.rs', '.java', '.kt', '.kts',
+  '.rb', '.php', '.cs', '.swift', '.sh', '.bash',
+  '.zsh', '.sql', '.graphql', '.gql', '.proto'
+]);
+
+const GITHUB_RESEARCH_TEXT_EXTENSIONS = new Set([
+  ...GITHUB_RESEARCH_SOURCE_EXTENSIONS,
+  '.md', '.mdx', '.txt', '.json', '.jsonc', '.yaml', '.yml',
+  '.toml', '.xml', '.ini', '.cfg', '.conf', '.env'
+]);
+
+function githubHeaders(token) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'knowledge-card-engine'
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function normalizeGitHubResearchLimits(overrides = {}) {
+  if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
+    fail('GITHUB_RESEARCH_LIMIT_INVALID', 'GitHub research limits must be an object.');
+  }
+  const allowed = Object.keys(GITHUB_RESEARCH_LIMITS);
+  for (const key of Object.keys(overrides)) {
+    if (!allowed.includes(key)) fail('GITHUB_RESEARCH_LIMIT_INVALID', `Unsupported GitHub research limit: ${key}.`);
+  }
+  const result = {};
+  for (const key of allowed) {
+    const requested = overrides[key];
+    if (requested == null) {
+      result[key] = GITHUB_RESEARCH_LIMITS[key];
+      continue;
+    }
+    if (!Number.isInteger(requested) || requested < 1) {
+      fail('GITHUB_RESEARCH_LIMIT_INVALID', `GitHub research limit ${key} must be a positive integer.`);
+    }
+    result[key] = Math.min(requested, GITHUB_RESEARCH_LIMITS[key]);
+  }
+  return result;
+}
+
+function githubResearchApiBase(evidence) {
+  const fullName = String(evidence.repository?.full_name || '');
+  const parts = fullName.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) fail('SOURCE_IDENTITY_MISMATCH', 'GitHub research repository full_name is invalid.');
+  return `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+}
+
+function safeResearchPath(value) {
+  if (
+    typeof value !== 'string'
+    || !value
+    || value.startsWith('/')
+    || value.includes('\\')
+    || value.includes('\0')
+    || value.split('/').some((segment) => !segment || segment === '.' || segment === '..')
+  ) {
+    fail('GITHUB_RESEARCH_PATH_INVALID', 'GitHub research path must be a safe repository-relative path.');
+  }
+  return value;
+}
+
+function pathExtension(pathValue) {
+  const base = pathValue.split('/').at(-1) || '';
+  const index = base.lastIndexOf('.');
+  return index > 0 ? base.slice(index).toLowerCase() : '';
+}
+
+function isResearchTextPath(pathValue) {
+  const base = (pathValue.split('/').at(-1) || '').toLowerCase();
+  if (
+    base === 'dockerfile'
+    || base === 'makefile'
+    || base === 'procfile'
+    || base === 'gemfile'
+    || base === 'license'
+    || base === 'copying'
+  ) return true;
+  return GITHUB_RESEARCH_TEXT_EXTENSIONS.has(pathExtension(pathValue));
+}
+
+function shouldSkipResearchDirectory(pathValue) {
+  return pathValue
+    .toLowerCase()
+    .split('/')
+    .some((segment) => GITHUB_RESEARCH_SKIP_DIRECTORIES.has(segment));
+}
+
+function researchDirectoryPriority(pathValue) {
+  const lower = pathValue.toLowerCase();
+  const segments = lower.split('/');
+  if (segments.some((segment) => ['docs', 'doc', 'documentation'].includes(segment))) return 0;
+  if (segments.some((segment) => ['src', 'app', 'apps', 'packages', 'server', 'api', 'lib', 'core'].includes(segment))) return 1;
+  if (segments.some((segment) => ['config', 'configs', 'schema', 'schemas', 'migration', 'migrations', '.github'].includes(segment))) return 2;
+  if (segments.some((segment) => ['test', 'tests', '__tests__', 'spec'].includes(segment))) return 4;
+  return 8;
+}
+
+function classifyGitHubResearchCandidate(pathValue) {
+  const lower = pathValue.toLowerCase();
+  const base = lower.split('/').at(-1) || '';
+  const ext = pathExtension(lower);
+  const segments = lower.split('/');
+
+  if (GITHUB_RESEARCH_LOCKFILES.has(base) || base.endsWith('.min.js') || base.endsWith('.min.css')) return null;
+  if (!isResearchTextPath(pathValue)) return null;
+
+  if (/^readme(?:\.[^.]+)?$/u.test(base)) return { kind: 'readme', priority: 0 };
+  if (/^(security|security-policy)(?:\.[^.]+)?$/u.test(base)) return { kind: 'security', priority: 0 };
+  if (/^(license|licence|copying)(?:\.[^.]+)?$/u.test(base)) return { kind: 'license', priority: 1 };
+
+  const manifestNames = new Set([
+    'package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'cargo.toml',
+    'pom.xml', 'build.gradle', 'build.gradle.kts', 'composer.json', 'gemfile',
+    'mix.exs', 'deno.json', 'deno.jsonc', 'package.swift'
+  ]);
+  if (manifestNames.has(base)) return { kind: 'manifest', priority: 1 };
+
+  if (
+    base === 'dockerfile'
+    || base.startsWith('docker-compose')
+    || base.startsWith('vercel.')
+    || base.startsWith('netlify.')
+    || base.startsWith('render.')
+    || base.startsWith('railway.')
+    || base.startsWith('fly.')
+    || segments.some((segment) => ['deploy', 'deployment', 'k8s', 'kubernetes', 'helm', 'terraform'].includes(segment))
+    || (segments[0] === '.github' && segments[1] === 'workflows')
+  ) return { kind: 'deployment', priority: 2 };
+
+  if (segments.some((segment) => ['docs', 'doc', 'documentation'].includes(segment)) || ['.md', '.mdx'].includes(ext)) {
+    return { kind: 'documentation', priority: /architecture|design|internals|overview/u.test(lower) ? 1 : 3 };
+  }
+
+  if (/auth|oauth|session|permission|authorization/u.test(lower)) return { kind: 'auth', priority: 2 };
+  if (/security|threat|trust|attest|secret/u.test(lower)) return { kind: 'security', priority: 2 };
+  if (/job|queue|worker|inngest|scheduler|cron|background/u.test(lower)) return { kind: 'background_job', priority: 3 };
+  if (/schema|model|migration|prisma|drizzle|database|(^|\/)db([./]|$)/u.test(lower)) return { kind: 'data_model', priority: 3 };
+  if (/api|route|router|controller|handler|endpoint|server[-_.]?action|(^|\/)actions?([./]|$)/u.test(lower)) return { kind: 'api', priority: 4 };
+  if (/config|settings|\.env(?:\.example|\.sample)?$/u.test(lower) || ['.json', '.jsonc', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf'].includes(ext)) {
+    return { kind: 'configuration', priority: 5 };
+  }
+
+  if (/(^|\/)(index|main|app|server|cli)\.[^/]+$/u.test(lower) && GITHUB_RESEARCH_SOURCE_EXTENSIONS.has(ext)) {
+    return { kind: 'entrypoint', priority: 4 };
+  }
+  if (segments.some((segment) => ['test', 'tests', '__tests__', 'spec'].includes(segment)) || /\.(test|spec)\.[^.]+$/u.test(lower)) {
+    return { kind: 'test', priority: 8 };
+  }
+  if (
+    GITHUB_RESEARCH_SOURCE_EXTENSIONS.has(ext)
+    && segments.some((segment) => ['src', 'app', 'apps', 'packages', 'server', 'client', 'lib', 'core'].includes(segment))
+  ) return { kind: 'source', priority: 7 };
+
+  return null;
+}
+
+function addStopReason(stopReasons, reason) {
+  if (!stopReasons.includes(reason)) stopReasons.push(reason);
+}
+
+function sortResearchQueue(queue) {
+  queue.sort((a, b) => a.priority - b.priority || a.path.localeCompare(b.path));
+}
+
+function validateGitHubResearchCandidate(candidate) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research candidate must be an object.');
+  }
+  safeResearchPath(candidate.path);
+  if (!RESEARCH_EVIDENCE_KINDS.includes(candidate.kind)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `GitHub research candidate kind is invalid: ${candidate.kind}.`);
+  }
+  if (typeof candidate.blob_sha !== 'string' || !/^[0-9a-f]{40}$/u.test(candidate.blob_sha)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research candidate blob_sha is invalid.');
+  }
+  if (!Number.isInteger(candidate.bytes) || candidate.bytes < 0) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research candidate bytes is invalid.');
+  }
+  if (!Number.isInteger(candidate.priority) || candidate.priority < 0) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research candidate priority is invalid.');
+  }
+  return candidate;
+}
+
+export function validateGitHubResearchDiscovery(discovery, evidence) {
+  validateGitHubEvidence(evidence);
+  if (!discovery || typeof discovery !== 'object' || Array.isArray(discovery)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery must be an object.');
+  }
+  if (discovery.research_version !== ANALYSIS_RESEARCH_VERSION || discovery.provider !== 'github') {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery schema/provider is invalid.');
+  }
+  if (discovery.source_identity !== evidence.source_identity) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'GitHub research discovery source identity does not match accepted evidence.');
+  }
+  if (discovery.source_evidence_digest !== evidence.evidence_digest) {
+    fail('ANALYSIS_EVIDENCE_STALE', 'GitHub research discovery source evidence digest does not match accepted evidence.');
+  }
+  if (!/^[0-9a-f]{40}$/u.test(discovery.repository_revision || '')) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery repository_revision is invalid.');
+  }
+  if (!/^[0-9a-f]{40}$/u.test(discovery.root_tree_sha || '')) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery root_tree_sha is invalid.');
+  }
+  if (!Array.isArray(discovery.candidates)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery candidates must be an array.');
+  }
+  const paths = new Set();
+  for (const candidate of discovery.candidates) {
+    validateGitHubResearchCandidate(candidate);
+    if (paths.has(candidate.path)) fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `Duplicate GitHub research candidate path: ${candidate.path}.`);
+    paths.add(candidate.path);
+  }
+  if (!discovery.discovery || typeof discovery.discovery !== 'object' || Array.isArray(discovery.discovery)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery metadata is missing.');
+  }
+  if (typeof discovery.discovery.exhaustive !== 'boolean') {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery exhaustive flag is invalid.');
+  }
+  if (!Array.isArray(discovery.discovery.stop_reasons) || discovery.discovery.stop_reasons.some((reason) => !GITHUB_RESEARCH_STOP_REASONS.includes(reason))) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery stop_reasons are invalid.');
+  }
+  if (discovery.discovery.exhaustive !== (discovery.discovery.stop_reasons.length === 0)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery exhaustive flag does not match stop_reasons.');
+  }
+  for (const field of ['tree_requests', 'tree_entries', 'candidate_count', 'excluded_directories', 'excluded_files']) {
+    if (!Number.isInteger(discovery.discovery[field]) || discovery.discovery[field] < 0) {
+      fail('GITHUB_RESEARCH_DISCOVERY_INVALID', `GitHub research discovery ${field} is invalid.`);
+    }
+  }
+  if (discovery.discovery.candidate_count !== discovery.candidates.length) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery candidate_count does not match candidates.');
+  }
+  const normalizedLimits = normalizeGitHubResearchLimits(discovery.discovery.limits);
+  if (JSON.stringify(normalizedLimits) !== JSON.stringify(discovery.discovery.limits)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery limits are not normalized.');
+  }
+  return discovery;
+}
+
+export async function discoverGitHubResearchCandidates(evidence, {
+  fetchImpl = globalThis.fetch,
+  token = null,
+  limits = {}
+} = {}) {
+  const accepted = validateGitHubEvidence(evidence);
+  if (typeof fetchImpl !== 'function') fail('INGESTION_EXECUTION_FAILED', 'No fetch implementation is available for GitHub research discovery.');
+  const appliedLimits = normalizeGitHubResearchLimits(limits);
+  const headers = githubHeaders(token);
+  const apiBase = githubResearchApiBase(accepted);
+
+  const revisionPayload = await fetchJson(
+    fetchImpl,
+    `${apiBase}/commits/${encodeURIComponent(accepted.repository.default_branch)}`,
+    headers,
+    'research-revision'
+  );
+  const repositoryRevision = String(revisionPayload?.sha || '').toLowerCase();
+  const rootTreeSha = String(revisionPayload?.commit?.tree?.sha || '').toLowerCase();
+  if (!/^[0-9a-f]{40}$/u.test(repositoryRevision) || !/^[0-9a-f]{40}$/u.test(rootTreeSha)) {
+    fail('SOURCE_INCOMPLETE', 'GitHub research revision response is incomplete.');
+  }
+
+  const readmeAtRevision = await fetchJson(
+    fetchImpl,
+    `${apiBase}/readme?ref=${encodeURIComponent(repositoryRevision)}`,
+    headers,
+    'research-readme'
+  );
+  if (String(readmeAtRevision?.sha || '').toLowerCase() !== String(accepted.readme.sha || '').toLowerCase()) {
+    fail('SOURCE_RESEARCH_STALE', 'GitHub README changed between source acceptance and research revision pin.');
+  }
+
+  const queue = [{ sha: rootTreeSha, path: '', depth: 0, priority: 0 }];
+  const stopReasons = [];
+  const candidates = [];
+  let treeRequests = 0;
+  let treeEntries = 0;
+  let excludedDirectories = 0;
+  let excludedFiles = 0;
+  let hardStop = false;
+
+  while (queue.length && !hardStop) {
+    if (treeRequests >= appliedLimits.max_tree_requests) {
+      addStopReason(stopReasons, 'tree_request_budget_exhausted');
+      break;
+    }
+    sortResearchQueue(queue);
+    const current = queue.shift();
+    treeRequests += 1;
+    const treePayload = await fetchJson(
+      fetchImpl,
+      `${apiBase}/git/trees/${encodeURIComponent(current.sha)}`,
+      headers,
+      'research-tree'
+    );
+    if (!Array.isArray(treePayload?.tree)) fail('SOURCE_INCOMPLETE', 'GitHub research tree response is incomplete.');
+    if (treePayload.truncated === true) addStopReason(stopReasons, 'github_tree_truncated');
+
+    const entries = [...treePayload.tree].sort((a, b) => String(a?.path || '').localeCompare(String(b?.path || '')));
+    for (const entry of entries) {
+      treeEntries += 1;
+      if (treeEntries > appliedLimits.max_tree_entries) {
+        addStopReason(stopReasons, 'tree_entry_budget_exhausted');
+        hardStop = true;
+        break;
+      }
+      if (!entry?.path || !entry?.type || !entry?.sha) {
+        excludedFiles += 1;
+        continue;
+      }
+      const fullPath = current.path ? `${current.path}/${entry.path}` : String(entry.path);
+      safeResearchPath(fullPath);
+
+      if (entry.type === 'tree') {
+        if (shouldSkipResearchDirectory(fullPath)) {
+          excludedDirectories += 1;
+          continue;
+        }
+        const nextDepth = current.depth + 1;
+        if (nextDepth > appliedLimits.max_depth) {
+          excludedDirectories += 1;
+          addStopReason(stopReasons, 'depth_budget_exhausted');
+          continue;
+        }
+        if (/^[0-9a-f]{40}$/u.test(String(entry.sha).toLowerCase())) {
+          queue.push({
+            sha: String(entry.sha).toLowerCase(),
+            path: fullPath,
+            depth: nextDepth,
+            priority: researchDirectoryPriority(fullPath)
+          });
+        } else {
+          excludedDirectories += 1;
+        }
+        continue;
+      }
+
+      if (entry.type !== 'blob') {
+        excludedFiles += 1;
+        continue;
+      }
+      const descriptor = classifyGitHubResearchCandidate(fullPath);
+      const size = Number(entry.size);
+      if (
+        !descriptor
+        || !Number.isInteger(size)
+        || size < 0
+        || size > appliedLimits.max_item_bytes
+        || !/^[0-9a-f]{40}$/u.test(String(entry.sha).toLowerCase())
+      ) {
+        excludedFiles += 1;
+        continue;
+      }
+      candidates.push({
+        path: fullPath,
+        kind: descriptor.kind,
+        blob_sha: String(entry.sha).toLowerCase(),
+        bytes: size,
+        priority: descriptor.priority
+      });
+      if (candidates.length >= appliedLimits.max_candidates) {
+        addStopReason(stopReasons, 'candidate_budget_exhausted');
+        hardStop = true;
+        break;
+      }
+    }
+  }
+
+  candidates.sort((a, b) => a.priority - b.priority || a.path.localeCompare(b.path));
+  const discovery = {
+    research_version: ANALYSIS_RESEARCH_VERSION,
+    provider: 'github',
+    source_identity: accepted.source_identity,
+    source_evidence_digest: accepted.evidence_digest,
+    repository_revision: repositoryRevision,
+    root_tree_sha: rootTreeSha,
+    candidates,
+    discovery: {
+      exhaustive: stopReasons.length === 0,
+      stop_reasons: stopReasons,
+      tree_requests: treeRequests,
+      tree_entries: Math.min(treeEntries, appliedLimits.max_tree_entries),
+      candidate_count: candidates.length,
+      excluded_directories: excludedDirectories,
+      excluded_files: excludedFiles,
+      limits: appliedLimits
+    }
+  };
+  return validateGitHubResearchDiscovery(discovery, accepted);
+}
+
+function decodeGitHubResearchBlob(payload, candidate, limits) {
+  if (
+    payload?.encoding !== 'base64'
+    || typeof payload?.content !== 'string'
+    || String(payload?.sha || '').toLowerCase() !== candidate.blob_sha
+  ) {
+    fail('SOURCE_INCOMPLETE', `GitHub research blob response is incomplete for ${candidate.path}.`);
+  }
+  let buffer;
+  try {
+    buffer = Buffer.from(payload.content.replace(/\s/gu, ''), 'base64');
+  } catch (cause) {
+    const error = new IngestionError('SOURCE_INCOMPLETE', `GitHub research blob could not be decoded for ${candidate.path}.`);
+    error.cause = cause;
+    throw error;
+  }
+  if (buffer.length > limits.max_item_bytes) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', `GitHub research item exceeds max_item_bytes: ${candidate.path}.`);
+  }
+  if (buffer.includes(0)) fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', `GitHub research item is binary: ${candidate.path}.`);
+  const text = buffer.toString('utf8');
+  if (!Buffer.from(text, 'utf8').equals(buffer)) {
+    fail('GITHUB_RESEARCH_BINARY_UNSUPPORTED', `GitHub research item is not valid UTF-8 text: ${candidate.path}.`);
+  }
+  return { buffer, text };
+}
+
+export async function fetchGitHubResearchEvidence(evidence, discovery, selectedPaths, {
+  fetchImpl = globalThis.fetch,
+  token = null,
+  limits = {}
+} = {}) {
+  const accepted = validateGitHubEvidence(evidence);
+  const validatedDiscovery = validateGitHubResearchDiscovery(discovery, accepted);
+  if (typeof fetchImpl !== 'function') fail('INGESTION_EXECUTION_FAILED', 'No fetch implementation is available for GitHub research evidence.');
+  const appliedLimits = normalizeGitHubResearchLimits(limits);
+  if (!Array.isArray(selectedPaths) || selectedPaths.length === 0 || selectedPaths.some((item) => typeof item !== 'string' || !item)) {
+    fail('GITHUB_RESEARCH_SELECTION_INVALID', 'GitHub research selectedPaths must be a non-empty array of paths.');
+  }
+  if (new Set(selectedPaths).size !== selectedPaths.length) {
+    fail('GITHUB_RESEARCH_SELECTION_INVALID', 'GitHub research selectedPaths must not contain duplicates.');
+  }
+  if (selectedPaths.length > appliedLimits.max_selected_items) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_selected_items.');
+  }
+
+  const candidateByPath = new Map(validatedDiscovery.candidates.map((candidate) => [candidate.path, candidate]));
+  const selected = [...selectedPaths].sort().map((pathValue) => {
+    safeResearchPath(pathValue);
+    const candidate = candidateByPath.get(pathValue);
+    if (!candidate) fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', `GitHub research path is not an approved discovery candidate: ${pathValue}.`);
+    return candidate;
+  });
+  const estimatedTotal = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
+  if (estimatedTotal > appliedLimits.max_total_bytes) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_total_bytes.');
+  }
+
+  const headers = githubHeaders(token);
+  const apiBase = githubResearchApiBase(accepted);
+  const items = [];
+  let totalBytes = 0;
+  for (const candidate of selected) {
+    const blobPayload = await fetchJson(
+      fetchImpl,
+      `${apiBase}/git/blobs/${encodeURIComponent(candidate.blob_sha)}`,
+      headers,
+      'research-blob'
+    );
+    const { buffer, text } = decodeGitHubResearchBlob(blobPayload, candidate, appliedLimits);
+    totalBytes += buffer.length;
+    if (totalBytes > appliedLimits.max_total_bytes) {
+      fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research evidence exceeds max_total_bytes.');
+    }
+    items.push({
+      evidence_id: `file-${sha256(candidate.path).slice(0, 16)}`,
+      path: candidate.path,
+      kind: candidate.kind,
+      blob_sha: candidate.blob_sha,
+      content_sha256: sha256(buffer),
+      bytes: buffer.length,
+      text
+    });
+  }
+
+  const bundleBase = {
+    research_version: ANALYSIS_RESEARCH_VERSION,
+    provider: 'github',
+    source_identity: accepted.source_identity,
+    source_evidence_digest: accepted.evidence_digest,
+    repository_revision: validatedDiscovery.repository_revision,
+    items
+  };
+  const bundle = {
+    ...bundleBase,
+    analysis_evidence_digest: computeAnalysisEvidenceDigest(bundleBase)
+  };
+  return validateAnalysisEvidenceBundle(bundle, accepted);
 }
 
 export function validateGitHubIngestionRequest(value) {

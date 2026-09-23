@@ -70,6 +70,7 @@ const requiredFiles = [
   'apps/server/src/workspace-reader.js',
   'apps/server/src/node-server.js',
   'tests/analysis-contract.test.mjs',
+  'tests/github-research.test.mjs',
   'tests/remote-ingestion.test.mjs',
   'tests/threads-ingestion.test.mjs',
   'tests/private-site.test.mjs',

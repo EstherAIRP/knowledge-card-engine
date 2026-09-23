@@ -9,7 +9,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；styles 依 token / base / layout / shared / view ownership 拆分，private data 只由 authenticated API runtime 取得。 |
 | `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
-| `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
+| `packages/ingestion` | URL canonicalization、GitHub metadata + README accepted evidence、固定 revision 的 GitHub research candidate / selected evidence capture、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract；research-bound analysis 可同時綁定 source evidence 與 analysis evidence digest。 |
 | `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
@@ -32,7 +32,7 @@ source URL
 → Card + accepted source state persistence
 ```
 
-GitHub 以 repository metadata + README 建立 accepted evidence；Threads 先解析到具體貼文，再依 reply/root 關係與可用的 n/N 證據重建根貼文及完整有序串文。Threads share token、中間篇或最後一篇都不能直接成為正式來源身分。
+GitHub 以 repository metadata + README 建立 accepted evidence。需要 research evidence 時，ingestion 可在 accepted README 尚未變更的前提下固定 default branch commit，受限展開 repository tree，只暴露可分析的文字候選，並只從候選集合擷取選定 blob 形成 analysis evidence bundle。Threads 先解析到具體貼文，再依 reply/root 關係與可用的 n/N 證據重建根貼文及完整有序串文。Threads share token、中間篇或最後一篇都不能直接成為正式來源身分。
 
 Card 與 source state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。writer 使用暫存檔寫入；若 Card 已替換但 source-state replacement 失敗，會回復 Card，避免只推進其中一側。
 

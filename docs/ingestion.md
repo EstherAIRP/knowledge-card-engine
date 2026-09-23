@@ -90,6 +90,86 @@ Generic canonicalization 會移除 fragment、移除 `www.`、刪除已知 track
 
 README 全文只存在於 analysis input 的 accepted evidence；accepted source state 不保存 README 全文。
 
+## GitHub research evidence
+
+GitHub accepted evidence 只回答來源是否可接受；需要超出 README 的技術分析時，可另外建立固定 revision 的 research evidence。這個 research 階段不改變 accepted source evidence，也不把「研究深度不足」變成 source acceptance failure。
+
+目前 Engine 提供兩個步驟：
+
+```text
+accepted GitHub evidence
+→ discoverGitHubResearchCandidates(...)
+→ fixed repository revision + bounded candidate set
+→ fetchGitHubResearchEvidence(...)
+→ selected primary-source blobs
+→ Analysis Evidence Bundle
+```
+
+### Revision pin 與 stale guard
+
+Discovery 先讀 default branch 目前 commit，固定：
+
+- `repository_revision`：40 字元 commit SHA。
+- `root_tree_sha`：該 commit 的 root tree SHA。
+
+接著以同一 `repository_revision` 重新查 README。若其 blob SHA 已與 accepted evidence 的 README SHA 不同，回報 `SOURCE_RESEARCH_STALE`，不得把舊 source acceptance 與較新的 repository tree 混成一份 research bundle。
+
+### Candidate discovery
+
+Repository tree 以 non-recursive Git tree API 受限展開。Engine 只暴露可能具研究價值、可視為文字 primary source 的候選，例如：
+
+- README、架構／設計文件。
+- dependency / build manifest。
+- configuration、entrypoint、API / route。
+- data model / schema / migration。
+- auth / security。
+- background job / workflow。
+- deployment / container。
+- LICENSE。
+- representative source / test。
+
+常見 generated、vendor、dependency、build/cache 目錄，以及 lockfile、minified file、非文字副檔名不進候選集合。
+
+Discovery 有硬上限；目前預設：
+
+| Budget | 預設上限 |
+| --- | ---: |
+| tree requests | 64 |
+| tree entries | 4000 |
+| candidates | 500 |
+| directory depth | 5 |
+| selected evidence items | 20 |
+| single item | 163840 bytes |
+| selected bundle total | 786432 bytes |
+
+呼叫端只能把上限調低，不能透過 options 提高 Engine 上限。
+
+Discovery 若因 budget 或 GitHub truncated response 未完整走完，會把 `exhaustive` 設為 `false` 並保存 deterministic `stop_reasons`；目前可能值：
+
+- `tree_request_budget_exhausted`
+- `tree_entry_budget_exhausted`
+- `candidate_budget_exhausted`
+- `depth_budget_exhausted`
+- `github_tree_truncated`
+
+### Selected evidence
+
+`fetchGitHubResearchEvidence(...)` 只能讀取 discovery 已核准的 exact candidate path；不能新增任意 URL、任意 branch、任意 repository path 或 shell command。
+
+實際檔案以 discovery 記錄的 blob SHA 直接讀取，因此內容固定於同一 repository revision。每個 selected item 會保存：
+
+- deterministic `evidence_id`
+- repository-relative `path`
+- evidence `kind`
+- Git `blob_sha`
+- `content_sha256`
+- UTF-8 `bytes`
+- `text`
+
+Binary、非 UTF-8、超過單檔／總 bundle budget 的內容 fail closed。
+
+最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state；目前正式 Workspace writer / Remote Ingest 尚未接入 research bundle，因此正式 Card apply 仍使用 analysis version 1。
+
 ## Threads accepted evidence
 
 正式 Threads evidence 必須通過 `validateThreadsEvidence`。Provider 先以原生結構證據重建串文；只有在結構資料不足但仍屬於可受控判定的 continuation uncertainty 時，才允許進入語意復原。任何已知缺篇、結構歧義、來源身分衝突或執行環境失敗都不能由語意判定覆蓋。
@@ -179,6 +259,14 @@ Threads evidence 會保留完整有序文字與媒體資訊供 analysis 使用�
 | `SOURCE_INCOMPLETE` | 必要 evidence、來源完整性或 digest 驗證未通過。 |
 | `SOURCE_IDENTITY_MISMATCH` | requested、resolved、canonical 或來源內容 identity 不一致。 |
 | `SOURCE_CAPTURE_TIME_INVALID` | captured timestamp 無效。 |
+| `SOURCE_RESEARCH_STALE` | GitHub accepted README 已與 research revision 的 README blob 不一致。 |
+| `GITHUB_RESEARCH_LIMIT_INVALID` | 呼叫端提供的 research budget 無效或試圖使用未定義 budget。 |
+| `GITHUB_RESEARCH_DISCOVERY_INVALID` | GitHub research discovery 結構、candidate 或 bounded metadata 無效。 |
+| `GITHUB_RESEARCH_PATH_INVALID` | Research path 不是安全 repository-relative path。 |
+| `GITHUB_RESEARCH_PATH_NOT_CANDIDATE` | 要求擷取的 path 不在受控 discovery candidate set。 |
+| `GITHUB_RESEARCH_SELECTION_INVALID` | Selected path 集合為空、重複或形狀無效。 |
+| `GITHUB_RESEARCH_BUDGET_EXCEEDED` | Selected research evidence 超過 item / byte budget。 |
+| `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | Selected blob 不是可接受的 UTF-8 文字內容。 |
 | `INGESTION_IDENTITY_CONFLICT` | Workspace 內 identity / canonical URL 對應互相衝突或已有重複資料。 |
 
 ## Analysis result contract
