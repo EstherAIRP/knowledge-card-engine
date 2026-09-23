@@ -11,11 +11,11 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
 - GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery / selected primary-source evidence bundle。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
-- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2 驗證契約；正式 ingestion writer 目前仍使用 version 1。
+- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub v2 Card、accepted source state 與 compact research provenance。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
-- reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards 與 source state。
+- reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards、accepted source state 與 research provenance state。
 - Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 取得 GitHub 或 Threads accepted evidence；Threads 需要語意 continuation 判定時先建立 digest-bound handoff，再於 evidence-bound analysis 回填後由正式 writer 完成 Card/source-state 寫入。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
@@ -34,7 +34,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、create/update resolution 與 provider-specific source-state contract。
 - `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
-- `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state 寫入。
+- `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state / research-state transactional 寫入。
 - `packages/release`：E／S／P、manifest、release pointer / description 與 published lineage 驗證。
 
 架構與責任邊界詳見 [docs/architecture.md](./docs/architecture.md)。
@@ -74,6 +74,7 @@ npm run validate
 npm run workspace:validate -- /path/to/workspace
 npm run cards:validate -- /path/to/workspace
 npm run source-state:validate -- /path/to/workspace
+npm run research-state:validate -- /path/to/workspace
 ```
 
 來源 ingestion CLI：
@@ -97,4 +98,4 @@ npm run site:serve
 
 ## 公私資料邊界
 
-公開測試、範例與 fixture 只能使用明確標示的合成資料。`examples/synthetic-workspace/` 用來驗證 Workspace、Taxonomy、Card 與 source-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。
+公開測試、範例與 fixture 只能使用明確標示的合成資料。`examples/synthetic-workspace/` 用來驗證 Workspace、Taxonomy、Card、source-state 與 research-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。
