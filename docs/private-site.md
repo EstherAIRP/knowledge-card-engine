@@ -222,7 +222,7 @@ GitHub REST request 使用 API version `2026-03-10`。
 - 已登入首頁：使用寬版 Radar page frame、hero、統計資訊、搜尋／篩選控制與響應式 Knowledge Card grid。
 - 初始啟動、Card collection、Card detail 與 Graph 非同步讀取期間，UI 先顯示 Knowledge Radar loading state：品牌化 radar animation、狀態文案與 skeleton surfaces；載入畫面只含公開 shell 內容，不預載私人 Card。`prefers-reduced-motion: reduce` 會停用 loading animation。
 - Card list summary 只使用 `/api/cards` 已授權回傳的 title、summary、source/resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些 metadata 篩選與排序，但不額外下載私人正文。
-- Card detail：使用 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期，再以較窄 reading width 顯示 Markdown 正文、relation 與 Concept。
+- Card detail：先以寬版 metadata surface 顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期；Markdown 正文維持較窄 reading width；Concept Neighborhood 與 Related Knowledge 則在正文後回到寬版 page frame，以卡片網格呈現。
 - 搜尋沿用同一套 page frame、surface、品牌色與控制項；資料只由 authenticated `/api/search` 取得。
 - Graph UI 使用與 Cards 首頁一致的 Radar page language：hero surface、四格統計與圓角探索／篩選 panel；其下維持 semantic viewport fitting、node-aware pointer capture、mouse/touch pan + pinch/wheel zoom、Card selection、focus/global mode、responsive inspector drawer、semantic-neighbor list、node label priority、relation visibility 與 graph filtering。資料只由 authenticated `/api/graph` 提供。
 - `/api/graph` 在 current release snapshot 上投影 graph view model：Card metadata、Concept metadata、typed edges、layout/stats，以及由 current release vectors 即時計算的 `semantic.neighborsByCard` / `semantic.distancesByCard`。這個 projection 不寫回 generated artifacts，也不跨 release 讀資料。
