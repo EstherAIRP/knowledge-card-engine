@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   assertGitHubEvidenceMatchesRequest,
@@ -131,6 +132,9 @@ test('remote ingestion reusable workflow is branch-scoped and persists only expl
 });
 
 test('remote ingestion handoff contract includes bounded GitHub research files and writer binding', async () => {
+  const syntax = spawnSync(process.execPath, ['--check', 'scripts/ingest-handoff.mjs'], { encoding: 'utf8' });
+  assert.equal(syntax.status, 0, syntax.stderr || syntax.stdout);
+
   const script = await fs.readFile('scripts/ingest-handoff.mjs', 'utf8');
   assert.match(script, /researchPlan:\s*'research-plan\.json'/);
   assert.match(script, /researchEvidence:\s*'research-evidence\.json'/);
@@ -143,4 +147,8 @@ test('remote ingestion handoff contract includes bounded GitHub research files a
   assert.match(script, /handoffPaths\.research_evidence/);
   assert.match(script, /Research handoff files are only valid for GitHub ingestion/);
   assert.match(script, /research-plan\.json and analysis\.json cannot exist at the same time/);
+  assert.match(script, /REMOTE_INGEST_INPUT_COMMIT_INVALID/);
+  assert.match(script, /diff-tree/);
+  assert.match(script, /41898282\+github-actions\[bot\]@users\.noreply\.github\.com/);
+  assert.match(script, /must directly follow the last runner-managed handoff commit/);
 });
