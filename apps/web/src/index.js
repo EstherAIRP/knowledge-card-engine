@@ -70,6 +70,44 @@ export function renderPrivateSiteShell() {
     graph: document.getElementById('nav-graph')
   };
 
+  function cardPath(id) {
+    return '/knowledge/' + encodeURIComponent(id);
+  }
+
+  function cardIdFromLocation() {
+    const match = /^\/knowledge\/([^/]+)$/u.exec(location.pathname);
+    if (!match) return null;
+    try {
+      const id = decodeURIComponent(match[1]);
+      return id && !id.includes('/') ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLocation(path, { replace = false } = {}) {
+    if (location.pathname + location.search + location.hash === path) return;
+    if (replace) history.replaceState(null, '', path);
+    else history.pushState(null, '', path);
+  }
+
+  async function renderLocation() {
+    const cardId = cardIdFromLocation();
+    if (cardId) {
+      await openCard(cardId, { historyMode: 'none' });
+      return;
+    }
+    if (location.pathname !== '/' || location.search || location.hash) {
+      writeLocation('/', { replace: true });
+    }
+    await renderCards();
+  }
+
+  async function renderRootView(render) {
+    writeLocation('/');
+    await render();
+  }
+
   function cleanupDetailOutline() {
     if (typeof app.__kcDetailOutlineCleanup === 'function') app.__kcDetailOutlineCleanup();
     app.__kcDetailOutlineCleanup = null;
@@ -228,7 +266,7 @@ export function renderPrivateSiteShell() {
         const cardLink = /^(?:\.\/)?([^/#?]+)\.md(?:#[^?]*)?$/u.exec(href);
         if (cardLink) {
           const anchor = document.createElement('a');
-          anchor.href = '#';
+          anchor.href = cardPath(cardLink[1]);
           anchor.textContent = label;
           anchor.addEventListener('click', (event) => {
             event.preventDefault();
@@ -562,7 +600,7 @@ export function renderPrivateSiteShell() {
     back.type = 'button';
     back.className = 'detail-back';
     back.textContent = '← 回到 Knowledge Radar';
-    back.addEventListener('click', () => renderCards().catch((error) => {
+    back.addEventListener('click', () => renderRootView(renderCards).catch((error) => {
       if (error.message !== 'AUTH_STOP') stateView('讀取失敗', error.message, false, 'error');
     }));
 
@@ -875,11 +913,14 @@ export function renderPrivateSiteShell() {
     }
   }
 
-  async function openCard(id) {
+  async function openCard(id, { historyMode = 'push' } = {}) {
     try {
       setView('cards');
       renderLoading('正在開啟 Knowledge Card', '載入正文、關聯與 Concepts…');
       const detail = await api('/api/cards/' + encodeURIComponent(id));
+      if (historyMode !== 'none') {
+        writeLocation(cardPath(detail.id || id), { replace: historyMode === 'replace' });
+      }
       renderDetail(detail);
     } catch (error) {
       if (error.message !== 'AUTH_STOP') stateView('讀取失敗', error.message, false, 'error');
@@ -1324,22 +1365,28 @@ export function renderPrivateSiteShell() {
     try {
       await api('/api/auth/session');
       header.hidden = false;
-      await renderCards();
+      await renderLocation();
     } catch (error) {
       if (error.message === 'AUTH_STOP') return;
       if (error.message) stateView('服務暫時不可用', error.message, true, 'error');
     }
   }
 
-  nav.cards.addEventListener('click', () => renderCards().catch((error) => {
+  nav.cards.addEventListener('click', () => renderRootView(renderCards).catch((error) => {
     if (error.message !== 'AUTH_STOP') stateView('讀取失敗', error.message, false, 'error');
   }));
-  nav.search.addEventListener('click', () => renderSearch().catch((error) => {
+  nav.search.addEventListener('click', () => renderRootView(renderSearch).catch((error) => {
     if (error.message !== 'AUTH_STOP') stateView('搜尋不可用', error.message, false, 'error');
   }));
-  nav.graph.addEventListener('click', () => renderGraph().catch((error) => {
+  nav.graph.addEventListener('click', () => renderRootView(renderGraph).catch((error) => {
     if (error.message !== 'AUTH_STOP') stateView('圖譜不可用', error.message, false, 'error');
   }));
+
+  window.addEventListener('popstate', () => {
+    renderLocation().catch((error) => {
+      if (error.message !== 'AUTH_STOP') stateView('讀取失敗', error.message, false, 'error');
+    });
+  });
 
   bootstrap();
 })();

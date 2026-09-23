@@ -474,6 +474,29 @@ test('health exposes only safe configuration diagnostics and honors runtime depl
 });
 
 
+test('card permalink route serves only the public shell and remains reloadable before authorization', async () => {
+  const h = await harness();
+  const privateBefore = h.state.privateDataCalls;
+
+  const response = await h.app(new Request('https://cards.example.test/knowledge/synthetic-example-project'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
+  const html = await response.text();
+  assert.match(html, /<title>Knowledge Radar<\/title>/u);
+  assert.doesNotMatch(html, /Synthetic Example Project/u);
+  assert.equal(h.state.privateDataCalls, privateBefore);
+
+  const post = await h.app(new Request('https://cards.example.test/knowledge/synthetic-example-project', {
+    method: 'POST'
+  }));
+  assert.equal(post.status, 405);
+
+  const nested = await h.app(new Request('https://cards.example.test/knowledge/synthetic/example'));
+  assert.equal(nested.status, 404);
+  assert.equal(h.state.privateDataCalls, privateBefore);
+});
+
+
 test('private-site shell exposes the Knowledge Radar presentation without embedding private content', () => {
   const html = renderPrivateSiteShell();
   assert.match(html, /<title>Knowledge Radar<\/title>/u);
@@ -491,6 +514,11 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /conceptTitle\.id = 'concept-neighborhood'/u);
   assert.match(html, /relationTitle\.id = 'related-knowledge'/u);
   assert.match(html, /createDetailOutline\(outlineHeadings\)/u);
+  assert.match(html, /function cardPath\(id\)/u);
+  assert.match(html, /\/knowledge\/[^/]+/u);
+  assert.match(html, /history\.pushState/u);
+  assert.match(html, /window\.addEventListener\('popstate'/u);
+  assert.match(html, /await renderLocation\(\)/u);
   assert.match(html, /mainColumn\.querySelector\('#' \+ CSS\.escape\(requestedId\)\)/u);
   assert.match(html, /appendInlineMarkdown/u);
   assert.match(html, /markdownTableCells/u);
