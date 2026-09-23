@@ -50,7 +50,15 @@ test('web UI layout contract retains shared frame, reading width, responsive gri
   assert.match(siteCss, /\.radar-grid\s*\{[\s\S]*?repeat\(3, minmax\(0, 1fr\)\)/u);
   assert.match(siteCss, /@media \(max-width: 1080px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/u);
   assert.match(siteCss, /@media \(max-width: 680px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*1fr/u);
-  assert.match(siteCss, /@media \(min-width: 1120px\)[\s\S]*?\.knowledge-outline\s*\{[\s\S]*?position:\s*sticky/u);
+  assert.match(siteCss, /\.knowledge-outline\s*\{[\s\S]*?position:\s*sticky[\s\S]*?top:\s*64px/u);
+  assert.match(siteCss, /\.knowledge-outline\.is-open nav\s*\{\s*display:\s*grid/u);
+  assert.match(siteCss, /@media \(min-width: 1120px\)[\s\S]*?\.knowledge-outline\s*\{[\s\S]*?top:\s*84px/u);
+  assert.match(siteCss, /@media \(max-width: 1119px\)[\s\S]*?scroll-margin-top:\s*128px/u);
+  const indexSource = read('apps/web/src/index.js');
+  assert.match(indexSource, /knowledge-outline-toggle/u);
+  assert.match(indexSource, /aria-expanded/u);
+  assert.match(indexSource, /classList\.toggle\('is-open'\)/u);
+  assert.match(indexSource, /max-width: 1119px/u);
   assert.match(siteCss, /@media \(max-width: 900px\)[\s\S]*?\.graph-inspector\s*\{[\s\S]*?bottom:\s*0/u);
   assert.match(siteCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation:\s*none !important/u);
 });
