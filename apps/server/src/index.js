@@ -83,7 +83,7 @@ export function createPrivateSiteApp({
         });
       }
 
-      if (pathname === '/') {
+      if (pathname === '/' || /^\/knowledge\/[^/]+$/u.test(pathname)) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
         return htmlResponse(200, renderPrivateSiteShell(), {
           'Content-Security-Policy': [
