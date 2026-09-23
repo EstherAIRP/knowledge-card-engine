@@ -488,6 +488,10 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /knowledge-relations-grid/u);
   assert.match(html, /knowledge-outline/u);
   assert.match(html, /文章目錄/u);
+  assert.match(html, /conceptTitle\.id = 'concept-neighborhood'/u);
+  assert.match(html, /relationTitle\.id = 'related-knowledge'/u);
+  assert.match(html, /createDetailOutline\(outlineHeadings\)/u);
+  assert.match(html, /mainColumn\.querySelector\('#' \+ CSS\.escape\(requestedId\)\)/u);
   assert.match(html, /appendInlineMarkdown/u);
   assert.match(html, /markdownTableCells/u);
   assert.match(html, /knowledge-reading pre/u);
