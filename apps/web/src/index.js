@@ -437,12 +437,42 @@ export function renderPrivateSiteShell() {
 
     const aside = document.createElement('aside');
     aside.className = 'knowledge-outline';
-    const label = document.createElement('div');
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'knowledge-outline-toggle';
+    toggle.setAttribute('aria-controls', 'knowledge-outline-nav');
+
+    const label = document.createElement('span');
     label.className = 'knowledge-outline-label';
     label.textContent = '文章目錄';
+    const chevron = document.createElement('span');
+    chevron.className = 'knowledge-outline-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    toggle.append(label, chevron);
+
     const nav = document.createElement('nav');
+    nav.id = 'knowledge-outline-nav';
     nav.setAttribute('aria-label', '文章目錄');
     const links = new Map();
+
+    const isCompactOutline = () =>
+      window.matchMedia?.('(max-width: 1119px)')?.matches ?? window.innerWidth < 1120;
+
+    const syncOutlineMode = () => {
+      if (!isCompactOutline()) aside.classList.remove('is-open');
+      toggle.setAttribute(
+        'aria-expanded',
+        isCompactOutline() ? String(aside.classList.contains('is-open')) : 'true'
+      );
+    };
+
+    toggle.addEventListener('click', () => {
+      if (!isCompactOutline()) return;
+      aside.classList.toggle('is-open');
+      syncOutlineMode();
+    });
 
     for (const heading of headings) {
       const anchor = document.createElement('a');
@@ -451,6 +481,10 @@ export function renderPrivateSiteShell() {
       anchor.className = heading.tagName === 'H3' ? 'knowledge-outline-h3' : 'knowledge-outline-h2';
       anchor.addEventListener('click', (event) => {
         event.preventDefault();
+        if (isCompactOutline()) {
+          aside.classList.remove('is-open');
+          syncOutlineMode();
+        }
         const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
         heading.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
         history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(heading.id));
@@ -463,8 +497,9 @@ export function renderPrivateSiteShell() {
     const updateActive = () => {
       queued = false;
       let active = headings[0];
+      const activeOffset = isCompactOutline() ? 132 : 120;
       for (const heading of headings) {
-        if (heading.getBoundingClientRect().top <= 120) active = heading;
+        if (heading.getBoundingClientRect().top <= activeOffset) active = heading;
         else break;
       }
       for (const [id, anchor] of links) anchor.classList.toggle('active', id === active.id);
@@ -474,15 +509,20 @@ export function renderPrivateSiteShell() {
       queued = true;
       requestAnimationFrame(updateActive);
     };
-
-    window.addEventListener('scroll', queueUpdate, { passive: true });
-    window.addEventListener('resize', queueUpdate);
-    app.__kcDetailOutlineCleanup = () => {
-      window.removeEventListener('scroll', queueUpdate);
-      window.removeEventListener('resize', queueUpdate);
+    const handleResize = () => {
+      syncOutlineMode();
+      queueUpdate();
     };
 
-    aside.append(label, nav);
+    window.addEventListener('scroll', queueUpdate, { passive: true });
+    window.addEventListener('resize', handleResize);
+    app.__kcDetailOutlineCleanup = () => {
+      window.removeEventListener('scroll', queueUpdate);
+      window.removeEventListener('resize', handleResize);
+    };
+
+    aside.append(toggle, nav);
+    syncOutlineMode();
     requestAnimationFrame(updateActive);
     return aside;
   }
