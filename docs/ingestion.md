@@ -402,17 +402,24 @@ state/research/github/{owner-lower}--{repo-lower}.json
 
 當互動環境不能安全執行目前 Workspace 鎖定的 Engine 時，Workspace 可使用 reusable `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套 writer；最終 apply 仍走 `applyAcceptedSourceAnalysis(...)`。
 
-每個任務使用獨立 `chore/ingest-*` Workspace 分支。Handoff 目錄允許的暫存檔為：
+每個任務使用獨立 `chore/ingest-*` Workspace 分支。Handoff 目錄只允許下列暫存檔：
 
 ```text
 state/ingestion/request.json
 state/ingestion/semantic-handoff.json
 state/ingestion/semantic-judgement.json
 state/ingestion/evidence.json
+state/ingestion/research-plan.json
+state/ingestion/research-evidence.json
 state/ingestion/analysis.json
 ```
 
-其中 semantic handoff / judgement 只在 Threads 的受控語意復原需要時出現。
+Provider 邊界固定：
+
+- `semantic-handoff.json` / `semantic-judgement.json` 只可出現在 Threads。
+- `research-plan.json` / `research-evidence.json` 只可出現在 GitHub。
+- `research-plan.json` 與 `analysis.json` 不得同時存在；一個 run 只能表示「再研究一輪」或「提交最終分析」。
+- 上述 handoff 全部是分支內暫存資料，正式 apply 成功後必須移除；不得進入 Workspace `main`。
 
 `request.json` 必須且只能包含：
 
@@ -434,17 +441,80 @@ state/ingestion/analysis.json
 }
 ```
 
-執行順序：
+### GitHub research handoff
 
-1. Agent 提交 request。
-2. pinned Engine / Node.js 24 runner 驗證 Workspace 與 workflow pin，依 provider 擷取來源。Threads 會先走 HTTP，再在必要時使用公開 browser fallback，並優先嘗試 strict structural reconstruction。
-3. 若 Threads 只剩 eligible continuation uncertainty，runner 寫入 `semantic-handoff.json` 並停止在 evidence 之前。Agent 只依 handoff 內公開 evidence 產生符合固定 contract、綁定 digest 的 `semantic-judgement.json`。
-4. runner 重新擷取 live source、重建候選並驗證 digest；只有 deterministic gate 接受 judgement 時才建立 `evidence.json`。若 evidence 已改變或 gate 不通過，fail closed。
-5. Agent 只依 accepted evidence、Taxonomy 與被允許的私人背景產生 evidence-bound `analysis.json`。
-6. runner 重新驗證 request/evidence/analysis binding，呼叫正式 writer。
-7. apply 成功後移除 handoff 暫存檔，只留下正式 Card 與 accepted source state；之後才建立或更新 PR。
+GitHub request 第一次執行時，runner：
 
-Workflow 必須保留 stale branch guard 與 changed-path allowlist，不接受任意 shell command、輸出路徑或未定義 provider。等待 judgement / analysis 的 run 不得假造 repository change；`state/ingestion/**` 不得合併到 Workspace `main`。
+1. 取得並驗證 accepted source evidence，寫入 `evidence.json`。
+2. 固定 default-branch repository revision，建立 bounded candidate discovery。
+3. 建立 round 0 research progress。
+4. 把 discovery、progress 與目前 bundle 寫入 `research-evidence.json`。
+
+`research-evidence.json` 是 runner 管理的暫存狀態，固定外層：
+
+```json
+{
+  "schema_version": 1,
+  "provider": "github",
+  "discovery": {},
+  "progress": {},
+  "bundle": null
+}
+```
+
+完成 expansion 後，`bundle` 會是 cumulative Analysis Evidence Bundle，包含 selected primary-source text。這些全文只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
+
+Agent 依 `evidence.json`、`research-evidence.json.discovery`、目前 cumulative bundle 與允許的 Workspace context 產生：
+
+```json
+{
+  "schema_version": 1,
+  "provider": "github",
+  "plan": {},
+  "selected_paths": [
+    "docs/architecture.md"
+  ]
+}
+```
+
+其中 `plan` 必須符合正式 Research Plan contract；retry plan 必須以 `prior_analysis_evidence_digest` 綁定目前 cumulative bundle。每個 `selected_paths` 都必須是 discovery 已核准 candidate，而且符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
+
+runner 讀到 `research-plan.json` 後：
+
+1. 重新驗證 accepted evidence、discovery、progress、current bundle 與 plan binding。
+2. 套用 round / cumulative item / cumulative byte budget。
+3. 依 frozen blob SHA 取得本輪新 evidence；不得重複先前 round 已讀 path。
+4. 合併成新的 cumulative bundle、重算 `analysis_evidence_digest`。
+5. 更新 `research-evidence.json` 並移除已消費的 `research-plan.json`。
+
+預設最多兩個 expansion rounds。Round 1 後，Agent 可以在 budget 允許時提交第二份 digest-bound research plan，或直接產生最終 `analysis.json`；budget 已耗盡時只能進入分析，不得自由擴張第三輪。
+
+GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式 writer。成功後留下正式 Card、accepted source state 與 compact research provenance state，並清除全部 ingestion handoff。
+
+### Threads semantic handoff
+
+Threads 保留既有 provider-aware 流程：
+
+1. runner 先嘗試 strict structural reconstruction。
+2. 只有 eligible continuation uncertainty 才寫入 `semantic-handoff.json`。
+3. Agent 回填 digest-bound `semantic-judgement.json`。
+4. runner 重新擷取 live source、重建候選並確認 digest 未變，再由 deterministic gate 決定是否形成 accepted `evidence.json`。
+5. accepted evidence 後等待 `analysis_version: 1` 的 `analysis.json`，再由正式 writer 寫入 Card + accepted source state。
+
+Threads 不使用 GitHub research plan / bundle，也不因 GitHub 的研究品質規則被迫補寫來源沒有的技術細節。
+
+### Runner persistence guard
+
+Reusable workflow 只在 handoff 實際產生 Repository 變更時提交；`waiting-*` stage 不建立空提交。Agent 提交本身也受 lineage 守門：初始提交只能改 `request.json`；後續 judgement、research plan 或 analysis 提交只能改當前單一 input 檔，而且必須直接接在上一個 runner-managed handoff commit 之後。這可阻止在另一個 commit 先竄改 runner-owned accepted / research evidence，再把舊或偽造 state 帶入下一輪。
+
+每次持久化都必須：
+
+- 只允許 result 回報的 exact `allowed_changed_paths`。
+- push 前確認遠端 ingestion branch SHA 仍等於 run 開始時的 source SHA。
+- 拒絕任何未列入 handoff contract 的檔案、任意 output path 或 shell command。
+- apply 後重新驗證 Cards、accepted source state 與 research provenance state。
+
+`state/ingestion/**` 不得合併到 Workspace `main`。
 
 ## CLI
 

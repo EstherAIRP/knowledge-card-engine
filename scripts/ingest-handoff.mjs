@@ -1,12 +1,20 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import {
   assertAcceptedEvidenceMatchesRequest,
+  createGitHubResearchProgress,
+  discoverGitHubResearchCandidates,
   fetchAcceptedEvidence,
+  fetchGitHubResearchExpansion,
   validateAcceptedEvidence,
+  validateGitHubResearchDiscovery,
+  validateGitHubResearchProgress,
   validateIngestionRequest
 } from '../packages/ingestion/src/index.js';
+import { validateResearchPlan } from '../packages/analysis/src/index.js';
 import {
   THREADS_SEMANTIC_HANDOFF_KIND,
   THREADS_SEMANTIC_HANDOFF_PRODUCER,
@@ -24,9 +32,13 @@ const HANDOFF_FILES = Object.freeze({
   semanticHandoff: 'semantic-handoff.json',
   semanticJudgement: 'semantic-judgement.json',
   evidence: 'evidence.json',
+  researchPlan: 'research-plan.json',
+  researchEvidence: 'research-evidence.json',
   analysis: 'analysis.json'
 });
 const ALLOWED_HANDOFF_FILES = new Set(Object.values(HANDOFF_FILES));
+const execFileAsync = promisify(execFile);
+const INGEST_BOT_EMAIL = '41898282+github-actions[bot]@users.noreply.github.com';
 
 function fail(code, message) {
   const error = new Error(message);
@@ -76,6 +88,10 @@ async function readJson(filePath, code) {
   }
 }
 
+async function writeJson(filePath, value) {
+  await fs.writeFile(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+}
+
 async function assertHandoffDirectory(handoffDir) {
   let entries;
   try {
@@ -100,6 +116,97 @@ async function writeResult(resultFile, result) {
   await fs.writeFile(path.resolve(resultFile), JSON.stringify(result, null, 2) + '\n', 'utf8');
 }
 
+function exactObjectKeys(value, expected, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', `${label} must be an object.`);
+  }
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length || actual.some((key, index) => key !== wanted[index])) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', `${label} must contain exactly: ${wanted.join(', ')}.`);
+  }
+}
+
+
+async function gitLines(workspaceRoot, args, code) {
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync('git', ['-C', workspaceRoot, ...args], {
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024
+    }));
+  } catch (cause) {
+    const error = new Error('Remote ingestion could not validate handoff commit lineage.');
+    error.code = code;
+    error.cause = cause;
+    throw error;
+  }
+  return String(stdout || '')
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+async function assertSubmittedHandoffCommit(workspaceRoot, state) {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+
+  const [latestCommitter] = await gitLines(
+    workspaceRoot,
+    ['log', '-1', '--format=%ae', 'HEAD'],
+    'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+  );
+  if (latestCommitter === INGEST_BOT_EMAIL) return;
+
+  let expectedPath;
+  let requiresRunnerParent = false;
+
+  if (!state.hasEvidence) {
+    if (state.hasSemanticJudgement) {
+      expectedPath = state.handoffPaths.semantic_judgement;
+      requiresRunnerParent = true;
+    } else {
+      expectedPath = state.handoffPaths.request;
+    }
+  } else if (state.hasResearchPlan) {
+    expectedPath = state.handoffPaths.research_plan;
+    requiresRunnerParent = true;
+  } else if (state.hasAnalysis) {
+    expectedPath = state.handoffPaths.analysis;
+    requiresRunnerParent = true;
+  } else {
+    fail(
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+      'Remote ingestion submission does not contain an allowed Agent input file.'
+    );
+  }
+
+  const changedPaths = await gitLines(
+    workspaceRoot,
+    ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'],
+    'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+  );
+  if (changedPaths.length !== 1 || changedPaths[0] !== expectedPath) {
+    fail(
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+      'Remote ingestion Agent commit must change exactly ' + expectedPath + '.'
+    );
+  }
+
+  if (requiresRunnerParent) {
+    const [parentCommitter] = await gitLines(
+      workspaceRoot,
+      ['log', '-1', '--format=%ae', 'HEAD^'],
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+    );
+    if (parentCommitter !== INGEST_BOT_EMAIL) {
+      fail(
+        'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+        'Remote ingestion Agent input must directly follow the last runner-managed handoff commit.'
+      );
+    }
+  }
+}
+
 function validateSemanticHandoff(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     fail('REMOTE_INGEST_HANDOFF_INVALID', 'Threads semantic handoff must be an object.');
@@ -117,6 +224,82 @@ function validateSemanticHandoff(value) {
   return value;
 }
 
+function validateResearchHandoff(value, evidence) {
+  exactObjectKeys(
+    value,
+    ['schema_version', 'provider', 'discovery', 'progress', 'bundle'],
+    'GitHub research evidence handoff'
+  );
+  if (value.schema_version !== 1 || value.provider !== 'github') {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'GitHub research evidence handoff schema/provider is invalid.');
+  }
+  const discovery = validateGitHubResearchDiscovery(value.discovery, evidence);
+  const bundle = value.bundle == null ? null : value.bundle;
+  const progress = validateGitHubResearchProgress(value.progress, evidence, discovery, bundle);
+  return {
+    schema_version: 1,
+    provider: 'github',
+    discovery,
+    progress,
+    bundle
+  };
+}
+
+function validateResearchPlanHandoff(value, evidence) {
+  exactObjectKeys(
+    value,
+    ['schema_version', 'provider', 'plan', 'selected_paths'],
+    'GitHub research plan handoff'
+  );
+  if (value.schema_version !== 1 || value.provider !== 'github') {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'GitHub research plan handoff schema/provider is invalid.');
+  }
+  const plan = validateResearchPlan(value.plan, evidence);
+  if (
+    !Array.isArray(value.selected_paths)
+    || value.selected_paths.length === 0
+    || value.selected_paths.some((item) => typeof item !== 'string' || !item)
+    || new Set(value.selected_paths).size !== value.selected_paths.length
+  ) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'GitHub research plan selected_paths must be a non-empty unique array.');
+  }
+  return {
+    schema_version: 1,
+    provider: 'github',
+    plan,
+    selected_paths: value.selected_paths
+  };
+}
+
+function researchBudgetAvailable(researchHandoff) {
+  const limits = researchHandoff.discovery.discovery.limits;
+  const progress = researchHandoff.progress;
+  return (
+    progress.completed_rounds < limits.max_expansion_rounds
+    && progress.total_items < limits.max_selected_items
+    && progress.total_bytes < limits.max_total_bytes
+  );
+}
+
+function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
+  const hasBundle = Boolean(researchHandoff.bundle);
+  const canExpand = researchBudgetAvailable(researchHandoff);
+  return {
+    status: 'ok',
+    stage: hasBundle && !canExpand ? 'waiting-for-analysis' : 'waiting-for-research',
+    waiting_for: hasBundle
+      ? (canExpand ? 'research-plan-or-analysis' : 'analysis')
+      : 'research-plan',
+    source_identity: evidence.source_identity,
+    evidence_digest: evidence.evidence_digest,
+    repository_revision: researchHandoff.discovery.repository_revision,
+    analysis_evidence_digest: researchHandoff.bundle?.analysis_evidence_digest || null,
+    research_progress: researchHandoff.progress,
+    handoff_paths: handoffPaths,
+    allowed_changed_paths: []
+  };
+}
+
 const args = parseArgs(process.argv.slice(2));
 if (!args.workspaceRoot) {
   console.error('Usage: npm run ingest:handoff -- <workspace-root> [--result-file=<path>]');
@@ -132,6 +315,8 @@ try {
   const semanticHandoffPath = path.join(handoffDir, HANDOFF_FILES.semanticHandoff);
   const semanticJudgementPath = path.join(handoffDir, HANDOFF_FILES.semanticJudgement);
   const evidencePath = path.join(handoffDir, HANDOFF_FILES.evidence);
+  const researchPlanPath = path.join(handoffDir, HANDOFF_FILES.researchPlan);
+  const researchEvidencePath = path.join(handoffDir, HANDOFF_FILES.researchEvidence);
   const analysisPath = path.join(handoffDir, HANDOFF_FILES.analysis);
   const request = validateIngestionRequest(
     await readJson(requestPath, 'REMOTE_INGEST_REQUEST_MISSING')
@@ -140,22 +325,41 @@ try {
   const hasSemanticHandoff = await exists(semanticHandoffPath);
   const hasSemanticJudgement = await exists(semanticJudgementPath);
   const hasEvidence = await exists(evidencePath);
+  const hasResearchPlan = await exists(researchPlanPath);
+  const hasResearchEvidence = await exists(researchEvidencePath);
   const hasAnalysis = await exists(analysisPath);
   const handoffPaths = {
     request: relative(workspace.root, requestPath),
     semantic_handoff: relative(workspace.root, semanticHandoffPath),
     semantic_judgement: relative(workspace.root, semanticJudgementPath),
     evidence: relative(workspace.root, evidencePath),
+    research_plan: relative(workspace.root, researchPlanPath),
+    research_evidence: relative(workspace.root, researchEvidencePath),
     analysis: relative(workspace.root, analysisPath)
   };
 
+  await assertSubmittedHandoffCommit(workspace.root, {
+    hasEvidence,
+    hasSemanticJudgement,
+    hasResearchPlan,
+    hasAnalysis,
+    handoffPaths
+  });
+
+  if (request.provider !== 'threads' && (hasSemanticHandoff || hasSemanticJudgement)) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'Semantic continuation handoff is only valid for Threads ingestion.');
+  }
+  if (request.provider !== 'github' && (hasResearchPlan || hasResearchEvidence)) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'Research handoff files are only valid for GitHub ingestion.');
+  }
+  if (hasResearchPlan && hasAnalysis) {
+    fail('REMOTE_INGEST_HANDOFF_INVALID', 'research-plan.json and analysis.json cannot exist at the same time.');
+  }
+
   let result;
   if (!hasEvidence) {
-    if (hasAnalysis) {
-      fail('REMOTE_INGEST_HANDOFF_INVALID', 'analysis.json cannot exist before accepted evidence is prepared.');
-    }
-    if (request.provider !== 'threads' && (hasSemanticHandoff || hasSemanticJudgement)) {
-      fail('REMOTE_INGEST_HANDOFF_INVALID', 'Semantic continuation handoff is only valid for Threads ingestion.');
+    if (hasAnalysis || hasResearchPlan || hasResearchEvidence) {
+      fail('REMOTE_INGEST_HANDOFF_INVALID', 'Research or analysis handoff files cannot exist before accepted evidence is prepared.');
     }
     if (hasSemanticJudgement && !hasSemanticHandoff) {
       fail('REMOTE_INGEST_HANDOFF_INVALID', 'semantic-judgement.json requires semantic-handoff.json.');
@@ -204,7 +408,7 @@ try {
           && error?.code === 'THREADS_SEMANTIC_HANDOFF_REQUIRED'
           && error?.semantic_handoff
         ) {
-          await fs.writeFile(semanticHandoffPath, JSON.stringify(error.semantic_handoff, null, 2) + '\n', 'utf8');
+          await writeJson(semanticHandoffPath, error.semantic_handoff);
           result = {
             status: 'ok',
             stage: 'semantic-handoff',
@@ -219,24 +423,54 @@ try {
 
       if (evidence) {
         assertAcceptedEvidenceMatchesRequest(request, evidence);
-        await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2) + '\n', 'utf8');
+
         const allowed = [handoffPaths.evidence];
-        if (hasSemanticHandoff) {
-          await fs.rm(semanticHandoffPath, { force: true });
-          allowed.push(handoffPaths.semantic_handoff);
+        if (request.provider === 'github') {
+          const discovery = await discoverGitHubResearchCandidates(evidence, {
+            token: process.env.GITHUB_TOKEN || null
+          });
+          const researchHandoff = {
+            schema_version: 1,
+            provider: 'github',
+            discovery,
+            progress: createGitHubResearchProgress(evidence, discovery),
+            bundle: null
+          };
+          await Promise.all([
+            writeJson(evidencePath, evidence),
+            writeJson(researchEvidencePath, researchHandoff)
+          ]);
+          allowed.push(handoffPaths.research_evidence);
+          result = {
+            status: 'ok',
+            stage: 'research-prepared',
+            waiting_for: 'research-plan',
+            source_identity: evidence.source_identity,
+            evidence_digest: evidence.evidence_digest,
+            repository_revision: discovery.repository_revision,
+            research_candidate_count: discovery.candidates.length,
+            handoff_paths: handoffPaths,
+            allowed_changed_paths: allowed
+          };
+        } else {
+          await writeJson(evidencePath, evidence);
+          if (hasSemanticHandoff) {
+            await fs.rm(semanticHandoffPath, { force: true });
+            allowed.push(handoffPaths.semantic_handoff);
+          }
+          if (hasSemanticJudgement) {
+            await fs.rm(semanticJudgementPath, { force: true });
+            allowed.push(handoffPaths.semantic_judgement);
+          }
+          result = {
+            status: 'ok',
+            stage: 'prepared',
+            source_identity: evidence.source_identity,
+            evidence_digest: evidence.evidence_digest,
+            handoff_paths: handoffPaths,
+            allowed_changed_paths: allowed
+          };
         }
-        if (hasSemanticJudgement) {
-          await fs.rm(semanticJudgementPath, { force: true });
-          allowed.push(handoffPaths.semantic_judgement);
-        }
-        result = {
-          status: 'ok',
-          stage: 'prepared',
-          source_identity: evidence.source_identity,
-          evidence_digest: evidence.evidence_digest,
-          handoff_paths: handoffPaths,
-          allowed_changed_paths: allowed
-        };
       }
     }
   } else {
@@ -248,39 +482,134 @@ try {
     );
     assertAcceptedEvidenceMatchesRequest(request, evidence);
 
-    if (!hasAnalysis) {
-      result = {
-        status: 'ok',
-        stage: 'waiting-for-analysis',
-        source_identity: evidence.source_identity,
-        evidence_digest: evidence.evidence_digest,
-        handoff_paths: handoffPaths,
-        allowed_changed_paths: []
-      };
+    if (request.provider === 'github') {
+      if (!hasResearchEvidence) {
+        fail('REMOTE_INGEST_RESEARCH_MISSING', 'GitHub accepted evidence requires research-evidence.json before analysis can be applied.');
+      }
+      let researchHandoff = validateResearchHandoff(
+        await readJson(researchEvidencePath, 'REMOTE_INGEST_RESEARCH_MISSING'),
+        evidence
+      );
+
+      if (hasAnalysis) {
+        if (!researchHandoff.bundle || researchHandoff.progress.completed_rounds < 1) {
+          fail('REMOTE_INGEST_RESEARCH_REQUIRED', 'GitHub analysis requires at least one validated research expansion round.');
+        }
+        const analysis = await readJson(analysisPath, 'REMOTE_INGEST_ANALYSIS_MISSING');
+        const applied = await applyAcceptedSourceAnalysis(
+          workspace.root,
+          evidence,
+          analysis,
+          { analysisEvidenceBundle: researchHandoff.bundle }
+        );
+        await Promise.all([
+          fs.rm(requestPath, { force: true }),
+          fs.rm(evidencePath, { force: true }),
+          fs.rm(researchPlanPath, { force: true }),
+          fs.rm(researchEvidencePath, { force: true }),
+          fs.rm(analysisPath, { force: true })
+        ]);
+        await fs.rmdir(handoffDir).catch((error) => {
+          if (error?.code !== 'ENOENT' && error?.code !== 'ENOTEMPTY') throw error;
+        });
+        result = {
+          status: 'ok',
+          stage: 'applied',
+          ...applied,
+          handoff_paths: handoffPaths,
+          allowed_changed_paths: [
+            applied.card_path,
+            applied.source_state_path,
+            applied.research_state_path,
+            handoffPaths.request,
+            handoffPaths.evidence,
+            handoffPaths.research_plan,
+            handoffPaths.research_evidence,
+            handoffPaths.analysis
+          ].filter(Boolean)
+        };
+      } else if (hasResearchPlan) {
+        const submission = validateResearchPlanHandoff(
+          await readJson(researchPlanPath, 'REMOTE_INGEST_RESEARCH_PLAN_MISSING'),
+          evidence
+        );
+        const expansion = await fetchGitHubResearchExpansion(
+          evidence,
+          researchHandoff.discovery,
+          submission.plan,
+          researchHandoff.progress,
+          submission.selected_paths,
+          {
+            previousBundle: researchHandoff.bundle,
+            token: process.env.GITHUB_TOKEN || null
+          }
+        );
+        researchHandoff = {
+          ...researchHandoff,
+          progress: expansion.progress,
+          bundle: expansion.bundle
+        };
+        await writeJson(researchEvidencePath, researchHandoff);
+        await fs.rm(researchPlanPath, { force: true });
+        result = {
+          status: 'ok',
+          stage: 'research-expanded',
+          waiting_for: researchBudgetAvailable(researchHandoff)
+            ? 'research-plan-or-analysis'
+            : 'analysis',
+          source_identity: evidence.source_identity,
+          evidence_digest: evidence.evidence_digest,
+          repository_revision: researchHandoff.discovery.repository_revision,
+          research_round: expansion.round,
+          analysis_evidence_digest: expansion.bundle.analysis_evidence_digest,
+          research_progress: expansion.progress,
+          handoff_paths: handoffPaths,
+          allowed_changed_paths: [
+            handoffPaths.research_plan,
+            handoffPaths.research_evidence
+          ]
+        };
+      } else {
+        result = githubWaitingResult(evidence, researchHandoff, handoffPaths);
+      }
     } else {
-      const analysis = await readJson(analysisPath, 'REMOTE_INGEST_ANALYSIS_MISSING');
-      const applied = await applyAcceptedSourceAnalysis(workspace.root, evidence, analysis);
-      await Promise.all([
-        fs.rm(requestPath, { force: true }),
-        fs.rm(evidencePath, { force: true }),
-        fs.rm(analysisPath, { force: true })
-      ]);
-      await fs.rmdir(handoffDir).catch((error) => {
-        if (error?.code !== 'ENOENT' && error?.code !== 'ENOTEMPTY') throw error;
-      });
-      result = {
-        status: 'ok',
-        stage: 'applied',
-        ...applied,
-        handoff_paths: handoffPaths,
-        allowed_changed_paths: [
-          applied.card_path,
-          applied.source_state_path,
-          handoffPaths.request,
-          handoffPaths.evidence,
-          handoffPaths.analysis
-        ]
-      };
+      if (hasResearchPlan || hasResearchEvidence) {
+        fail('REMOTE_INGEST_HANDOFF_INVALID', 'Research handoff files are not valid for Threads ingestion.');
+      }
+      if (!hasAnalysis) {
+        result = {
+          status: 'ok',
+          stage: 'waiting-for-analysis',
+          source_identity: evidence.source_identity,
+          evidence_digest: evidence.evidence_digest,
+          handoff_paths: handoffPaths,
+          allowed_changed_paths: []
+        };
+      } else {
+        const analysis = await readJson(analysisPath, 'REMOTE_INGEST_ANALYSIS_MISSING');
+        const applied = await applyAcceptedSourceAnalysis(workspace.root, evidence, analysis);
+        await Promise.all([
+          fs.rm(requestPath, { force: true }),
+          fs.rm(evidencePath, { force: true }),
+          fs.rm(analysisPath, { force: true })
+        ]);
+        await fs.rmdir(handoffDir).catch((error) => {
+          if (error?.code !== 'ENOENT' && error?.code !== 'ENOTEMPTY') throw error;
+        });
+        result = {
+          status: 'ok',
+          stage: 'applied',
+          ...applied,
+          handoff_paths: handoffPaths,
+          allowed_changed_paths: [
+            applied.card_path,
+            applied.source_state_path,
+            handoffPaths.request,
+            handoffPaths.evidence,
+            handoffPaths.analysis
+          ]
+        };
+      }
     }
   }
 

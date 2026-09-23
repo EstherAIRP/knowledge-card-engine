@@ -66,6 +66,7 @@ jobs:
           node engine/scripts/validate-workspace.mjs workspace             --engine-repository=${{ inputs.engine_repository }}             --engine-commit=${{ inputs.engine_sha }}             --workflow-file=.github/workflows/ingest.yml             --reusable-workflow=ingest-workspace.yml
           node engine/scripts/validate-cards.mjs workspace
           node engine/scripts/validate-source-state.mjs workspace
+          node engine/scripts/validate-research-state.mjs workspace
 
       - name: Capture branch source
         id: source
@@ -88,7 +89,7 @@ jobs:
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
 
       - name: Guard and persist handoff changes
-        if: steps.handoff.outputs.stage != 'waiting-for-analysis'
+        if: ${{ !startsWith(steps.handoff.outputs.stage, 'waiting-') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -126,11 +127,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if [[ "${{ steps.handoff.outputs.stage }}" == "prepared" ]]; then
-            git commit -m "chore: prepare source ingestion evidence"
-          else
-            git commit -m "feat: apply source ingestion"
-          fi
+          STAGE="${{ steps.handoff.outputs.stage }}"
+          case "$STAGE" in
+            prepared)
+              COMMIT_MESSAGE="chore: prepare source ingestion evidence"
+              ;;
+            research-prepared)
+              COMMIT_MESSAGE="chore: prepare source research handoff"
+              ;;
+            research-expanded)
+              COMMIT_MESSAGE="chore: expand source research evidence"
+              ;;
+            semantic-handoff)
+              COMMIT_MESSAGE="chore: prepare semantic ingestion handoff"
+              ;;
+            applied)
+              COMMIT_MESSAGE="feat: apply source ingestion"
+              ;;
+            *)
+              echo "Unexpected persistent ingestion stage: $STAGE" >&2
+              exit 1
+              ;;
+          esac
+          git commit -m "$COMMIT_MESSAGE"
           git push origin "HEAD:$GITHUB_REF_NAME"
 
       - name: Validate applied result
@@ -140,3 +159,4 @@ jobs:
           set -euo pipefail
           node engine/scripts/validate-cards.mjs workspace
           node engine/scripts/validate-source-state.mjs workspace
+          node engine/scripts/validate-research-state.mjs workspace
