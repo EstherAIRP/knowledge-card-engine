@@ -417,7 +417,7 @@ function safeResearchPath(value) {
     typeof value !== 'string'
     || !value
     || value.startsWith('/')
-    || value.includes('\\\\')
+    || value.includes('\\')
     || value.includes('\0')
     || value.split('/').some((segment) => !segment || segment === '.' || segment === '..')
   ) {
