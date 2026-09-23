@@ -60,7 +60,7 @@ Card Markdown 主要閱讀區使用：
 
 ### Card Detail outline
 
-`1120px` 以上的 Card Detail 使用主內容加 `240px` outline 欄。Outline 為 sticky，top offset 是 `84px`；較窄 viewport 不顯示右側 outline。
+`1120px` 以上的 Card Detail 使用主內容加 `240px` outline 欄，Outline 為 sticky，top offset 是 `84px`。`1119px` 以下不移除目錄，而是把同一份 H2／H3、Concept Neighborhood 與 Related Knowledge outline 移到主內容上方，呈現為 sticky local-nav；預設收合，點擊「文章目錄」展開，選擇章節後自動收合並捲動定位。
 
 ### Radar grid
 
@@ -76,7 +76,7 @@ Graph canvas 留在 shared page frame 內，寬度為可用區域的 `100%`。De
 
 | Breakpoint | 目前用途 |
 | --- | --- |
-| `1120px` | Card Detail sticky outline。 |
+| `1120px` | Card Detail 右側 sticky outline；其下改用上方 sticky local-nav。 |
 | `1080px` | Radar grid / controls / relevance layout。 |
 | `900px` | Header wrapping、Graph inspector bottom sheet、Radar hero。 |
 | `680px` | Main mobile layout、Radar single column。 |
@@ -90,6 +90,7 @@ Breakpoint 只有在具有相同結構語意時才共用；component-specific co
 - `prefers-reduced-motion: reduce` 會停用 loading radar、progress 與 skeleton animation。
 - Form control 的 focus state使用一致 brand border / ring。
 - Header navigation 可在窄 viewport 水平捲動，避免截斷導覽按鈕。
+- Card Detail 小尺寸目錄以 `button` 控制 `aria-expanded`，並保留同一份章節 active-state 與 reduced-motion scroll 行為。
 - Markdown code block 自己管理 horizontal overflow，不要求整頁跟著水平捲動。
 
 ## 驗證
