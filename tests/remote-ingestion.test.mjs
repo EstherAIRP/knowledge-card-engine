@@ -118,29 +118,29 @@ test('accepted evidence must match the normalized remote ingestion request', asy
 
 test('remote ingestion reusable workflow is branch-scoped and persists only explicit handoff stages', async () => {
   const workflow = await fs.readFile('.github/workflows/ingest-workspace.yml', 'utf8');
-  assert.match(workflow, /case "\\$GITHUB_REF_NAME" in[\\s\\S]*chore\\/ingest-\\*/);
-  assert.match(workflow, /node-version:\\s*24/);
-  assert.match(workflow, /--reusable-workflow=ingest-workspace\\.yml/);
-  assert.match(workflow, /scripts\\/ingest-handoff\\.mjs/);
-  assert.match(workflow, /startsWith\\(steps\\.handoff\\.outputs\\.stage, 'waiting-'\\)/);
-  assert.match(workflow, /research-prepared\\)[\\s\\S]*prepare source research handoff/);
-  assert.match(workflow, /research-expanded\\)[\\s\\S]*expand source research evidence/);
-  assert.equal((workflow.match(/validate-research-state\\.mjs workspace/g) || []).length, 2);
+  assert.match(workflow, /case "\$GITHUB_REF_NAME" in[\s\S]*chore\/ingest-\*/);
+  assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /--reusable-workflow=ingest-workspace\.yml/);
+  assert.match(workflow, /scripts\/ingest-handoff\.mjs/);
+  assert.match(workflow, /startsWith\(steps\.handoff\.outputs\.stage, 'waiting-'\)/);
+  assert.match(workflow, /research-prepared\)[\s\S]*prepare source research handoff/);
+  assert.match(workflow, /research-expanded\)[\s\S]*expand source research evidence/);
+  assert.equal((workflow.match(/validate-research-state\.mjs workspace/g) || []).length, 2);
   assert.doesNotMatch(workflow, /pull_request_target/);
   assert.doesNotMatch(workflow, /workflow_dispatch/);
 });
 
 test('remote ingestion handoff contract includes bounded GitHub research files and writer binding', async () => {
   const script = await fs.readFile('scripts/ingest-handoff.mjs', 'utf8');
-  assert.match(script, /researchPlan:\\s*'research-plan\\.json'/);
-  assert.match(script, /researchEvidence:\\s*'research-evidence\\.json'/);
+  assert.match(script, /researchPlan:\s*'research-plan\.json'/);
+  assert.match(script, /researchEvidence:\s*'research-evidence\.json'/);
   assert.match(script, /discoverGitHubResearchCandidates/);
   assert.match(script, /createGitHubResearchProgress/);
   assert.match(script, /fetchGitHubResearchExpansion/);
-  assert.match(script, /analysisEvidenceBundle:\\s*researchHandoff\\.bundle/);
-  assert.match(script, /applied\\.research_state_path/);
-  assert.match(script, /handoffPaths\\.research_plan/);
-  assert.match(script, /handoffPaths\\.research_evidence/);
+  assert.match(script, /analysisEvidenceBundle:\s*researchHandoff\.bundle/);
+  assert.match(script, /applied\.research_state_path/);
+  assert.match(script, /handoffPaths\.research_plan/);
+  assert.match(script, /handoffPaths\.research_evidence/);
   assert.match(script, /Research handoff files are only valid for GitHub ingestion/);
-  assert.match(script, /research-plan\\.json and analysis\\.json cannot exist at the same time/);
+  assert.match(script, /research-plan\.json and analysis\.json cannot exist at the same time/);
 });
