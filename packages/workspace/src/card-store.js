@@ -174,41 +174,43 @@ async function rollbackFile(filePath, prior) {
 
 async function commitFileTransaction(entries, nonce) {
   const prepared = [];
-  for (const entry of entries) {
-    const prior = await readIfExists(entry.filePath);
-    const tmpPath = entry.content == null ? null : `${entry.filePath}.tmp-${nonce}`;
-    if (tmpPath) await fs.writeFile(tmpPath, entry.content, 'utf8');
-    prepared.push({ ...entry, prior, tmpPath });
-  }
-
-  const committed = [];
   try {
-    for (const entry of prepared) {
-      if (entry.content == null) await fs.rm(entry.filePath, { force: true });
-      else await fs.rename(entry.tmpPath, entry.filePath);
-      committed.push(entry);
+    for (const entry of entries) {
+      const prior = await readIfExists(entry.filePath);
+      const tmpPath = entry.content == null ? null : `${entry.filePath}.tmp-${nonce}`;
+      if (tmpPath) await fs.writeFile(tmpPath, entry.content, 'utf8');
+      prepared.push({ ...entry, prior, tmpPath });
     }
-  } catch (error) {
-    const rollbackErrors = [];
-    for (const entry of [...committed].reverse()) {
-      try {
-        await rollbackFile(entry.filePath, entry.prior);
-      } catch (rollbackError) {
-        rollbackErrors.push({
-          file_path: entry.filePath,
-          message: rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
-        });
+
+    const committed = [];
+    try {
+      for (const entry of prepared) {
+        if (entry.content == null) await fs.rm(entry.filePath, { force: true });
+        else await fs.rename(entry.tmpPath, entry.filePath);
+        committed.push(entry);
       }
+    } catch (error) {
+      const rollbackErrors = [];
+      for (const entry of [...committed].reverse()) {
+        try {
+          await rollbackFile(entry.filePath, entry.prior);
+        } catch (rollbackError) {
+          rollbackErrors.push({
+            file_path: entry.filePath,
+            message: rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+          });
+        }
+      }
+      if (rollbackErrors.length) error.rollback_errors = rollbackErrors;
+      throw error;
     }
-    if (rollbackErrors.length) error.rollback_errors = rollbackErrors;
-    throw error;
+
+    return Object.fromEntries(prepared.map((entry) => [entry.name, entry.prior]));
   } finally {
     for (const entry of prepared) {
       if (entry.tmpPath) await fs.rm(entry.tmpPath, { force: true }).catch(() => {});
     }
   }
-
-  return Object.fromEntries(prepared.map((entry) => [entry.name, entry.prior]));
 }
 
 export async function applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, {
