@@ -140,12 +140,16 @@ function relationProjection(cardId, snapshot) {
       return {
         other_id: otherId,
         other_title: other?.data?.title || otherId,
+        other_summary: other?.data?.summary || '',
         type: edge.type,
         direction: edge.direction,
         score: edge.score,
         method: edge.method,
         source: edge.source,
-        target: edge.target
+        target: edge.target,
+        evidence: edge.evidence || null,
+        manual: edge.manual === true,
+        note: typeof edge.note === 'string' ? edge.note : null
       };
     });
 }

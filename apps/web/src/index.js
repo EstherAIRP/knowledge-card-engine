@@ -658,6 +658,137 @@ export function renderPrivateSiteShell() {
     .knowledge-reading li { line-height: 1.78; }
     .knowledge-reading p { color: var(--kc-text); }
     .knowledge-reading li + li { margin-top: 6px; }
+    .knowledge-reading h2,
+    .knowledge-reading h3 { scroll-margin-top: 88px; }
+    .knowledge-reading a {
+      color: var(--kc-brand);
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--kc-brand) 45%, transparent);
+      text-underline-offset: 3px;
+    }
+    .knowledge-reading code {
+      padding: 2px 5px;
+      border-radius: 6px;
+      background: var(--kc-bg-soft);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: .9em;
+    }
+    .knowledge-code-block {
+      position: relative;
+      margin: 18px 0;
+    }
+    .knowledge-reading pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 42px 18px 16px;
+      border: 1px solid var(--kc-border);
+      border-radius: 14px;
+      background: var(--kc-bg-soft);
+      line-height: 1.65;
+    }
+    .knowledge-code-copy {
+      position: absolute;
+      z-index: 1;
+      top: 9px;
+      right: 9px;
+      min-height: 26px;
+      padding: 0 9px;
+      border: 1px solid var(--kc-border);
+      border-radius: 7px;
+      background: var(--kc-bg);
+      color: var(--kc-muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .knowledge-code-copy:hover {
+      border-color: var(--kc-brand);
+      color: var(--kc-brand);
+    }
+    .knowledge-reading pre code {
+      padding: 0;
+      background: transparent;
+      font-size: 13px;
+    }
+    .knowledge-reading blockquote {
+      margin: 18px 0;
+      padding: 2px 0 2px 16px;
+      border-left: 3px solid var(--kc-brand);
+      color: var(--kc-muted);
+    }
+    .knowledge-reading blockquote p { color: inherit; }
+    .knowledge-reading hr {
+      margin: 32px 0;
+      border: 0;
+      border-top: 1px solid var(--kc-border);
+    }
+    .knowledge-reading table {
+      width: 100%;
+      margin: 18px 0;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .knowledge-reading th,
+    .knowledge-reading td {
+      padding: 9px 11px;
+      border: 1px solid var(--kc-border);
+      text-align: left;
+      vertical-align: top;
+    }
+    .knowledge-reading th { background: var(--kc-bg-soft); }
+
+    .knowledge-detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    .knowledge-detail-main { min-width: 0; }
+    .knowledge-outline { display: none; }
+    .knowledge-outline-label {
+      margin-bottom: 10px;
+      color: var(--kc-text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .knowledge-outline nav {
+      display: grid;
+      gap: 2px;
+    }
+    .knowledge-outline a {
+      display: block;
+      padding: 5px 8px;
+      border-left: 2px solid transparent;
+      color: var(--kc-subtle);
+      font-size: 12px;
+      line-height: 1.45;
+      text-decoration: none;
+      transition: color .16s ease, border-color .16s ease, background .16s ease;
+    }
+    .knowledge-outline a:hover,
+    .knowledge-outline a.active {
+      border-left-color: var(--kc-brand);
+      background: color-mix(in srgb, var(--kc-brand) 7%, transparent);
+      color: var(--kc-brand);
+    }
+    .knowledge-outline .knowledge-outline-h3 {
+      padding-left: 20px;
+      font-size: 11px;
+    }
+    @media (min-width: 1120px) {
+      .knowledge-detail-layout {
+        grid-template-columns: minmax(0, 1fr) 240px;
+        gap: clamp(28px, 4vw, 52px);
+      }
+      .knowledge-outline {
+        position: sticky;
+        top: 84px;
+        display: block;
+        max-height: calc(100vh - 108px);
+        overflow-y: auto;
+        padding: 4px 0 18px 18px;
+        border-left: 1px solid var(--kc-border);
+      }
+    }
 
     .knowledge-concepts {
       margin-top: 46px;
@@ -701,7 +832,11 @@ export function renderPrivateSiteShell() {
     }
     .knowledge-concept {
       display: block;
+      width: 100%;
       padding: 14px;
+      color: var(--kc-text);
+      text-align: left;
+      cursor: pointer;
       border: 1px solid var(--kc-border);
       border-radius: 13px;
       background: var(--kc-panel);
@@ -787,11 +922,39 @@ export function renderPrivateSiteShell() {
       margin: 10px 0 7px;
       font-size: 17px;
     }
-    .knowledge-relation-summary {
+    .knowledge-relation-summary,
+    .knowledge-relation-note {
       margin: 0;
-      color: var(--kc-muted);
       font-size: 12px;
       line-height: 1.65;
+    }
+    .knowledge-relation-summary { color: var(--kc-muted); }
+    .knowledge-relation-note {
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px dashed var(--kc-border);
+      color: var(--kc-text);
+    }
+    .knowledge-relation-scores,
+    .knowledge-relation-signals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 11px;
+    }
+    .knowledge-relation-scores span,
+    .knowledge-relation-signals span {
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 9px;
+    }
+    .knowledge-relation-scores span {
+      background: color-mix(in srgb, var(--kc-brand) 10%, var(--kc-bg));
+      color: var(--kc-brand);
+    }
+    .knowledge-relation-signals span {
+      background: var(--kc-bg);
+      color: var(--kc-subtle);
     }
     .knowledge-relation-classifier {
       display: block;
@@ -1116,7 +1279,13 @@ export function renderPrivateSiteShell() {
     graph: document.getElementById('nav-graph')
   };
 
+  function cleanupDetailOutline() {
+    if (typeof app.__kcDetailOutlineCleanup === 'function') app.__kcDetailOutlineCleanup();
+    app.__kcDetailOutlineCleanup = null;
+  }
+
   function clearPrivateState() {
+    cleanupDetailOutline();
     app.replaceChildren();
     header.hidden = true;
   }
@@ -1184,6 +1353,7 @@ export function renderPrivateSiteShell() {
 
   function renderLoading(title, detail) {
     if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
+    cleanupDetailOutline();
     app.replaceChildren(createLoadingView(title, detail));
   }
 
@@ -1231,39 +1401,308 @@ export function renderPrivateSiteShell() {
     return response.json();
   }
 
+  function plainMarkdownText(value) {
+    return String(value || '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/gu, '$1')
+      .replace(/\*\*([^*]+)\*\*/gu, '$1')
+      .replace(/\*([^*]+)\*/gu, '$1')
+      .replace(/\x60([^\x60]+)\x60/gu, '$1')
+      .trim();
+  }
+
+  function appendInlineMarkdown(container, value) {
+    const text = String(value || '');
+    const tokenPattern = /(\x60[^\x60\n]+\x60|\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^)]+\)|\*[^*\n]+\*)/gu;
+    let cursor = 0;
+    for (const match of text.matchAll(tokenPattern)) {
+      if (match.index > cursor) container.append(document.createTextNode(text.slice(cursor, match.index)));
+      const token = match[0];
+      if (token.startsWith('\x60')) {
+        const code = document.createElement('code');
+        code.textContent = token.slice(1, -1);
+        container.append(code);
+      } else if (token.startsWith('**')) {
+        const strong = document.createElement('strong');
+        strong.textContent = token.slice(2, -2);
+        container.append(strong);
+      } else if (token.startsWith('*')) {
+        const em = document.createElement('em');
+        em.textContent = token.slice(1, -1);
+        container.append(em);
+      } else {
+        const link = /^\[([^\]]+)\]\(([^)]+)\)$/u.exec(token);
+        const label = link?.[1] || token;
+        const href = link?.[2]?.trim() || '';
+        const cardLink = /^(?:\.\/)?([^/#?]+)\.md(?:#[^?]*)?$/u.exec(href);
+        if (cardLink) {
+          const anchor = document.createElement('a');
+          anchor.href = '#';
+          anchor.textContent = label;
+          anchor.addEventListener('click', (event) => {
+            event.preventDefault();
+            openCard(cardLink[1]);
+          });
+          container.append(anchor);
+        } else if (/^https?:\/\//iu.test(href)) {
+          const anchor = document.createElement('a');
+          anchor.href = href;
+          anchor.target = '_blank';
+          anchor.rel = 'noreferrer';
+          anchor.textContent = label;
+          container.append(anchor);
+        } else {
+          container.append(document.createTextNode(label));
+        }
+      }
+      cursor = match.index + token.length;
+    }
+    if (cursor < text.length) container.append(document.createTextNode(text.slice(cursor)));
+  }
+
+  function markdownTableCells(line) {
+    let value = String(line || '').trim();
+    if (value.startsWith('|')) value = value.slice(1);
+    if (value.endsWith('|')) value = value.slice(0, -1);
+    return value.split('|').map((cell) => cell.trim());
+  }
+
+  function isMarkdownTableSeparator(line, width) {
+    const cells = markdownTableCells(line);
+    return cells.length === width && cells.every((cell) => /^:?-{3,}:?$/u.test(cell));
+  }
+
+  function markdownHeadingSlug(value, used) {
+    let base = plainMarkdownText(value)
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/\s+/gu, '-')
+      .replace(/[^\p{L}\p{N}_-]+/gu, '')
+      .replace(/-{2,}/gu, '-')
+      .replace(/^-|-$/gu, '');
+    if (!base) base = 'section';
+    let slug = base;
+    let suffix = 2;
+    while (used.has(slug)) {
+      slug = base + '-' + suffix;
+      suffix += 1;
+    }
+    used.add(slug);
+    return slug;
+  }
+
+  function markdownBlockStarts(lines, index) {
+    const line = String(lines[index] || '');
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    if (/^(#{1,3})\s+/u.test(trimmed)) return true;
+    if (/^(\x60{3,})([A-Za-z0-9_+-]*)\s*$/u.test(trimmed)) return true;
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) return true;
+    if (/^\s*>\s?/u.test(line)) return true;
+    if (/^\s*(?:[-*+]|\d+\.)\s+/u.test(line)) return true;
+    if (trimmed.includes('|') && index + 1 < lines.length) {
+      const cells = markdownTableCells(trimmed);
+      if (cells.length >= 2 && isMarkdownTableSeparator(lines[index + 1], cells.length)) return true;
+    }
+    return false;
+  }
+
   function appendMarkdown(container, markdown) {
     const lines = String(markdown || '').split(/\r?\n/);
-    let list = null;
-    for (const raw of lines) {
-      const line = raw.trimEnd();
-      if (!line.trim()) {
-        list = null;
+    const usedHeadingIds = new Set();
+    let index = 0;
+
+    while (index < lines.length) {
+      const raw = lines[index];
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        index += 1;
         continue;
       }
-      const heading = /^(#{1,3})\s+(.+)$/u.exec(line);
-      if (heading) {
-        list = null;
-        const el = document.createElement('h' + Math.min(3, heading[1].length));
-        el.textContent = heading[2];
-        container.append(el);
-        continue;
-      }
-      const bullet = /^[-*]\s+(.+)$/u.exec(line);
-      if (bullet) {
-        if (!list) {
-          list = document.createElement('ul');
-          container.append(list);
+
+      const fence = /^(\x60{3,})([A-Za-z0-9_+-]*)\s*$/u.exec(trimmed);
+      if (fence) {
+        const fenceToken = fence[1];
+        const language = fence[2];
+        const codeLines = [];
+        index += 1;
+        while (index < lines.length && lines[index].trim() !== fenceToken) {
+          codeLines.push(lines[index]);
+          index += 1;
         }
-        const li = document.createElement('li');
-        li.textContent = bullet[1];
-        list.append(li);
+        if (index < lines.length) index += 1;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'knowledge-code-block';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'knowledge-code-copy';
+        copy.textContent = '複製';
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+        if (language) code.className = 'language-' + language;
+        code.textContent = codeLines.join('\n');
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(code.textContent || '');
+            copy.textContent = '已複製';
+            window.setTimeout(() => { copy.textContent = '複製'; }, 1200);
+          } catch {
+            copy.textContent = '複製失敗';
+            window.setTimeout(() => { copy.textContent = '複製'; }, 1200);
+          }
+        });
+        pre.append(code);
+        wrapper.append(copy, pre);
+        container.append(wrapper);
         continue;
       }
-      list = null;
+
+      const heading = /^(#{1,3})\s+(.+)$/u.exec(trimmed);
+      if (heading) {
+        const level = Math.min(3, heading[1].length);
+        const el = document.createElement('h' + level);
+        el.id = markdownHeadingSlug(heading[2], usedHeadingIds);
+        appendInlineMarkdown(el, heading[2]);
+        container.append(el);
+        index += 1;
+        continue;
+      }
+
+      if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(raw)) {
+        container.append(document.createElement('hr'));
+        index += 1;
+        continue;
+      }
+
+      if (/^\s*>\s?/u.test(raw)) {
+        const quote = document.createElement('blockquote');
+        const quoteLines = [];
+        while (index < lines.length) {
+          const match = /^\s*>\s?(.*)$/u.exec(lines[index]);
+          if (!match) break;
+          quoteLines.push(match[1]);
+          index += 1;
+        }
+        const p = document.createElement('p');
+        appendInlineMarkdown(p, quoteLines.join(' '));
+        quote.append(p);
+        container.append(quote);
+        continue;
+      }
+
+      const listItem = /^\s*([-*+]|\d+\.)\s+(.+)$/u.exec(raw);
+      if (listItem) {
+        const ordered = /^\d+\.$/u.test(listItem[1]);
+        const list = document.createElement(ordered ? 'ol' : 'ul');
+        while (index < lines.length) {
+          const item = /^\s*([-*+]|\d+\.)\s+(.+)$/u.exec(lines[index]);
+          if (!item || /^\d+\.$/u.test(item[1]) !== ordered) break;
+          const li = document.createElement('li');
+          appendInlineMarkdown(li, item[2]);
+          list.append(li);
+          index += 1;
+        }
+        container.append(list);
+        continue;
+      }
+
+      const headerCells = trimmed.includes('|') ? markdownTableCells(trimmed) : [];
+      if (headerCells.length >= 2 && index + 1 < lines.length && isMarkdownTableSeparator(lines[index + 1], headerCells.length)) {
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        for (const cell of headerCells) {
+          const th = document.createElement('th');
+          appendInlineMarkdown(th, cell);
+          headRow.append(th);
+        }
+        thead.append(headRow);
+        table.append(thead);
+        index += 2;
+
+        const tbody = document.createElement('tbody');
+        while (index < lines.length && lines[index].trim().includes('|')) {
+          const cells = markdownTableCells(lines[index]);
+          if (cells.length !== headerCells.length) break;
+          const row = document.createElement('tr');
+          for (const cell of cells) {
+            const td = document.createElement('td');
+            appendInlineMarkdown(td, cell);
+            row.append(td);
+          }
+          tbody.append(row);
+          index += 1;
+        }
+        if (tbody.childElementCount) table.append(tbody);
+        container.append(table);
+        continue;
+      }
+
+      const paragraphLines = [trimmed];
+      index += 1;
+      while (index < lines.length && lines[index].trim() && !markdownBlockStarts(lines, index)) {
+        paragraphLines.push(lines[index].trim());
+        index += 1;
+      }
       const p = document.createElement('p');
-      p.textContent = line;
+      appendInlineMarkdown(p, paragraphLines.join(' '));
       container.append(p);
     }
+  }
+
+  function createDetailOutline(article) {
+    const headings = [...article.querySelectorAll('h2, h3')].filter((heading) => heading.id);
+    if (!headings.length) return null;
+
+    const aside = document.createElement('aside');
+    aside.className = 'knowledge-outline';
+    const label = document.createElement('div');
+    label.className = 'knowledge-outline-label';
+    label.textContent = '文章目錄';
+    const nav = document.createElement('nav');
+    nav.setAttribute('aria-label', '文章目錄');
+    const links = new Map();
+
+    for (const heading of headings) {
+      const anchor = document.createElement('a');
+      anchor.href = '#' + encodeURIComponent(heading.id);
+      anchor.textContent = heading.textContent;
+      anchor.className = heading.tagName === 'H3' ? 'knowledge-outline-h3' : 'knowledge-outline-h2';
+      anchor.addEventListener('click', (event) => {
+        event.preventDefault();
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        heading.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(heading.id));
+      });
+      links.set(heading.id, anchor);
+      nav.append(anchor);
+    }
+
+    let queued = false;
+    const updateActive = () => {
+      queued = false;
+      let active = headings[0];
+      for (const heading of headings) {
+        if (heading.getBoundingClientRect().top <= 120) active = heading;
+        else break;
+      }
+      for (const [id, anchor] of links) anchor.classList.toggle('active', id === active.id);
+    };
+    const queueUpdate = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(updateActive);
+    };
+
+    window.addEventListener('scroll', queueUpdate, { passive: true });
+    window.addEventListener('resize', queueUpdate);
+    app.__kcDetailOutlineCleanup = () => {
+      window.removeEventListener('scroll', queueUpdate);
+      window.removeEventListener('resize', queueUpdate);
+    };
+
+    aside.append(label, nav);
+    requestAnimationFrame(updateActive);
+    return aside;
   }
 
   function sectionList(title, values, render) {
@@ -1284,6 +1723,7 @@ export function renderPrivateSiteShell() {
 
   function renderDetail(detail) {
     setView('cards');
+    cleanupDetailOutline();
     const view = document.createElement('section');
     view.className = 'detail-view page-shell';
 
@@ -1428,8 +1868,12 @@ export function renderPrivateSiteShell() {
       const grid = document.createElement('div');
       grid.className = 'knowledge-concept-grid';
       for (const concept of concepts) {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
+        card.type = 'button';
         card.className = 'knowledge-concept';
+        card.addEventListener('click', () => renderGraph({ query: concept.label || concept.id }).catch((error) => {
+          if (error.message !== 'AUTH_STOP') stateView('圖譜讀取失敗', error.message, false, 'error');
+        }));
         const cardTop = document.createElement('div');
         cardTop.className = 'knowledge-concept-top';
         const labelBlock = document.createElement('div');
@@ -1516,23 +1960,80 @@ export function renderPrivateSiteShell() {
         title.textContent = relation.other_title;
         const summary = document.createElement('p');
         summary.className = 'knowledge-relation-summary';
-        summary.textContent = [relation.method, relation.direction].filter(Boolean).join(' · ');
+        summary.textContent = relation.other_summary || '';
+        card.append(cardTop, title, summary);
+
+        if (relation.note) {
+          const note = document.createElement('p');
+          note.className = 'knowledge-relation-note';
+          note.textContent = relation.note;
+          card.append(note);
+        }
+
+        const evidence = relation.evidence || {};
+        const scoreParts = [
+          ['Taxonomy', Number(evidence.taxonomy)],
+          ['Semantic', Number(evidence.vector_similarity)]
+        ].filter(([, value]) => Number.isFinite(value));
+        if (scoreParts.length) {
+          const scores = document.createElement('div');
+          scores.className = 'knowledge-relation-scores';
+          for (const [label, value] of scoreParts) {
+            const chip = document.createElement('span');
+            chip.textContent = label + ' ' + Math.round(value * 100) + '%';
+            scores.append(chip);
+          }
+          card.append(scores);
+        }
+
+        const signals = [
+          ...(Array.isArray(evidence.shared_categories) ? evidence.shared_categories : []),
+          ...(Array.isArray(evidence.shared_tags) ? evidence.shared_tags : [])
+        ].slice(0, 4);
+        if (signals.length) {
+          const signalRow = document.createElement('div');
+          signalRow.className = 'knowledge-relation-signals';
+          for (const signal of signals) {
+            const chip = document.createElement('span');
+            chip.textContent = signal;
+            signalRow.append(chip);
+          }
+          card.append(signalRow);
+        }
+
         const classifier = document.createElement('small');
         classifier.className = 'knowledge-relation-classifier';
-        classifier.textContent = String(relation.method || '').startsWith('manual_')
+        classifier.textContent = relation.manual || String(relation.method || '').startsWith('manual_')
           ? 'Human override'
           : 'Automatic relation';
-        card.append(cardTop, title, summary, classifier);
+        classifier.title = [relation.method, relation.direction].filter(Boolean).join(' · ');
+        card.append(classifier);
         grid.append(card);
       }
 
       relationSection.append(relationHead, grid);
     }
 
-    view.append(back, head, article);
-    if (conceptSection) view.append(conceptSection);
-    if (relationSection) view.append(relationSection);
+    const mainColumn = document.createElement('div');
+    mainColumn.className = 'knowledge-detail-main';
+    mainColumn.append(head, article);
+    if (conceptSection) mainColumn.append(conceptSection);
+    if (relationSection) mainColumn.append(relationSection);
+
+    const layout = document.createElement('div');
+    layout.className = 'knowledge-detail-layout';
+    layout.append(mainColumn);
+    const outline = createDetailOutline(article);
+    if (outline) layout.append(outline);
+
+    view.append(back, layout);
     app.replaceChildren(view);
+
+    if (location.hash) {
+      const requestedId = decodeURIComponent(location.hash.slice(1));
+      const target = article.querySelector('#' + CSS.escape(requestedId));
+      if (target) requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+    }
   }
 
   async function openCard(id) {
@@ -1958,11 +2459,11 @@ export function renderPrivateSiteShell() {
     return element;
   }
 
-  async function renderGraph() {
+  async function renderGraph(options = {}) {
     setView('graph');
     renderLoading('正在建立 Knowledge Graph', '準備節點、關聯與語意鄰居…');
     const payload = await api('/api/graph');
-    renderLegacyGraph(payload);
+    renderLegacyGraph(payload, options);
   }
 
   function applyAuthResult() {

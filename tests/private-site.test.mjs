@@ -486,9 +486,16 @@ test('private-site shell exposes the Knowledge Radar presentation without embedd
   assert.match(html, /knowledge-concept-grid/u);
   assert.match(html, /Related Knowledge/u);
   assert.match(html, /knowledge-relations-grid/u);
+  assert.match(html, /knowledge-outline/u);
+  assert.match(html, /文章目錄/u);
+  assert.match(html, /appendInlineMarkdown/u);
+  assert.match(html, /markdownTableCells/u);
+  assert.match(html, /knowledge-reading pre/u);
+  assert.match(html, /knowledge-code-copy/u);
+  assert.match(html, /renderGraph\(\{ query: concept\.label/u);
   assert.match(html, /graph-inspector-backdrop/u);
   assert.match(html, /graph-inspector-close/u);
-  assert.match(html, /function renderLegacyGraph\(graph\)/u);
+  assert.match(html, /function renderLegacyGraph\(graph, options = \{\}\)/u);
   assert.match(html, /nodeTarget=event\.target\?\.closest\?\.\('\.graph-node'\)/u);
   assert.match(html, /pointers\.size===1&&!nodeTarget/u);
   assert.match(html, /graph-node-interactive/u);
