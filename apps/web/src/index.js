@@ -673,14 +673,36 @@ export function renderPrivateSiteShell() {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: .9em;
     }
+    .knowledge-code-block {
+      position: relative;
+      margin: 18px 0;
+    }
     .knowledge-reading pre {
       overflow-x: auto;
-      margin: 18px 0;
-      padding: 16px 18px;
+      margin: 0;
+      padding: 42px 18px 16px;
       border: 1px solid var(--kc-border);
       border-radius: 14px;
       background: var(--kc-bg-soft);
       line-height: 1.65;
+    }
+    .knowledge-code-copy {
+      position: absolute;
+      z-index: 1;
+      top: 9px;
+      right: 9px;
+      min-height: 26px;
+      padding: 0 9px;
+      border: 1px solid var(--kc-border);
+      border-radius: 7px;
+      background: var(--kc-bg);
+      color: var(--kc-muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .knowledge-code-copy:hover {
+      border-color: var(--kc-brand);
+      color: var(--kc-brand);
     }
     .knowledge-reading pre code {
       padding: 0;
@@ -1508,12 +1530,29 @@ export function renderPrivateSiteShell() {
           index += 1;
         }
         if (index < lines.length) index += 1;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'knowledge-code-block';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'knowledge-code-copy';
+        copy.textContent = '複製';
         const pre = document.createElement('pre');
         const code = document.createElement('code');
         if (language) code.className = 'language-' + language;
         code.textContent = codeLines.join('\n');
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(code.textContent || '');
+            copy.textContent = '已複製';
+            window.setTimeout(() => { copy.textContent = '複製'; }, 1200);
+          } catch {
+            copy.textContent = '複製失敗';
+            window.setTimeout(() => { copy.textContent = '複製'; }, 1200);
+          }
+        });
         pre.append(code);
-        container.append(pre);
+        wrapper.append(copy, pre);
+        container.append(wrapper);
         continue;
       }
 
