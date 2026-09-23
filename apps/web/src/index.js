@@ -1,4 +1,4 @@
-import { legacyGraphScript } from './graph-runtime.js';
+import { graphRuntimeScript } from './graph-runtime.js';
 import { siteCss } from './styles/index.js';
 
 export const moduleId = 'web';
@@ -52,7 +52,7 @@ export function renderPrivateSiteShell() {
 </div>
 <script>
 (() => {
-  ${legacyGraphScript}
+  ${graphRuntimeScript}
   const app = document.getElementById('app');
   const header = document.getElementById('header');
   const nav = {
