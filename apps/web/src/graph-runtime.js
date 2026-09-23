@@ -1,4 +1,4 @@
-export const legacyGraphScript = String.raw`
+export const graphRuntimeScript = String.raw`
 function renderLegacyGraph(graph, options = {}) {
   if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
 
