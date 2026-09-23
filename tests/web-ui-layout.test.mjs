@@ -57,6 +57,10 @@ test('web UI layout contract retains shared frame, reading width, responsive gri
   assert.doesNotMatch(siteCss, /scroll-margin-top:\s*128px/u);
   const indexSource = read('apps/web/src/index.js');
   assert.match(indexSource, /id="detail-outline-toggle"/u);
+  assert.match(indexSource, /detail-outline-header-chevron[\s\S]*?<svg viewBox="0 0 12 12"/u);
+  assert.doesNotMatch(indexSource, /⌄/u);
+  assert.match(siteCss, /\.detail-outline-header-chevron\s*\{[\s\S]*?width:\s*12px[\s\S]*?height:\s*12px[\s\S]*?flex:\s*0 0 12px[\s\S]*?transform-origin:\s*50% 50%/u);
+  assert.match(siteCss, /\.detail-outline-header-toggle\[aria-expanded="true"\] \.detail-outline-header-chevron\s*\{[\s\S]*?transform:\s*rotate\(-90deg\)/u);
   assert.match(indexSource, /detailOutlineToggle\.hidden = !compact/u);
   assert.match(indexSource, /header\.classList\.toggle\('detail-outline-active', compact\)/u);
   assert.match(indexSource, /classList\.toggle\('is-open'\)/u);

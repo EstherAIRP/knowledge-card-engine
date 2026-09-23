@@ -23,7 +23,11 @@ export function renderPrivateSiteShell() {
       <div class="brand">Knowledge Radar</div>
       <button id="detail-outline-toggle" class="detail-outline-header-toggle" type="button" aria-controls="knowledge-outline-nav" aria-expanded="false" hidden>
         <span>文章目錄</span>
-        <span class="detail-outline-header-chevron" aria-hidden="true">⌄</span>
+        <span class="detail-outline-header-chevron" aria-hidden="true">
+          <svg viewBox="0 0 12 12" focusable="false">
+            <path d="M7.5 2.5 4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
       </button>
       <nav class="nav" aria-label="私人知識導覽">
         <button id="nav-cards" type="button" aria-current="page">卡片</button>
