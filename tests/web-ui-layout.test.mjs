@@ -81,5 +81,5 @@ test('card detail routing keeps V1-style permalinks reloadable and history-aware
   assert.match(indexSource, /openCard\(cardId, \{ historyMode: 'none' \}\)/u);
   assert.match(indexSource, /window\.addEventListener\('popstate'/u);
   assert.match(indexSource, /anchor\.href = cardPath\(cardLink\[1\]\)/u);
-  assert.match(serverSource, /pathname === '\/' \|\| \/\^\\\/knowledge\\\/\[\^\/\]\+\$\/u\.test\(pathname\)/u);
+  assert.ok(serverSource.includes("pathname === '/' || /^\\/knowledge\\/[^/]+$/u.test(pathname)"));
 });
