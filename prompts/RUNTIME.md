@@ -112,7 +112,7 @@ URL
 → Card + accepted source state + optional research provenance persistence
 ```
 
-GitHub 以 repository metadata + README 為 accepted evidence；需要超出 README 的研究型分析時，可另外固定同一 repository revision、從 bounded candidate set 擷取 selected primary-source evidence，形成獨立 Analysis Evidence Bundle。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
+GitHub 以 repository metadata + README 為 accepted evidence；需要超出 README 的研究型分析時，可另外固定同一 repository revision、從 bounded candidate set 擷取 selected primary-source evidence，形成獨立 Analysis Evidence Bundle。研究 expansion 由 Engine 的 progress / continuation contract 控制：預設最多兩輪，item / byte budget 累計計算；第二輪 plan 必須綁定上一輪 `analysis_evidence_digest`，不得重複已讀 path 或選取與 `needs_evidence` 無關的 candidate。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
 
 ### 來源證據
 
@@ -164,7 +164,7 @@ Analysis 必須：
 - 區分來源可驗證事實與分析推論。
 - 不臆造功能、架構、授權、相容性、成熟度、基準測試或維護狀態。
 
-舊 source evidence 或舊 research bundle 產生的 analysis 不得套用到新的 digest。Version 2 缺 bundle、digest stale、coverage / finding evidence 不成立時必須停止寫入。Threads 目前只使用 version 1。
+舊 source evidence 或舊 research bundle 產生的 analysis 不得套用到新的 digest。GitHub research 若已達 round / item / byte budget，即使仍有 material unknown 也必須停止 expansion，並在 structured research report 明確保留 unavailable / budget-exhausted 狀態；不得以額外自由瀏覽繞過 budget。Version 2 缺 bundle、digest stale、coverage / finding evidence 不成立時必須停止寫入。Threads 目前只使用 version 1。
 
 ## 7. Create / Update 與 Ownership
 
