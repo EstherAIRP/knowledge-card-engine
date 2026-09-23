@@ -22,6 +22,7 @@ const requiredFiles = [
   'docs/generated-data.md',
   'docs/release.md',
   'docs/private-site.md',
+  'docs/web-ui.md',
   'prompts/RUNTIME.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
@@ -52,6 +53,8 @@ const requiredFiles = [
   ...['profile', 'projects', 'config', 'state', 'data', 'releases'].map((name) => 'examples/synthetic-workspace/' + name + '/README.md'),
   'examples/synthetic-workspace/content/knowledge/README.md',
   ...['web', 'server'].flatMap((name) => ['apps/' + name + '/package.json', 'apps/' + name + '/src/index.js']),
+  'apps/web/src/graph-runtime.js',
+  ...['index', 'tokens', 'base', 'layout', 'shared', 'radar', 'detail', 'search', 'graph'].map((name) => 'apps/web/src/styles/' + name + '.js'),
   ...['core', 'ingestion', 'analysis', 'graph', 'workspace', 'release'].flatMap((name) => [
     'packages/' + name + '/package.json',
     'packages/' + name + '/src/index.js'
@@ -68,6 +71,7 @@ const requiredFiles = [
   'tests/remote-ingestion.test.mjs',
   'tests/threads-ingestion.test.mjs',
   'tests/private-site.test.mjs',
+  'tests/web-ui-layout.test.mjs',
   'tests/session-store.test.mjs',
   'tests/graph-release.test.mjs',
   'tests/release-reader.test.mjs',
