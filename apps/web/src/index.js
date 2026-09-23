@@ -21,6 +21,10 @@ export function renderPrivateSiteShell() {
   <header id="header" hidden>
     <div class="brand-row">
       <div class="brand">Knowledge Radar</div>
+      <button id="detail-outline-toggle" class="detail-outline-header-toggle" type="button" aria-controls="knowledge-outline-nav" aria-expanded="false" hidden>
+        <span>文章目錄</span>
+        <span class="detail-outline-header-chevron" aria-hidden="true">⌄</span>
+      </button>
       <nav class="nav" aria-label="私人知識導覽">
         <button id="nav-cards" type="button" aria-current="page">卡片</button>
         <button id="nav-search" type="button">搜尋</button>
@@ -55,6 +59,7 @@ export function renderPrivateSiteShell() {
   ${graphRuntimeScript}
   const app = document.getElementById('app');
   const header = document.getElementById('header');
+  const detailOutlineToggle = document.getElementById('detail-outline-toggle');
   const nav = {
     cards: document.getElementById('nav-cards'),
     search: document.getElementById('nav-search'),
@@ -73,6 +78,7 @@ export function renderPrivateSiteShell() {
   }
 
   function setView(name) {
+    cleanupDetailOutline();
     if (name !== 'graph' && typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
     for (const [key, button] of Object.entries(nav)) {
       if (key === name) button.setAttribute('aria-current', 'page');
@@ -438,41 +444,35 @@ export function renderPrivateSiteShell() {
     const aside = document.createElement('aside');
     aside.className = 'knowledge-outline';
 
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'knowledge-outline-toggle';
-    toggle.setAttribute('aria-controls', 'knowledge-outline-nav');
-
-    const label = document.createElement('span');
+    const label = document.createElement('div');
     label.className = 'knowledge-outline-label';
     label.textContent = '文章目錄';
-    const chevron = document.createElement('span');
-    chevron.className = 'knowledge-outline-chevron';
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.textContent = '›';
-    toggle.append(label, chevron);
 
-    const nav = document.createElement('nav');
-    nav.id = 'knowledge-outline-nav';
-    nav.setAttribute('aria-label', '文章目錄');
+    const navElement = document.createElement('nav');
+    navElement.id = 'knowledge-outline-nav';
+    navElement.setAttribute('aria-label', '文章目錄');
     const links = new Map();
 
     const isCompactOutline = () =>
       window.matchMedia?.('(max-width: 1119px)')?.matches ?? window.innerWidth < 1120;
 
     const syncOutlineMode = () => {
-      if (!isCompactOutline()) aside.classList.remove('is-open');
-      toggle.setAttribute(
+      const compact = isCompactOutline();
+      if (!compact) aside.classList.remove('is-open');
+      header.classList.toggle('detail-outline-active', compact);
+      detailOutlineToggle.hidden = !compact;
+      detailOutlineToggle.setAttribute(
         'aria-expanded',
-        isCompactOutline() ? String(aside.classList.contains('is-open')) : 'true'
+        compact ? String(aside.classList.contains('is-open')) : 'false'
       );
     };
 
-    toggle.addEventListener('click', () => {
+    const handleToggle = () => {
       if (!isCompactOutline()) return;
       aside.classList.toggle('is-open');
       syncOutlineMode();
-    });
+    };
+    detailOutlineToggle.addEventListener('click', handleToggle);
 
     for (const heading of headings) {
       const anchor = document.createElement('a');
@@ -490,14 +490,14 @@ export function renderPrivateSiteShell() {
         history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(heading.id));
       });
       links.set(heading.id, anchor);
-      nav.append(anchor);
+      navElement.append(anchor);
     }
 
     let queued = false;
     const updateActive = () => {
       queued = false;
       let active = headings[0];
-      const activeOffset = isCompactOutline() ? 132 : 120;
+      const activeOffset = isCompactOutline() ? 88 : 120;
       for (const heading of headings) {
         if (heading.getBoundingClientRect().top <= activeOffset) active = heading;
         else break;
@@ -519,9 +519,14 @@ export function renderPrivateSiteShell() {
     app.__kcDetailOutlineCleanup = () => {
       window.removeEventListener('scroll', queueUpdate);
       window.removeEventListener('resize', handleResize);
+      detailOutlineToggle.removeEventListener('click', handleToggle);
+      aside.classList.remove('is-open');
+      header.classList.remove('detail-outline-active');
+      detailOutlineToggle.hidden = true;
+      detailOutlineToggle.setAttribute('aria-expanded', 'false');
     };
 
-    aside.append(toggle, nav);
+    aside.append(label, navElement);
     syncOutlineMode();
     requestAnimationFrame(updateActive);
     return aside;
