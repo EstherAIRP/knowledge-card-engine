@@ -31,7 +31,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
 - `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
-- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、create/update resolution 與 provider-specific source-state contract。
+- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research candidate / selected evidence capture、create/update resolution 與 provider-specific source-state contract。
 - `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state / research-state transactional 寫入。
