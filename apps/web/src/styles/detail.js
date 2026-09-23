@@ -259,14 +259,26 @@ export const detailStyles = [
 .detail-outline-header-toggle:hover { color: var(--kc-brand); }
 
 .detail-outline-header-chevron {
+      display: inline-flex;
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      align-items: center;
+      justify-content: center;
       color: var(--kc-subtle);
-      font-size: 15px;
-      line-height: 1;
+      transform: rotate(0deg);
+      transform-origin: 50% 50%;
       transition: transform .16s ease, color .16s ease;
     }
 
+.detail-outline-header-chevron svg {
+      display: block;
+      width: 12px;
+      height: 12px;
+    }
+
 .detail-outline-header-toggle[aria-expanded="true"] .detail-outline-header-chevron {
-      transform: rotate(180deg);
+      transform: rotate(-90deg);
       color: var(--kc-brand);
     }
 
