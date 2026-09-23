@@ -68,3 +68,18 @@ test('web UI layout contract retains shared frame, reading width, responsive gri
   assert.match(siteCss, /@media \(max-width: 900px\)[\s\S]*?\.graph-inspector\s*\{[\s\S]*?bottom:\s*0/u);
   assert.match(siteCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation:\s*none !important/u);
 });
+
+
+test('card detail routing keeps V1-style permalinks reloadable and history-aware', () => {
+  const indexSource = read('apps/web/src/index.js');
+  const serverSource = read('apps/server/src/index.js');
+
+  assert.match(indexSource, /return '\/knowledge\/' \+ encodeURIComponent\(id\)/u);
+  assert.match(indexSource, /function cardIdFromLocation\(\)/u);
+  assert.match(indexSource, /history\.pushState\(null, '', path\)/u);
+  assert.match(indexSource, /history\.replaceState\(null, '', path\)/u);
+  assert.match(indexSource, /openCard\(cardId, \{ historyMode: 'none' \}\)/u);
+  assert.match(indexSource, /window\.addEventListener\('popstate'/u);
+  assert.match(indexSource, /anchor\.href = cardPath\(cardLink\[1\]\)/u);
+  assert.match(serverSource, /pathname === '\/' \|\| \/\^\\\/knowledge\\\/\[\^\/\]\+\$\/u\.test\(pathname\)/u);
+});
