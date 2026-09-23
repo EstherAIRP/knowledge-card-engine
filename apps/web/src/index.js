@@ -554,7 +554,7 @@ export function renderPrivateSiteShell() {
       font-weight: 700;
     }
     .knowledge-detail-head {
-      margin-bottom: 34px;
+      margin: 12px 0 34px;
       padding: 22px;
       border: 1px solid var(--kc-border);
       border-radius: var(--kc-radius-lg);
@@ -567,39 +567,32 @@ export function renderPrivateSiteShell() {
       gap: 16px;
     }
     .knowledge-detail-source,
-    .knowledge-detail-footer,
-    .article-meta {
+    .knowledge-detail-footer {
       color: var(--kc-subtle);
       font-size: 12px;
     }
-    .knowledge-detail-head h1 {
-      max-width: 980px;
-      margin: 10px 0 8px;
-      font-size: clamp(30px, 5vw, 52px);
-      line-height: 1.06;
-      letter-spacing: -.035em;
-    }
-    .knowledge-detail-summary {
-      max-width: 900px;
-      margin: 0;
-      color: var(--kc-muted);
-      line-height: 1.7;
-    }
-    .knowledge-tags,
-    .knowledge-actions,
-    .knowledge-detail-categories {
+    .knowledge-detail-actions,
+    .knowledge-detail-categories,
+    .knowledge-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 7px;
       margin-top: 12px;
     }
-    .knowledge-actions span {
+    .knowledge-detail-actions span {
       padding: 5px 9px;
       border-radius: 8px;
       background: color-mix(in srgb, var(--kc-brand) 11%, var(--kc-bg));
       color: var(--kc-brand);
       font-size: 11px;
       font-weight: 800;
+    }
+    .knowledge-detail-categories span {
+      padding: 5px 9px;
+      border-radius: 8px;
+      background: var(--kc-bg-soft);
+      color: var(--kc-muted);
+      font-size: 11px;
     }
     .knowledge-tags span {
       color: var(--kc-subtle);
@@ -638,25 +631,182 @@ export function renderPrivateSiteShell() {
       padding-top: 14px;
       border-top: 1px solid var(--kc-border);
     }
-    .knowledge-detail-footer a {
+    .knowledge-detail-footer a,
+    .knowledge-concepts-graph {
       color: var(--kc-brand);
       text-decoration: none;
     }
-    article {
+    .knowledge-reading {
       width: min(100%, var(--kc-reading-max));
       margin-inline: auto;
     }
-    article > h2,
-    article section > h2 {
+    .knowledge-reading h1 {
+      margin: 8px 0 22px;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.08;
+      letter-spacing: -.035em;
+    }
+    .knowledge-reading h2 {
       margin-top: 2.2rem;
       padding-top: 1.1rem;
       border-top: 1px solid var(--kc-border);
+      font-size: 22px;
+      letter-spacing: -.01em;
     }
-    article p,
-    article li { line-height: 1.78; }
-    article .result-button {
+    .knowledge-reading h3 { margin-top: 1.6rem; }
+    .knowledge-reading p,
+    .knowledge-reading li { line-height: 1.78; }
+    .knowledge-reading p { color: var(--kc-text); }
+    .knowledge-reading li + li { margin-top: 6px; }
+
+    .knowledge-concepts {
+      margin-top: 46px;
+      padding-top: 24px;
+      border-top: 1px solid var(--kc-border);
+    }
+    .knowledge-concepts-head,
+    .knowledge-relations-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 14px;
+    }
+    .knowledge-concepts-head span,
+    .knowledge-relations-head span {
+      color: var(--kc-brand);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+    .knowledge-concepts-head h2,
+    .knowledge-relations-head h2 {
+      margin: 4px 0 0;
+      padding: 0;
+      border: 0;
+      font-size: 22px;
+    }
+    .knowledge-concepts-graph {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .knowledge-concept-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+    }
+    .knowledge-concept {
+      display: block;
+      padding: 14px;
+      border: 1px solid var(--kc-border);
+      border-radius: 13px;
+      background: var(--kc-panel);
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .knowledge-concept:hover {
+      transform: translateY(-2px);
+      border-color: var(--kc-brand);
+    }
+    .knowledge-concept-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+    .knowledge-concept-top span {
+      color: var(--kc-subtle);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .knowledge-concept h3 {
+      margin: 2px 0 0;
+      font-size: 16px;
+    }
+    .knowledge-concept-top strong {
+      color: var(--kc-brand);
+      font-size: 11px;
+    }
+    .knowledge-concept p {
+      margin: 8px 0;
+      color: var(--kc-muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .knowledge-concept-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--kc-subtle);
+      font-size: 10px;
+    }
+
+    .knowledge-relations {
+      margin: 42px 0 10px;
+      padding-top: 28px;
+      border-top: 1px solid var(--kc-border);
+    }
+    .knowledge-relations-head small {
+      color: var(--kc-subtle);
+    }
+    .knowledge-relations-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .knowledge-relation-card {
+      display: block;
       width: 100%;
-      margin-bottom: 10px;
+      padding: 18px;
+      border: 1px solid var(--kc-border);
+      border-radius: 16px;
+      background: var(--kc-panel);
+      color: var(--kc-text);
+      text-align: left;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .knowledge-relation-card:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--kc-brand) 55%, var(--kc-border));
+    }
+    .knowledge-relation-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--kc-subtle);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .knowledge-relation-top strong { color: var(--kc-brand); }
+    .knowledge-relation-card h3 {
+      margin: 10px 0 7px;
+      font-size: 17px;
+    }
+    .knowledge-relation-summary {
+      margin: 0;
+      color: var(--kc-muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .knowledge-relation-classifier {
+      display: block;
+      margin-top: 10px;
+      color: var(--kc-subtle);
+      font-size: 9px;
+    }
+
+    @media (max-width: 640px) {
+      .knowledge-relations-grid { grid-template-columns: 1fr; }
+      .knowledge-concepts-head,
+      .knowledge-relations-head {
+        align-items: start;
+        flex-direction: column;
+      }
     }
 
     .state {
@@ -1150,36 +1300,45 @@ export function renderPrivateSiteShell() {
 
     const top = document.createElement('div');
     top.className = 'knowledge-detail-top';
-    const headingBlock = document.createElement('div');
+    const meta = document.createElement('div');
     const source = document.createElement('div');
     source.className = 'knowledge-detail-source';
-    source.textContent = [detail.source?.type, detail.resource_kind, detail.status].filter(Boolean).join(' · ');
-    const title = document.createElement('h1');
-    title.textContent = detail.title;
-    const summary = document.createElement('p');
-    summary.className = 'knowledge-detail-summary';
-    summary.textContent = detail.summary || '';
-    headingBlock.append(source, title, summary);
-
-    const actions = document.createElement('div');
-    actions.className = 'knowledge-actions';
-    for (const action of detail.actions || []) {
-      const badge = document.createElement('span');
-      badge.textContent = action;
-      actions.append(badge);
-    }
-    top.append(headingBlock, actions);
-    head.append(top);
+    const sourceLabels = { github: 'GitHub', threads: 'Threads' };
+    const resourceLabels = {
+      project: '專案',
+      skill: 'Skill',
+      tutorial: '教學',
+      guide: '指南',
+      article: '文章',
+      reference: '參考資料',
+      paper: '論文',
+      tool: '工具'
+    };
+    source.textContent = [
+      sourceLabels[detail.source?.type] || detail.source?.type,
+      resourceLabels[detail.resource_kind] || detail.resource_kind,
+      detail.status
+    ].filter(Boolean).join(' · ');
+    meta.append(source);
 
     const categories = document.createElement('div');
     categories.className = 'knowledge-detail-categories';
     for (const category of detail.navigation_categories || []) {
       const badge = document.createElement('span');
-      badge.className = 'pill';
       badge.textContent = category;
       categories.append(badge);
     }
-    head.append(categories);
+    if (categories.childElementCount) meta.append(categories);
+
+    const actions = document.createElement('div');
+    actions.className = 'knowledge-detail-actions';
+    for (const action of detail.actions || []) {
+      const badge = document.createElement('span');
+      badge.textContent = action;
+      actions.append(badge);
+    }
+    top.append(meta, actions);
+    head.append(top);
 
     const dimensions = [
       ['overall', 'Overall'],
@@ -1217,7 +1376,7 @@ export function renderPrivateSiteShell() {
       badge.textContent = '#' + tag;
       tags.append(badge);
     }
-    head.append(tags);
+    if (tags.childElementCount) head.append(tags);
 
     const footer = document.createElement('div');
     footer.className = 'knowledge-detail-footer';
@@ -1240,33 +1399,139 @@ export function renderPrivateSiteShell() {
     head.append(footer);
 
     const article = document.createElement('article');
-    const body = document.createElement('div');
-    appendMarkdown(body, detail.body);
-    article.append(body);
+    article.className = 'knowledge-reading';
+    appendMarkdown(article, detail.body);
 
-    article.append(sectionList('關聯', detail.relations, (relation) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'result-button';
-      button.addEventListener('click', () => openCard(relation.other_id));
-      const strong = document.createElement('strong');
-      strong.textContent = relation.other_title;
-      const info = document.createElement('div');
-      info.className = 'meta';
-      info.textContent = [relation.type, relation.method, Number(relation.score).toFixed(3)].join(' · ');
-      button.append(strong, info);
-      return button;
-    }));
+    const concepts = Array.isArray(detail.concepts) ? detail.concepts : [];
+    let conceptSection = null;
+    if (concepts.length) {
+      conceptSection = document.createElement('section');
+      conceptSection.className = 'knowledge-concepts';
 
-    article.append(sectionList('Concepts', detail.concepts, (concept) => {
-      const span = document.createElement('span');
-      span.className = 'pill';
-      span.textContent = concept.label + ' · ' + concept.origin;
-      span.title = (concept.evidence || []).map((entry) => entry.kind + ':' + entry.value).join(', ');
-      return span;
-    }));
+      const conceptHead = document.createElement('div');
+      conceptHead.className = 'knowledge-concepts-head';
+      const conceptTitleBlock = document.createElement('div');
+      const conceptKicker = document.createElement('span');
+      conceptKicker.textContent = 'PHASE 3 · CONCEPTS';
+      const conceptTitle = document.createElement('h2');
+      conceptTitle.textContent = 'Concept Neighborhood';
+      conceptTitleBlock.append(conceptKicker, conceptTitle);
+      const graphLink = document.createElement('button');
+      graphLink.type = 'button';
+      graphLink.className = 'knowledge-concepts-graph';
+      graphLink.textContent = 'Knowledge Graph →';
+      graphLink.addEventListener('click', () => renderGraph().catch((error) => {
+        if (error.message !== 'AUTH_STOP') stateView('圖譜讀取失敗', error.message, false, 'error');
+      }));
+      conceptHead.append(conceptTitleBlock, graphLink);
+
+      const grid = document.createElement('div');
+      grid.className = 'knowledge-concept-grid';
+      for (const concept of concepts) {
+        const card = document.createElement('div');
+        card.className = 'knowledge-concept';
+        const cardTop = document.createElement('div');
+        cardTop.className = 'knowledge-concept-top';
+        const labelBlock = document.createElement('div');
+        const type = document.createElement('span');
+        type.textContent = concept.type || 'concept';
+        const label = document.createElement('h3');
+        label.textContent = concept.label || concept.id;
+        labelBlock.append(type, label);
+        const strength = document.createElement('strong');
+        const strengthValue = Number(concept.strength);
+        strength.textContent = Number.isFinite(strengthValue) ? Math.round(strengthValue * 100) + '%' : '';
+        cardTop.append(labelBlock, strength);
+
+        const description = document.createElement('p');
+        description.textContent = concept.description || '';
+        const conceptMeta = document.createElement('div');
+        conceptMeta.className = 'knowledge-concept-meta';
+        const cardCount = document.createElement('span');
+        cardCount.textContent = Number.isFinite(Number(concept.card_count)) ? concept.card_count + ' Cards' : '';
+        const origin = document.createElement('span');
+        origin.textContent = concept.origin || '';
+        conceptMeta.append(cardCount, origin);
+        card.append(cardTop, description, conceptMeta);
+        grid.append(card);
+      }
+
+      conceptSection.append(conceptHead, grid);
+    }
+
+    const relations = Array.isArray(detail.relations) ? detail.relations : [];
+    let relationSection = null;
+    if (relations.length) {
+      relationSection = document.createElement('section');
+      relationSection.className = 'knowledge-relations';
+
+      const relationHead = document.createElement('div');
+      relationHead.className = 'knowledge-relations-head';
+      const relationTitleBlock = document.createElement('div');
+      const relationKicker = document.createElement('span');
+      relationKicker.textContent = 'SEMANTIC RELATION INDEX';
+      const relationTitle = document.createElement('h2');
+      relationTitle.textContent = 'Related Knowledge';
+      relationTitleBlock.append(relationKicker, relationTitle);
+      const count = document.createElement('small');
+      count.textContent = relations.length + ' relations';
+      relationHead.append(relationTitleBlock, count);
+
+      const grid = document.createElement('div');
+      grid.className = 'knowledge-relations-grid';
+      const typeLabel = (relation) => {
+        const labels = {
+          similar_to: 'Similar',
+          alternative_to: 'Alternative',
+          complements: 'Complements',
+          integrates_with: 'Integrates with',
+          contrasts_with: 'Contrasts with'
+        };
+        const pointsOut = relation.direction === 'source_to_target'
+          ? relation.source === detail.id
+          : relation.direction === 'target_to_source'
+            ? relation.target === detail.id
+            : true;
+        if (relation.type === 'depends_on') return pointsOut ? 'Depends on' : 'Depended on by';
+        if (relation.type === 'extends') return pointsOut ? 'Extends' : 'Extended by';
+        return labels[relation.type] || 'Related';
+      };
+
+      for (const relation of relations) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'knowledge-relation-card';
+        card.addEventListener('click', () => openCard(relation.other_id));
+
+        const cardTop = document.createElement('div');
+        cardTop.className = 'knowledge-relation-top';
+        const type = document.createElement('span');
+        type.textContent = typeLabel(relation);
+        const score = document.createElement('strong');
+        const scoreValue = Number(relation.score);
+        score.textContent = Number.isFinite(scoreValue) ? Math.round(scoreValue * 100) + '%' : '';
+        cardTop.append(type, score);
+
+        const title = document.createElement('h3');
+        title.textContent = relation.other_title;
+        const summary = document.createElement('p');
+        summary.className = 'knowledge-relation-summary';
+        summary.textContent = [relation.method, relation.direction].filter(Boolean).join(' · ');
+        const classifier = document.createElement('small');
+        classifier.className = 'knowledge-relation-classifier';
+        classifier.textContent = String(relation.method || '').startsWith('manual_')
+          ? 'Human override'
+          : 'Automatic relation';
+        card.append(cardTop, title, summary, classifier);
+        grid.append(card);
+      }
+
+      relationSection.append(relationHead, grid);
+    }
 
     view.append(back, head, article);
+    if (conceptSection) view.append(conceptSection);
+    if (relationSection) view.append(relationSection);
     app.replaceChildren(view);
   }
 
