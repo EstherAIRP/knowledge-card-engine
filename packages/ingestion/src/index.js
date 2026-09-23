@@ -2,8 +2,10 @@ import crypto from 'node:crypto';
 import {
   ANALYSIS_RESEARCH_VERSION,
   RESEARCH_EVIDENCE_KINDS,
+  RESEARCH_QUESTION_IDS,
   computeAnalysisEvidenceDigest,
-  validateAnalysisEvidenceBundle
+  validateAnalysisEvidenceBundle,
+  validateResearchPlan
 } from '../../analysis/src/index.js';
 import { classifyThreadsUrl, normalizeThreadsPostUrl, resolveThreadsUrl } from './threads/resolve-url.js';
 import { extractResolvedThreadsConversationWithRecovery } from './threads/conversation-recovery.js';
@@ -316,10 +318,19 @@ export const GITHUB_RESEARCH_LIMITS = Object.freeze({
   max_tree_entries: 4000,
   max_candidates: 500,
   max_depth: 5,
+  max_expansion_rounds: 2,
   max_selected_items: 20,
   max_item_bytes: 163840,
   max_total_bytes: 786432
 });
+
+export const GITHUB_RESEARCH_CONTINUATION_REASONS = Object.freeze([
+  'needs_evidence',
+  'plan_complete',
+  'round_budget_exhausted',
+  'item_budget_exhausted',
+  'byte_budget_exhausted'
+]);
 
 export const GITHUB_RESEARCH_STOP_REASONS = Object.freeze([
   'tree_request_budget_exhausted',
@@ -855,6 +866,351 @@ export async function fetchGitHubResearchEvidence(evidence, discovery, selectedP
     analysis_evidence_digest: computeAnalysisEvidenceDigest(bundleBase)
   };
   return validateAnalysisEvidenceBundle(bundle, accepted);
+}
+
+
+function researchNeedsEvidence(plan) {
+  return RESEARCH_QUESTION_IDS.filter((questionId) => plan.questions[questionId].status === 'needs_evidence');
+}
+
+function validatePriorResearchPlanBinding(plan, progress, bundle) {
+  const priorDigest = Object.hasOwn(plan, 'prior_analysis_evidence_digest')
+    ? plan.prior_analysis_evidence_digest
+    : null;
+
+  if (progress.completed_rounds === 0) {
+    if (priorDigest != null) {
+      fail(
+        'GITHUB_RESEARCH_PLAN_STALE',
+        'Initial GitHub research plan must not bind a prior analysis evidence digest.'
+      );
+    }
+    return;
+  }
+
+  if (
+    typeof priorDigest !== 'string'
+    || !/^[0-9a-f]{64}$/u.test(priorDigest)
+    || priorDigest !== bundle?.analysis_evidence_digest
+  ) {
+    fail(
+      'GITHUB_RESEARCH_PLAN_STALE',
+      'GitHub research plan prior_analysis_evidence_digest does not match current research evidence.'
+    );
+  }
+}
+
+function normalizedResearchSelectedPaths(paths) {
+  return [...paths].sort((a, b) => a.localeCompare(b));
+}
+
+function githubResearchProgressFromBundle(evidence, discovery, completedRounds, bundle = null) {
+  const validatedDiscovery = validateGitHubResearchDiscovery(discovery, evidence);
+  const items = bundle?.items || [];
+  return {
+    research_version: ANALYSIS_RESEARCH_VERSION,
+    provider: 'github',
+    source_identity: evidence.source_identity,
+    source_evidence_digest: evidence.evidence_digest,
+    repository_revision: validatedDiscovery.repository_revision,
+    completed_rounds: completedRounds,
+    selected_paths: normalizedResearchSelectedPaths(items.map((item) => item.path)),
+    total_items: items.length,
+    total_bytes: items.reduce((sum, item) => sum + item.bytes, 0),
+    analysis_evidence_digest: bundle?.analysis_evidence_digest || null
+  };
+}
+
+export function createGitHubResearchProgress(evidence, discovery) {
+  const accepted = validateGitHubEvidence(evidence);
+  return validateGitHubResearchProgress(
+    githubResearchProgressFromBundle(accepted, discovery, 0, null),
+    accepted,
+    discovery,
+    null
+  );
+}
+
+export function validateGitHubResearchProgress(progress, evidence, discovery, bundle = null) {
+  const accepted = validateGitHubEvidence(evidence);
+  const validatedDiscovery = validateGitHubResearchDiscovery(discovery, accepted);
+
+  if (!progress || typeof progress !== 'object' || Array.isArray(progress)) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress must be an object.');
+  }
+  if (progress.research_version !== ANALYSIS_RESEARCH_VERSION || progress.provider !== 'github') {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress schema/provider is invalid.');
+  }
+  if (progress.source_identity !== accepted.source_identity) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'GitHub research progress source identity does not match accepted evidence.');
+  }
+  if (progress.source_evidence_digest !== accepted.evidence_digest) {
+    fail('ANALYSIS_EVIDENCE_STALE', 'GitHub research progress source evidence digest does not match accepted evidence.');
+  }
+  if (progress.repository_revision !== validatedDiscovery.repository_revision) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress repository revision does not match discovery.');
+  }
+
+  const maxRounds = validatedDiscovery.discovery.limits.max_expansion_rounds;
+  if (
+    !Number.isInteger(progress.completed_rounds)
+    || progress.completed_rounds < 0
+    || progress.completed_rounds > maxRounds
+  ) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress completed_rounds is invalid.');
+  }
+  if (
+    !Array.isArray(progress.selected_paths)
+    || progress.selected_paths.some((item) => typeof item !== 'string' || !item)
+    || new Set(progress.selected_paths).size !== progress.selected_paths.length
+  ) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress selected_paths is invalid.');
+  }
+  for (const selectedPath of progress.selected_paths) safeResearchPath(selectedPath);
+  if (JSON.stringify(progress.selected_paths) !== JSON.stringify(normalizedResearchSelectedPaths(progress.selected_paths))) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress selected_paths must be sorted.');
+  }
+  if (!Number.isInteger(progress.total_items) || progress.total_items < 0 || progress.total_items !== progress.selected_paths.length) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress total_items is invalid.');
+  }
+  if (!Number.isInteger(progress.total_bytes) || progress.total_bytes < 0) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress total_bytes is invalid.');
+  }
+  if (progress.total_items > validatedDiscovery.discovery.limits.max_selected_items) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress exceeds the selected item budget.');
+  }
+  if (progress.total_bytes > validatedDiscovery.discovery.limits.max_total_bytes) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress exceeds the byte budget.');
+  }
+
+  if (progress.completed_rounds === 0) {
+    if (
+      progress.total_items !== 0
+      || progress.total_bytes !== 0
+      || progress.selected_paths.length !== 0
+      || progress.analysis_evidence_digest != null
+      || bundle != null
+    ) {
+      fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'Initial GitHub research progress must not contain fetched evidence.');
+    }
+    return progress;
+  }
+
+  if (!bundle) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress after an expansion round requires an analysis evidence bundle.');
+  }
+  const validatedBundle = validateAnalysisEvidenceBundle(bundle, accepted);
+  if (validatedBundle.repository_revision !== validatedDiscovery.repository_revision) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress bundle revision does not match discovery.');
+  }
+
+  const bundlePaths = normalizedResearchSelectedPaths(validatedBundle.items.map((item) => item.path));
+  if (JSON.stringify(bundlePaths) !== JSON.stringify(progress.selected_paths)) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress paths do not match the analysis evidence bundle.');
+  }
+  const bundleBytes = validatedBundle.items.reduce((sum, item) => sum + item.bytes, 0);
+  if (progress.total_items !== validatedBundle.items.length || progress.total_bytes !== bundleBytes) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress totals do not match the analysis evidence bundle.');
+  }
+  if (progress.analysis_evidence_digest !== validatedBundle.analysis_evidence_digest) {
+    fail('GITHUB_RESEARCH_PROGRESS_INVALID', 'GitHub research progress digest does not match the analysis evidence bundle.');
+  }
+
+  return progress;
+}
+
+export function evaluateGitHubResearchContinuation(plan, evidence, discovery, progress, bundle = null) {
+  const accepted = validateGitHubEvidence(evidence);
+  const validatedPlan = validateResearchPlan(plan, accepted);
+  const validatedDiscovery = validateGitHubResearchDiscovery(discovery, accepted);
+  const validatedProgress = validateGitHubResearchProgress(progress, accepted, validatedDiscovery, bundle);
+  validatePriorResearchPlanBinding(validatedPlan, validatedProgress, bundle);
+
+  const needsEvidence = researchNeedsEvidence(validatedPlan);
+  const limits = validatedDiscovery.discovery.limits;
+  const remaining = {
+    rounds: Math.max(0, limits.max_expansion_rounds - validatedProgress.completed_rounds),
+    items: Math.max(0, limits.max_selected_items - validatedProgress.total_items),
+    bytes: Math.max(0, limits.max_total_bytes - validatedProgress.total_bytes)
+  };
+
+  if (needsEvidence.length === 0) {
+    return {
+      action: 'stop',
+      reason: 'plan_complete',
+      next_round: null,
+      needs_evidence: [],
+      remaining
+    };
+  }
+  if (remaining.rounds === 0) {
+    return {
+      action: 'stop',
+      reason: 'round_budget_exhausted',
+      next_round: null,
+      needs_evidence: needsEvidence,
+      remaining
+    };
+  }
+  if (remaining.items === 0) {
+    return {
+      action: 'stop',
+      reason: 'item_budget_exhausted',
+      next_round: null,
+      needs_evidence: needsEvidence,
+      remaining
+    };
+  }
+  if (remaining.bytes === 0) {
+    return {
+      action: 'stop',
+      reason: 'byte_budget_exhausted',
+      next_round: null,
+      needs_evidence: needsEvidence,
+      remaining
+    };
+  }
+
+  return {
+    action: 'expand',
+    reason: 'needs_evidence',
+    next_round: validatedProgress.completed_rounds + 1,
+    needs_evidence: needsEvidence,
+    remaining
+  };
+}
+
+function candidateRequestedByPlan(candidate, plan) {
+  return researchNeedsEvidence(plan).some((questionId) => {
+    const question = plan.questions[questionId];
+    return question.evidence_kinds.includes(candidate.kind) || question.path_hints.includes(candidate.path);
+  });
+}
+
+function mergeGitHubResearchBundles(evidence, discovery, previousBundle, roundBundle) {
+  const items = [
+    ...(previousBundle?.items || []),
+    ...roundBundle.items
+  ];
+  const base = {
+    research_version: ANALYSIS_RESEARCH_VERSION,
+    provider: 'github',
+    source_identity: evidence.source_identity,
+    source_evidence_digest: evidence.evidence_digest,
+    repository_revision: discovery.repository_revision,
+    items
+  };
+  const merged = {
+    ...base,
+    analysis_evidence_digest: computeAnalysisEvidenceDigest(base)
+  };
+  return validateAnalysisEvidenceBundle(merged, evidence);
+}
+
+export async function fetchGitHubResearchExpansion(
+  evidence,
+  discovery,
+  plan,
+  progress,
+  selectedPaths,
+  {
+    previousBundle = null,
+    fetchImpl = globalThis.fetch,
+    token = null
+  } = {}
+) {
+  const accepted = validateGitHubEvidence(evidence);
+  const validatedDiscovery = validateGitHubResearchDiscovery(discovery, accepted);
+  const validatedPlan = validateResearchPlan(plan, accepted);
+  const validatedProgress = validateGitHubResearchProgress(
+    progress,
+    accepted,
+    validatedDiscovery,
+    previousBundle
+  );
+  const continuation = evaluateGitHubResearchContinuation(
+    validatedPlan,
+    accepted,
+    validatedDiscovery,
+    validatedProgress,
+    previousBundle
+  );
+  if (continuation.action !== 'expand') {
+    fail(
+      'GITHUB_RESEARCH_EXPANSION_STOPPED',
+      `GitHub research expansion is not available: ${continuation.reason}.`,
+      continuation
+    );
+  }
+
+  if (
+    !Array.isArray(selectedPaths)
+    || selectedPaths.length === 0
+    || selectedPaths.some((item) => typeof item !== 'string' || !item)
+    || new Set(selectedPaths).size !== selectedPaths.length
+  ) {
+    fail('GITHUB_RESEARCH_SELECTION_INVALID', 'GitHub research expansion selectedPaths must be a non-empty unique array.');
+  }
+
+  const candidateByPath = new Map(validatedDiscovery.candidates.map((candidate) => [candidate.path, candidate]));
+  const previousPaths = new Set(validatedProgress.selected_paths);
+  const selected = normalizedResearchSelectedPaths(selectedPaths).map((selectedPath) => {
+    safeResearchPath(selectedPath);
+    if (previousPaths.has(selectedPath)) {
+      fail('GITHUB_RESEARCH_SELECTION_REPEATED', `GitHub research path was already selected in an earlier round: ${selectedPath}.`);
+    }
+    const candidate = candidateByPath.get(selectedPath);
+    if (!candidate) {
+      fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', `GitHub research path is not an approved discovery candidate: ${selectedPath}.`);
+    }
+    if (!candidateRequestedByPlan(candidate, validatedPlan)) {
+      fail(
+        'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED',
+        `GitHub research path is not requested by any needs_evidence question: ${selectedPath}.`
+      );
+    }
+    return candidate;
+  });
+
+  const estimatedBytes = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
+  if (selected.length > continuation.remaining.items || estimatedBytes > continuation.remaining.bytes) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research expansion exceeds the remaining cumulative item or byte budget.');
+  }
+
+  const roundBundle = await fetchGitHubResearchEvidence(
+    accepted,
+    validatedDiscovery,
+    selected.map((candidate) => candidate.path),
+    {
+      fetchImpl,
+      token,
+      limits: {
+        max_selected_items: continuation.remaining.items,
+        max_item_bytes: validatedDiscovery.discovery.limits.max_item_bytes,
+        max_total_bytes: continuation.remaining.bytes
+      }
+    }
+  );
+  const mergedBundle = mergeGitHubResearchBundles(
+    accepted,
+    validatedDiscovery,
+    previousBundle,
+    roundBundle
+  );
+  const nextProgress = githubResearchProgressFromBundle(
+    accepted,
+    validatedDiscovery,
+    validatedProgress.completed_rounds + 1,
+    mergedBundle
+  );
+  validateGitHubResearchProgress(nextProgress, accepted, validatedDiscovery, mergedBundle);
+
+  return {
+    round: continuation.next_round,
+    selected_paths: selected.map((candidate) => candidate.path),
+    bundle: mergedBundle,
+    progress: nextProgress
+  };
 }
 
 export function validateGitHubIngestionRequest(value) {
