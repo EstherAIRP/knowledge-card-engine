@@ -62,6 +62,7 @@ const requiredFiles = [
     'packages/' + name + '/src/index.js'
   ]),
   'packages/workspace/src/card-store.js',
+  'packages/workspace/src/research-state.js',
   'apps/server/.env.example',
   'apps/server/src/auth.js',
   'apps/server/src/config.js',
