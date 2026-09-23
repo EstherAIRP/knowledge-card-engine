@@ -228,7 +228,7 @@ GitHub REST request 使用 API version `2026-03-10`。
 - `/api/graph` 在 current release snapshot 上投影 graph view model：Card metadata、Concept metadata、typed edges、layout/stats，以及由 current release vectors 即時計算的 `semantic.neighborsByCard` / `semantic.distancesByCard`。這個 projection 不寫回 generated artifacts，也不跨 release 讀資料。
 - Graph pointer rule：pointerdown 發生在 `.graph-node` 上時不得建立 drag state 或 pointer capture；Card node 的 click / Enter / Space 必須可進入 selected inspector。
 - header 只保留 Knowledge Radar 品牌與 Cards / Search / Graph 導覽，不顯示 release id、GitHub avatar / login 或登出按鈕；session 與 release API 契約仍保留。401 / 403 會立即清除前端目前 private state，回到 auth UI。
-- Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Card 原文；支援 H1–H3、段落、unordered／ordered list、blockquote、horizontal rule、fenced code、table、粗體／斜體、inline code、HTTP(S) link 與相對 Card `.md` link。相對 Card link 會以 stable id 開啟私人 Card；raw HTML 不執行，Markdown image 不自動載入外部資源。
+- Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Card 原文；支援 H1–H3、段落、unordered／ordered list、blockquote、horizontal rule、fenced code、table、粗體／斜體、inline code、HTTP(S) link 與相對 Card `.md` link。fenced code 提供本機 Clipboard API 複製操作；相對 Card link 會以 stable id 開啟私人 Card；raw HTML 不執行，Markdown image 不自動載入外部資源。
 - UI 支援 light / dark color scheme；desktop Radar grid 為三欄，較窄 viewport 依序收斂為兩欄與單欄。
 
 UI shell 本身不包含任何私人 Card、generated index 或 credential；外觀與版面調整不能改變 server-side authorization / release-pinned read boundary。
