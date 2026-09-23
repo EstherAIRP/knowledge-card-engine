@@ -9,7 +9,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Node.js 24 / npm workspaces 工具鏈。
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery / selected primary-source evidence bundle。
+- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery、最多兩輪 digest-bound evidence expansion 與 cumulative primary-source evidence bundle。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
 - 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub `analysis_version: 2` Card、accepted source state 與 compact research provenance。
 - 依 source identity / canonical URL 判斷 create 或 update。
@@ -31,7 +31,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
 - `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
-- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research candidate / selected evidence capture、create/update resolution 與 provider-specific source-state contract。
+- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research candidate discovery / bounded evidence expansion、create/update resolution 與 provider-specific source-state contract。
 - `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state / research-state transactional 寫入。
