@@ -196,7 +196,7 @@ research == validated structured research report
 
 GitHub version 2 成功寫入時，Workspace 只保存 compact research provenance，不永久保存 evidence item 的 `text`、structured findings 或 unknowns。若之後同一 GitHub Card 以 version 1 成功更新，舊 research provenance state 會在同一寫入交易中移除，避免過期 provenance 繼續被視為目前 Card 的研究依據。
 
-目前 Remote Ingest handoff 尚未交換 research plan / Analysis Evidence Bundle，因此現有 ingestion CLI / Remote Ingest 仍使用 version 1。Version 2 不得以手工 Card 寫入繞過 writer。
+Remote Ingest 的 GitHub handoff 會先建立 revision-pinned discovery / progress，再由 Agent 回填受控 research plan 與 selected candidate paths。每輪 expansion 更新 cumulative Analysis Evidence Bundle；最終 `analysis_version: 2` 必須綁定該 bundle，runner 再把 bundle 一併交給正式 writer。Threads 目前沒有 research evidence bundle contract，因此 Remote Ingest 仍使用 version 1。任何 provider 都不得以手工 Card 寫入繞過 writer。
 
 ## 錯誤語意
 
