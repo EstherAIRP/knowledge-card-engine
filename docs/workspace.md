@@ -12,7 +12,7 @@ Workspace root 必須包含：
 - `projects/`：私人專案背景與需求。
 - `content/knowledge/`：Knowledge Cards。
 - `config/`：Taxonomy、人工設定與其他不含密鑰的設定。
-- `state/`：accepted source state。
+- `state/`：accepted source state，以及 research-bound analysis 成功後的 compact research provenance state。
 - `data/`：可重建的搜尋、向量、關聯與 Concept 索引。
 - `releases/`：私人發布描述與發布指標。
 
@@ -121,4 +121,4 @@ npm run workspace:validate -- /path/to/workspace \
   --reusable-workflow=ingest-workspace.yml
 ```
 
-完整 Workspace CI 還會執行 Card / Taxonomy 與 accepted source-state 驗證；詳見 [development.md](./development.md)。
+完整 Workspace CI 還會執行 Card / Taxonomy、accepted source-state 與 research provenance state 驗證；詳見 [development.md](./development.md)。
