@@ -12,10 +12,10 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README accepted evidence、固定 revision 的 GitHub research candidate / selected evidence capture、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
 | `packages/analysis` | provider-neutral analysis result、research plan、analysis evidence bundle、structured research report 與 evidence-backed quality gate；research-bound analysis 可同時綁定 source evidence 與 analysis evidence digest。 |
 | `packages/graph` | Deterministic search、lexical vector、typed relation、Concept、semantic neighbor 與 graph projection；generated data 帶 provenance / fingerprint。 |
-| `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state persistence。 |
+| `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state / research-state transactional persistence。 |
 | `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
 
-模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。Analysis package 已能驗證 research-bound version 2 contract；目前正式 Workspace writer 尚未接收 research evidence bundle，因此正式 ingestion apply 仍使用 analysis version 1。
+模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。GitHub research-bound version 2 analysis 必須把 validated Analysis Evidence Bundle 一併交給 Workspace writer；Threads 與目前 Remote Ingest 仍使用 version 1。
 
 ## 目前資料流
 
@@ -34,7 +34,7 @@ source URL
 
 GitHub 以 repository metadata + README 建立 accepted evidence。需要 research evidence 時，ingestion 可在 accepted README 尚未變更的前提下固定 default branch commit，受限展開 repository tree，只暴露可分析的文字候選，並只從候選集合擷取選定 blob 形成 analysis evidence bundle。Threads 先解析到具體貼文，再依 reply/root 關係與可用的 n/N 證據重建根貼文及完整有序串文。Threads share token、中間篇或最後一篇都不能直接成為正式來源身分。
 
-Card 與 source state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。writer 使用暫存檔寫入；若 Card 已替換但 source-state replacement 失敗，會回復 Card，避免只推進其中一側。
+Card 與 state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。GitHub version 2 另建立不含來源全文的 compact research provenance state；Card、accepted source state 與 research state 由同一個檔案交易提交，任一步驟失敗都回復已提交項目。GitHub version 1 更新若遇到既有 research state，會在同一交易移除該過期 provenance。
 
 ## 資料權威與所有權
 
@@ -43,6 +43,7 @@ Card 與 source state 寫入前會完成 evidence、analysis binding、ownership
 - Workspace 結構由 `workspace.yaml` 與 `engine.lock.json` 定義。
 - `*.user` override、穩定 `id`、`created_at` 與完整「使用者備註」屬保護狀態，一般重新分析不得修改。
 - accepted source state 是已通過來源驗證後的精簡狀態；GitHub 不保存 README 全文，Threads 不保存貼文原文，只保存必要 metadata 與內容指紋。
+- GitHub research provenance state 位於 configured state root 的 `research/github/`，只保存 revision、evidence path/hash/bytes、coverage 狀態與 Card/source binding，不保存 source text。
 
 ## Engine / Workspace 邊界
 
