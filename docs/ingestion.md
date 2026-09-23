@@ -505,7 +505,9 @@ Threads 不使用 GitHub research plan / bundle，也不因 GitHub 的研究品�
 
 ### Runner persistence guard
 
-Reusable workflow 只在 handoff 實際產生 Repository 變更時提交；`waiting-*` stage 不建立空提交。每次持久化都必須：
+Reusable workflow 只在 handoff 實際產生 Repository 變更時提交；`waiting-*` stage 不建立空提交。Agent 提交本身也受 lineage 守門：初始提交只能改 `request.json`；後續 judgement、research plan 或 analysis 提交只能改當前單一 input 檔，而且必須直接接在上一個 runner-managed handoff commit 之後。這可阻止在另一個 commit 先竄改 runner-owned accepted / research evidence，再把舊或偽造 state 帶入下一輪。
+
+每次持久化都必須：
 
 - 只允許 result 回報的 exact `allowed_changed_paths`。
 - push 前確認遠端 ingestion branch SHA 仍等於 run 開始時的 source SHA。
