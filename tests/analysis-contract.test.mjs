@@ -96,6 +96,41 @@ function researchReport(bundle) {
     research_version: 1,
     provider: 'github',
     coverage,
+    findings: {
+      core_models: [{
+        name: 'Request pipeline',
+        description: 'The project separates request handling from queued background work.',
+        evidence_refs: [firstEvidenceId]
+      }],
+      architecture_components: [{
+        name: 'API layer',
+        responsibility: 'Accepts web requests and dispatches work to the job service.',
+        evidence_refs: [firstEvidenceId]
+      }],
+      flows: [{
+        name: 'Request to background job',
+        steps: ['Accept request in API layer', 'Enqueue work in job service'],
+        evidence_refs: [firstEvidenceId]
+      }],
+      implementation_checks: [{
+        claim: 'Requests are forwarded to a background job service.',
+        status: 'implemented',
+        assessment: 'The synthetic architecture evidence explicitly describes the API-to-job flow.',
+        evidence_refs: [firstEvidenceId]
+      }],
+      technical_mechanisms: [{
+        name: 'API/job separation',
+        mechanism: 'Synchronous request handling delegates longer work to a background job service.',
+        why_it_matters: 'It separates user-facing latency from asynchronous work execution.',
+        tradeoff: 'The queue boundary adds operational complexity and requires failure handling.',
+        evidence_refs: [firstEvidenceId]
+      }],
+      limitations: [{
+        limitation: 'The available evidence does not describe authentication implementation.',
+        impact: 'Authorization behavior cannot be treated as verified.',
+        evidence_refs: [firstEvidenceId]
+      }]
+    },
     unknowns: ['Authentication details remain unknown.']
   };
 }
@@ -205,6 +240,57 @@ test('research report requires evidence refs for supported coverage and explicit
   assert.throws(
     () => validateResearchReport(unavailableWithoutReason, bundle),
     (error) => error.code === 'ANALYSIS_RESEARCH_INVALID'
+  );
+});
+
+test('GitHub quality gate requires structured findings instead of prose-only coverage notes', () => {
+  const bundle = analysisEvidenceBundle();
+  const report = researchReport(bundle);
+
+  const noArchitectureFinding = structuredClone(report);
+  noArchitectureFinding.findings.architecture_components = [];
+  assert.throws(
+    () => validateResearchReport(noArchitectureFinding, bundle),
+    (error) => error.code === 'ANALYSIS_QUALITY_GATE_FAILED'
+  );
+
+  const weakMechanism = structuredClone(report);
+  weakMechanism.findings.technical_mechanisms[0].tradeoff = '';
+  assert.throws(
+    () => validateResearchReport(weakMechanism, bundle),
+    (error) => error.code === 'ANALYSIS_RESEARCH_INVALID'
+  );
+
+  const singleStepFlow = structuredClone(report);
+  singleStepFlow.findings.flows[0].steps = ['Only one step'];
+  assert.throws(
+    () => validateResearchReport(singleStepFlow, bundle),
+    (error) => error.code === 'ANALYSIS_RESEARCH_INVALID'
+  );
+});
+
+test('GitHub quality gate allows explicit unavailable material coverage but rejects not_applicable shortcuts', () => {
+  const bundle = analysisEvidenceBundle();
+  const unavailable = researchReport(bundle);
+  unavailable.coverage.architecture = {
+    status: 'unavailable',
+    evidence_refs: [],
+    unavailable_reason: 'not_found',
+    note: 'No architecture evidence was found within the bounded research scope.'
+  };
+  unavailable.findings.architecture_components = [];
+  assert.equal(validateResearchReport(unavailable, bundle), unavailable);
+
+  const shortcut = researchReport(bundle);
+  shortcut.coverage.architecture = {
+    status: 'not_applicable',
+    evidence_refs: [],
+    note: 'Architecture omitted.'
+  };
+  shortcut.findings.architecture_components = [];
+  assert.throws(
+    () => validateResearchReport(shortcut, bundle),
+    (error) => error.code === 'ANALYSIS_QUALITY_GATE_FAILED'
   );
 });
 

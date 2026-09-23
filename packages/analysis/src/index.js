@@ -81,6 +81,32 @@ export const RESEARCH_UNAVAILABLE_REASONS = Object.freeze([
   'source_limited'
 ]);
 
+export const RESEARCH_FINDING_GROUPS = Object.freeze([
+  'core_models',
+  'architecture_components',
+  'flows',
+  'implementation_checks',
+  'technical_mechanisms',
+  'limitations'
+]);
+
+export const IMPLEMENTATION_CHECK_STATUSES = Object.freeze([
+  'implemented',
+  'partial',
+  'planned',
+  'unclear'
+]);
+
+export const GITHUB_MATERIAL_COVERAGE_DIMENSIONS = Object.freeze([
+  'problem',
+  'core_model',
+  'architecture',
+  'flow',
+  'implementation_vs_claim',
+  'technical_mechanisms',
+  'limitations'
+]);
+
 export class AnalysisContractError extends Error {
   constructor(code, message) {
     super(message);
@@ -278,6 +304,124 @@ export function validateAnalysisEvidenceBundle(bundle, evidence) {
   return bundle;
 }
 
+function validateEvidenceRefs(refs, field, evidenceIds, { nonEmpty = true } = {}) {
+  stringArray(refs, field, {
+    nonEmpty,
+    unique: true,
+    code: 'ANALYSIS_RESEARCH_INVALID'
+  });
+  for (const evidenceRef of refs) {
+    if (!evidenceIds.has(evidenceRef)) {
+      fail('ANALYSIS_RESEARCH_INVALID', `${field} contains unknown evidence id: ${evidenceRef}.`);
+    }
+  }
+}
+
+function validateResearchFindingBase(finding, field, evidenceIds) {
+  if (!isPlainObject(finding)) fail('ANALYSIS_RESEARCH_INVALID', `${field} must be an object.`);
+  validateEvidenceRefs(finding.evidence_refs, `${field}.evidence_refs`, evidenceIds);
+}
+
+function validateResearchFindings(findings, evidenceIds) {
+  exactObjectKeys(findings, RESEARCH_FINDING_GROUPS, 'research report.findings', 'ANALYSIS_RESEARCH_INVALID');
+
+  for (const group of RESEARCH_FINDING_GROUPS) {
+    if (!Array.isArray(findings[group])) {
+      fail('ANALYSIS_RESEARCH_INVALID', `research report.findings.${group} must be an array.`);
+    }
+  }
+
+  for (let index = 0; index < findings.core_models.length; index += 1) {
+    const finding = findings.core_models[index];
+    const field = `research report.findings.core_models[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.name, `${field}.name`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.description, `${field}.description`, 'ANALYSIS_RESEARCH_INVALID');
+  }
+
+  for (let index = 0; index < findings.architecture_components.length; index += 1) {
+    const finding = findings.architecture_components[index];
+    const field = `research report.findings.architecture_components[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.name, `${field}.name`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.responsibility, `${field}.responsibility`, 'ANALYSIS_RESEARCH_INVALID');
+  }
+
+  for (let index = 0; index < findings.flows.length; index += 1) {
+    const finding = findings.flows[index];
+    const field = `research report.findings.flows[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.name, `${field}.name`, 'ANALYSIS_RESEARCH_INVALID');
+    stringArray(finding.steps, `${field}.steps`, {
+      nonEmpty: true,
+      unique: false,
+      code: 'ANALYSIS_RESEARCH_INVALID'
+    });
+    if (finding.steps.length < 2) {
+      fail('ANALYSIS_RESEARCH_INVALID', `${field}.steps must contain at least two ordered steps.`);
+    }
+  }
+
+  for (let index = 0; index < findings.implementation_checks.length; index += 1) {
+    const finding = findings.implementation_checks[index];
+    const field = `research report.findings.implementation_checks[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.claim, `${field}.claim`, 'ANALYSIS_RESEARCH_INVALID');
+    if (!IMPLEMENTATION_CHECK_STATUSES.includes(finding.status)) {
+      fail('ANALYSIS_RESEARCH_INVALID', `${field}.status is invalid.`);
+    }
+    nonEmptyString(finding.assessment, `${field}.assessment`, 'ANALYSIS_RESEARCH_INVALID');
+  }
+
+  for (let index = 0; index < findings.technical_mechanisms.length; index += 1) {
+    const finding = findings.technical_mechanisms[index];
+    const field = `research report.findings.technical_mechanisms[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.name, `${field}.name`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.mechanism, `${field}.mechanism`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.why_it_matters, `${field}.why_it_matters`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.tradeoff, `${field}.tradeoff`, 'ANALYSIS_RESEARCH_INVALID');
+  }
+
+  for (let index = 0; index < findings.limitations.length; index += 1) {
+    const finding = findings.limitations[index];
+    const field = `research report.findings.limitations[${index}]`;
+    validateResearchFindingBase(finding, field, evidenceIds);
+    nonEmptyString(finding.limitation, `${field}.limitation`, 'ANALYSIS_RESEARCH_INVALID');
+    nonEmptyString(finding.impact, `${field}.impact`, 'ANALYSIS_RESEARCH_INVALID');
+  }
+
+  return findings;
+}
+
+function requireFindingWhenCovered(report, dimension, group) {
+  const status = report.coverage[dimension].status;
+  if ((status === 'supported' || status === 'partial') && report.findings[group].length === 0) {
+    fail(
+      'ANALYSIS_QUALITY_GATE_FAILED',
+      `research report.findings.${group} must not be empty when ${dimension} coverage is ${status}.`
+    );
+  }
+}
+
+function validateGitHubResearchQualityGate(report) {
+  for (const dimension of GITHUB_MATERIAL_COVERAGE_DIMENSIONS) {
+    if (report.coverage[dimension].status === 'not_applicable') {
+      fail(
+        'ANALYSIS_QUALITY_GATE_FAILED',
+        `GitHub research coverage ${dimension} cannot be not_applicable; use supported, partial, or explicit unavailable.`
+      );
+    }
+  }
+
+  requireFindingWhenCovered(report, 'core_model', 'core_models');
+  requireFindingWhenCovered(report, 'architecture', 'architecture_components');
+  requireFindingWhenCovered(report, 'flow', 'flows');
+  requireFindingWhenCovered(report, 'implementation_vs_claim', 'implementation_checks');
+  requireFindingWhenCovered(report, 'technical_mechanisms', 'technical_mechanisms');
+  requireFindingWhenCovered(report, 'limitations', 'limitations');
+}
+
 export function validateResearchReport(report, bundle) {
   if (!isPlainObject(report)) fail('ANALYSIS_RESEARCH_INVALID', 'Research report must be an object.');
   if (report.research_version !== ANALYSIS_RESEARCH_VERSION) {
@@ -297,16 +441,7 @@ export function validateResearchReport(report, bundle) {
       fail('ANALYSIS_RESEARCH_INVALID', `${field}.status is invalid.`);
     }
     nonEmptyString(entry.note, `${field}.note`, 'ANALYSIS_RESEARCH_INVALID');
-    stringArray(entry.evidence_refs, `${field}.evidence_refs`, {
-      nonEmpty: false,
-      unique: true,
-      code: 'ANALYSIS_RESEARCH_INVALID'
-    });
-    for (const evidenceRef of entry.evidence_refs) {
-      if (!evidenceIds.has(evidenceRef)) {
-        fail('ANALYSIS_RESEARCH_INVALID', `${field}.evidence_refs contains unknown evidence id: ${evidenceRef}.`);
-      }
-    }
+    validateEvidenceRefs(entry.evidence_refs, `${field}.evidence_refs`, evidenceIds, { nonEmpty: false });
 
     if (entry.status === 'supported' || entry.status === 'partial') {
       if (entry.evidence_refs.length === 0) {
@@ -332,11 +467,14 @@ export function validateResearchReport(report, bundle) {
     }
   }
 
+  validateResearchFindings(report.findings, evidenceIds);
   stringArray(report.unknowns, 'research report.unknowns', {
     nonEmpty: false,
     unique: true,
     code: 'ANALYSIS_RESEARCH_INVALID'
   });
+
+  if (report.provider === 'github') validateGitHubResearchQualityGate(report);
   return report;
 }
 
