@@ -67,7 +67,6 @@ jobs:
           node engine/scripts/validate-cards.mjs workspace
           node engine/scripts/validate-source-state.mjs workspace
           node engine/scripts/validate-research-state.mjs workspace
-          node engine/scripts/validate-research-state.mjs workspace
 
       - name: Capture branch source
         id: source
@@ -160,3 +159,4 @@ jobs:
           set -euo pipefail
           node engine/scripts/validate-cards.mjs workspace
           node engine/scripts/validate-source-state.mjs workspace
+          node engine/scripts/validate-research-state.mjs workspace
