@@ -581,8 +581,14 @@ export function validateGitHubResearchDiscovery(discovery, evidence) {
   if (!discovery.discovery || typeof discovery.discovery !== 'object' || Array.isArray(discovery.discovery)) {
     fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery metadata is missing.');
   }
+  if (typeof discovery.discovery.exhaustive !== 'boolean') {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery exhaustive flag is invalid.');
+  }
   if (!Array.isArray(discovery.discovery.stop_reasons) || discovery.discovery.stop_reasons.some((reason) => !GITHUB_RESEARCH_STOP_REASONS.includes(reason))) {
     fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery stop_reasons are invalid.');
+  }
+  if (discovery.discovery.exhaustive !== (discovery.discovery.stop_reasons.length === 0)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery exhaustive flag does not match stop_reasons.');
   }
   for (const field of ['tree_requests', 'tree_entries', 'candidate_count', 'excluded_directories', 'excluded_files']) {
     if (!Number.isInteger(discovery.discovery[field]) || discovery.discovery[field] < 0) {
@@ -591,6 +597,10 @@ export function validateGitHubResearchDiscovery(discovery, evidence) {
   }
   if (discovery.discovery.candidate_count !== discovery.candidates.length) {
     fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery candidate_count does not match candidates.');
+  }
+  const normalizedLimits = normalizeGitHubResearchLimits(discovery.discovery.limits);
+  if (JSON.stringify(normalizedLimits) !== JSON.stringify(discovery.discovery.limits)) {
+    fail('GITHUB_RESEARCH_DISCOVERY_INVALID', 'GitHub research discovery limits are not normalized.');
   }
   return discovery;
 }
