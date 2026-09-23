@@ -62,6 +62,18 @@ Card Markdown 主要閱讀區使用：
 
 `1120px` 以上的 Card Detail 使用主內容加 `240px` outline 欄，Outline 為 sticky，top offset 是 `84px`。`1119px` 以下改用單層 compact detail header：原本的 Knowledge Radar 品牌位置改成「文章目錄」按鈕，並與 Cards / Search / Graph 導覽共用同一條 sticky header。目錄預設收合，展開時以 header 下方 dropdown 顯示同一份 H2／H3、Concept Neighborhood 與 Related Knowledge outline；選擇章節後自動收合並捲動定位，不再以第二條常駐 sticky bar 壓縮閱讀 viewport。
 
+### Card permalink 與 browser history
+
+Card detail 使用與 stable id 對應的 browser route：
+
+```text
+/knowledge/<stable-id>
+```
+
+Card click 在 authenticated detail fetch 成功後才以 History API 寫入 permalink。直接開啟或重新整理 permalink 時，server 仍只傳送相同的公開 UI shell；browser 通過 session / Workspace authorization 後，再由 `/api/cards/:id` 載入私人 Card。
+
+`popstate` 會依目前 pathname 恢復 Card detail 或 Radar 首頁，因此 browser back / forward 不依賴記憶體中的暫存 view state。Markdown 內指向其他 Card 的相對連結也使用相同 permalink。
+
 ### Radar grid
 
 Radar 預設三欄；`1080px` 以下兩欄；`680px` 以下單欄。Filter controls 在 `1080px` 以下收斂為兩欄，`680px` 以下為單欄。
