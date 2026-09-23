@@ -11,7 +11,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
 - GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery / selected primary-source evidence bundle。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
-- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub v2 Card、accepted source state 與 compact research provenance。
+- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub `analysis_version: 2` Card、accepted source state 與 compact research provenance。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
