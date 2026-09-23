@@ -1,4 +1,4 @@
-import { legacyGraphScript } from './legacy-graph.js';
+import { legacyGraphScript } from './graph-runtime.js';
 import { siteCss } from './styles/index.js';
 
 export const moduleId = 'web';
