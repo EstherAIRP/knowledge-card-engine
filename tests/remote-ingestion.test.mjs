@@ -3,7 +3,9 @@ import fs from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
+  assertAcceptedEvidenceMatchesRequest,
   assertGitHubEvidenceMatchesRequest,
+  fetchAcceptedEvidence,
   fetchGitHubEvidence,
   validateGitHubIngestionRequest,
   validateIngestionRequest
@@ -105,6 +107,14 @@ test('accepted evidence must match the normalized remote ingestion request', asy
     capturedAt: '2026-09-22T01:00:00Z'
   });
   assert.equal(assertGitHubEvidenceMatchesRequest(request, evidence), evidence);
+  assert.equal(assertAcceptedEvidenceMatchesRequest(request, evidence), evidence);
+
+  const fetchedFromNormalizedRequest = await fetchAcceptedEvidence(request, {
+    fetchImpl: githubFetch(),
+    capturedAt: '2026-09-22T01:00:00Z'
+  });
+  assert.equal(fetchedFromNormalizedRequest.source_identity, request.source_identity);
+  assert.equal(fetchedFromNormalizedRequest.evidence_digest, evidence.evidence_digest);
 
   const other = validateGitHubIngestionRequest({
     schema_version: 1,

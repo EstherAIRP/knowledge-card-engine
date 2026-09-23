@@ -1795,13 +1795,21 @@ export function validateAcceptedEvidence(evidence) {
 }
 
 export function assertAcceptedEvidenceMatchesRequest(request, evidence) {
-  const normalized = validateIngestionRequest(request);
+  const normalized = validateIngestionRequest({
+    schema_version: request?.schema_version,
+    provider: request?.provider,
+    source_url: request?.source_url
+  });
   if (normalized.provider === 'github') return assertGitHubEvidenceMatchesRequest(normalized, evidence);
   return assertThreadsEvidenceMatchesRequest(normalized, evidence);
 }
 
 export async function fetchAcceptedEvidence(request, options = {}) {
-  const normalized = validateIngestionRequest(request);
+  const normalized = validateIngestionRequest({
+    schema_version: request?.schema_version,
+    provider: request?.provider,
+    source_url: request?.source_url
+  });
   if (normalized.provider === 'github') return fetchGitHubEvidence(normalized.source_url, options);
   return fetchThreadsEvidence(normalized.source_url, options);
 }
