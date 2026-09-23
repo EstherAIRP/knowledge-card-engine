@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
+import { renderPrivateSiteShell } from '../apps/web/src/index.js';
+import { siteCss, styleFragments } from '../apps/web/src/styles/index.js';
+
+const root = new URL('../', import.meta.url);
+
+function read(relative) {
+  return fs.readFileSync(new URL(relative, root), 'utf8');
+}
+
+test('web UI styles have explicit ownership and preserve ordered composition', () => {
+  const orders = styleFragments.map((fragment) => fragment.order);
+  assert.deepEqual(orders, Array.from({ length: orders.length }, (_, index) => index));
+  assert.equal(new Set(orders).size, orders.length);
+
+  const expectations = [
+    ['apps/web/src/styles/tokens.js', /--kc-page-max: 1440px/u],
+    ['apps/web/src/styles/base.js', /box-sizing: border-box/u],
+    ['apps/web/src/styles/layout.js', /\.page-shell/u],
+    ['apps/web/src/styles/shared.js', /\.search-form/u],
+    ['apps/web/src/styles/radar.js', /\.radar-grid/u],
+    ['apps/web/src/styles/detail.js', /\.knowledge-reading/u],
+    ['apps/web/src/styles/search.js', /\.result-button/u],
+    ['apps/web/src/styles/graph.js', /\.knowledge-graph-shell/u]
+  ];
+
+  for (const [relative, pattern] of expectations) {
+    assert.match(read(relative), pattern, relative);
+  }
+
+  const indexSource = read('apps/web/src/index.js');
+  const graphBehaviorSource = read('apps/web/src/graph-runtime.js');
+  assert.doesNotMatch(indexSource, /--kc-page-max/u);
+  assert.doesNotMatch(graphBehaviorSource, /legacyGraphCss/u);
+  assert.doesNotMatch(graphBehaviorSource, /\.knowledge-graph-shell/u);
+
+  const html = renderPrivateSiteShell();
+  assert.ok(html.includes(siteCss));
+});
+
+test('web UI layout contract retains shared frame, reading width, responsive grid, outline, and graph inspector rules', () => {
+  assert.match(siteCss, /--kc-page-max:\s*1440px/u);
+  assert.match(siteCss, /--kc-reading-max:\s*920px/u);
+  assert.match(siteCss, /--kc-page-gutter:\s*clamp\(16px, 3vw, 32px\)/u);
+  assert.match(siteCss, /\.page-shell\s*\{[\s\S]*?var\(--kc-page-max\)/u);
+  assert.match(siteCss, /\.knowledge-reading\s*\{[\s\S]*?var\(--kc-reading-max\)/u);
+  assert.match(siteCss, /\.radar-grid\s*\{[\s\S]*?repeat\(3, minmax\(0, 1fr\)\)/u);
+  assert.match(siteCss, /@media \(max-width: 1080px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/u);
+  assert.match(siteCss, /@media \(max-width: 680px\)[\s\S]*?\.radar-grid\s*\{\s*grid-template-columns:\s*1fr/u);
+  assert.match(siteCss, /@media \(min-width: 1120px\)[\s\S]*?\.knowledge-outline\s*\{[\s\S]*?position:\s*sticky/u);
+  assert.match(siteCss, /@media \(max-width: 900px\)[\s\S]*?\.graph-inspector\s*\{[\s\S]*?bottom:\s*0/u);
+  assert.match(siteCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?animation:\s*none !important/u);
+});

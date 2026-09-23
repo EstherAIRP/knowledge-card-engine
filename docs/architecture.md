@@ -6,7 +6,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 
 | 路徑 | 目前責任 |
 | --- | --- |
-| `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；private data 只由 authenticated API runtime 取得。 |
+| `apps/web` | 私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell；styles 依 token / base / layout / shared / view ownership 拆分，private data 只由 authenticated API runtime 取得。 |
 | `apps/server` | GitHub App user authorization、server-side session、資格重查、installation-token Workspace reader，以及 release-pinned Card/search/graph/release API。 |
 | `packages/core` | Card / Taxonomy parsing、Schema 與受控值驗證、ownership、body contract、collection uniqueness 與 stable path。 |
 | `packages/ingestion` | URL canonicalization、GitHub metadata + README evidence、Threads 結構完整串文 evidence、create/update resolution 與 provider-specific source-state contract。 |
@@ -71,6 +71,6 @@ Browser
 
 登入 credential 與 repository data credential 分離。User access token 只存在 server-side session store；installation token 只存在 server runtime。Private API authorization 一律先於 Workspace snapshot cache。
 
-Private API authorization 一律先於 release snapshot cache。第一個 release 尚未建立、且 Workspace 沒有任何 generated artifacts 時只提供 bootstrap Card list/detail；一旦存在 current release，Card、search、graph 與 release API 都固定同一個 P。詳細契約見 [private-site.md](./private-site.md) 與 [release.md](./release.md)。
+Private API authorization 一律先於 release snapshot cache。第一個 release 尚未建立、且 Workspace 沒有任何 generated artifacts 時只提供 bootstrap Card list/detail；一旦存在 current release，Card、search、graph 與 release API 都固定同一個 P。詳細契約見 [private-site.md](./private-site.md)、[web-ui.md](./web-ui.md) 與 [release.md](./release.md)。
 
 Node adapter 預設使用 process-local memory session store；需要跨 process / serverless instance 的正式部署必須注入 shared server-side session store。

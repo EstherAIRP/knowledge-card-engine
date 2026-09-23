@@ -54,6 +54,7 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
 - [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
+- [Web UI 與 Layout](./docs/web-ui.md)
 
 ## 開發與驗證
 
@@ -64,7 +65,7 @@ npm ci
 npm run validate
 ```
 
-`npm run validate` 會執行 repository policy check 與 Node tests。Generated data / release CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace automation 使用 reusable `release-workspace.yml`。
+`npm run validate` 會執行 repository policy check 與 Node tests。Web UI layout contract 可另外用 `npm run ui:verify` 單獨執行。Generated data / release CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace automation 使用 reusable `release-workspace.yml`。
 
 驗證指定 Workspace：
 
