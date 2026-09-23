@@ -19,6 +19,11 @@ import {
   validateAcceptedSourceState
 } from '../../ingestion/src/index.js';
 import { loadWorkspace } from './index.js';
+import {
+  buildResearchState,
+  researchStatePath,
+  validateResearchState
+} from './research-state.js';
 
 function sameJson(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -167,9 +172,55 @@ async function rollbackFile(filePath, prior) {
   else await fs.writeFile(filePath, prior, 'utf8');
 }
 
-export async function applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis) {
+async function commitFileTransaction(entries, nonce) {
+  const prepared = [];
+  for (const entry of entries) {
+    const prior = await readIfExists(entry.filePath);
+    const tmpPath = entry.content == null ? null : `${entry.filePath}.tmp-${nonce}`;
+    if (tmpPath) await fs.writeFile(tmpPath, entry.content, 'utf8');
+    prepared.push({ ...entry, prior, tmpPath });
+  }
+
+  const committed = [];
+  try {
+    for (const entry of prepared) {
+      if (entry.content == null) await fs.rm(entry.filePath, { force: true });
+      else await fs.rename(entry.tmpPath, entry.filePath);
+      committed.push(entry);
+    }
+  } catch (error) {
+    const rollbackErrors = [];
+    for (const entry of [...committed].reverse()) {
+      try {
+        await rollbackFile(entry.filePath, entry.prior);
+      } catch (rollbackError) {
+        rollbackErrors.push({
+          file_path: entry.filePath,
+          message: rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+        });
+      }
+    }
+    if (rollbackErrors.length) error.rollback_errors = rollbackErrors;
+    throw error;
+  } finally {
+    for (const entry of prepared) {
+      if (entry.tmpPath) await fs.rm(entry.tmpPath, { force: true }).catch(() => {});
+    }
+  }
+
+  return Object.fromEntries(prepared.map((entry) => [entry.name, entry.prior]));
+}
+
+export async function applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, {
+  analysisEvidenceBundle = null
+} = {}) {
   validateAcceptedEvidence(evidence);
-  validateAnalysisResult(analysis, evidence);
+  validateAnalysisResult(analysis, evidence, analysisEvidenceBundle);
+  if (analysis.analysis_version === 1 && analysisEvidenceBundle != null) {
+    const error = new Error('analysis_version 1 must not receive an analysis evidence bundle.');
+    error.code = 'ANALYSIS_RESEARCH_INVALID';
+    throw error;
+  }
   const workspace = await loadWorkspace(workspaceRoot);
   const taxonomy = await loadTaxonomyFile(path.join(workspace.paths.config, 'taxonomy.yaml'));
   const cards = await loadCardDocuments(workspace.paths.knowledge);
@@ -207,36 +258,64 @@ export async function applyAcceptedSourceAnalysis(workspaceRoot, evidence, analy
   const state = buildAcceptedSourceState(evidence, { cardId: built.card.data.id, cardPath: relativeCardPath });
   validateAcceptedSourceState(state);
 
+  let researchPath = null;
+  let researchRelative = null;
+  let researchState = null;
+  if (evidence.provider === 'github') {
+    researchPath = path.join(workspace.paths.state, ...researchStatePath(evidence).split('/'));
+    researchRelative = path.relative(workspace.root, researchPath).split(path.sep).join('/');
+    if (analysis.analysis_version === 2) {
+      researchState = buildResearchState(
+        evidence,
+        analysisEvidenceBundle,
+        analysis,
+        { cardId: built.card.data.id, cardPath: relativeCardPath }
+      );
+      validateResearchState(researchState);
+    }
+  }
+
   await fs.mkdir(path.dirname(cardPath), { recursive: true });
   await fs.mkdir(path.dirname(statePath), { recursive: true });
-  const cardPrior = await readIfExists(cardPath);
-  const statePrior = await readIfExists(statePath);
-  const nonce = `${process.pid}-${Date.now()}`;
-  const cardTmp = `${cardPath}.tmp-${nonce}`;
-  const stateTmp = `${statePath}.tmp-${nonce}`;
+  if (researchPath) await fs.mkdir(path.dirname(researchPath), { recursive: true });
 
-  try {
-    await fs.writeFile(cardTmp, built.raw, 'utf8');
-    await fs.writeFile(stateTmp, JSON.stringify(state, null, 2) + '\n', 'utf8');
-    await fs.rename(cardTmp, cardPath);
-    try {
-      await fs.rename(stateTmp, statePath);
-    } catch (error) {
-      await rollbackFile(cardPath, cardPrior);
-      throw error;
+  const entries = [
+    {
+      name: 'card',
+      filePath: cardPath,
+      content: built.raw
+    },
+    {
+      name: 'source_state',
+      filePath: statePath,
+      content: JSON.stringify(state, null, 2) + '\n'
     }
-  } finally {
-    await fs.rm(cardTmp, { force: true }).catch(() => {});
-    await fs.rm(stateTmp, { force: true }).catch(() => {});
+  ];
+  if (researchPath) {
+    const existingResearch = await readIfExists(researchPath);
+    if (researchState || existingResearch != null) {
+      entries.push({
+        name: 'research_state',
+        filePath: researchPath,
+        content: researchState ? JSON.stringify(researchState, null, 2) + '\n' : null
+      });
+    }
   }
+
+  const nonce = `${process.pid}-${Date.now()}`;
+  const priors = await commitFileTransaction(entries, nonce);
+  const statePrior = priors.source_state ?? null;
 
   return {
     mode: target.mode,
     source_identity: evidence.source_identity,
     evidence_digest: evidence.evidence_digest,
+    analysis_version: analysis.analysis_version,
+    analysis_evidence_digest: researchState?.analysis_evidence_digest ?? null,
     card_id: built.card.data.id,
     card_path: relativeCardPath,
     source_state_path: stateRelative,
+    research_state_path: researchState ? researchRelative : null,
     substantive_change: built.substantiveChange,
     previous_state_digest: statePrior ? (() => {
       try { return JSON.parse(statePrior).evidence_digest || null; } catch { return null; }
@@ -251,9 +330,9 @@ function requireProvider(evidence, provider) {
   throw error;
 }
 
-export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analysis) {
+export async function applyAcceptedGitHubAnalysis(workspaceRoot, evidence, analysis, options = {}) {
   requireProvider(evidence, 'github');
-  return applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis);
+  return applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, options);
 }
 
 export async function applyAcceptedThreadsAnalysis(workspaceRoot, evidence, analysis) {
