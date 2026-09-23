@@ -231,7 +231,7 @@ GitHub REST request 使用 API version `2026-03-10`。
 - Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Card 原文；支援 H1–H3、段落、unordered／ordered list、blockquote、horizontal rule、fenced code、table、粗體／斜體、inline code、HTTP(S) link 與相對 Card `.md` link。fenced code 提供本機 Clipboard API 複製操作；相對 Card link 會以 stable id 開啟私人 Card；raw HTML 不執行，Markdown image 不自動載入外部資源。
 - UI 支援 light / dark color scheme；desktop Radar grid 為三欄，較窄 viewport 依序收斂為兩欄與單欄。
 
-UI shell 本身不包含任何私人 Card、generated index 或 credential；外觀與版面調整不能改變 server-side authorization / release-pinned read boundary。
+UI shell 本身不包含任何私人 Card、generated index 或 credential；外觀與版面調整不能改變 server-side authorization / release-pinned read boundary。樣式模組、page frame、reading width、responsive breakpoint 與 UI regression contract 見 [web-ui.md](./web-ui.md)。
 
 ## Runtime configuration
 
