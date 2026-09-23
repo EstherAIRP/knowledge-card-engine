@@ -379,7 +379,7 @@ export const legacyGraphCss = String.raw`
 `;
 
 export const legacyGraphScript = String.raw`
-function renderLegacyGraph(graph) {
+function renderLegacyGraph(graph, options = {}) {
   if (typeof app.__kcGraphCleanup === 'function') app.__kcGraphCleanup();
 
   const width = 1000;
@@ -392,7 +392,7 @@ function renderLegacyGraph(graph) {
   let canvasObserver = null;
 
   const state = {
-    query: '',
+    query: String(options.query || ''),
     showCardRelations: false,
     selectedKind: 'ALL',
     selectedCardId: null,
