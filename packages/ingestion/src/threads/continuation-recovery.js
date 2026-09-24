@@ -123,7 +123,7 @@ export function buildThreadsContinuationPrompt(rootPost, candidates) {
     'Never set root_only=true when any candidate is a continuation, when any candidate remains uncertain, or when the original article body may still be missing.',
     `Return JSON only conforming to ${THREADS_CONTINUATION_JUDGEMENT_SCHEMA_PATH}. Required fields: ${THREADS_CONTINUATION_JUDGEMENT_REQUIRED_FIELDS.join(', ')}.`,
     `Allowed candidate labels: ${THREADS_CONTINUATION_JUDGEMENT_ALLOWED_LABELS.join(', ')}.`,
-    'candidate_labels items contain shortcode, label, and confidence. Confidence values are numbers from 0 to 1.',
+    'candidate_labels is optional for continuation selection and is not authoritative for article assembly. For root_only=true it must cover every candidate exactly once as followup or unrelated. Confidence values are numbers from 0 to 1.',
     'Set complete=true only when either the selected continuation sequence or a root_only judgement is sufficient to represent the original article body with high confidence.'
   ].join(' ');
 
@@ -295,7 +295,7 @@ export function validateThreadsContinuationJudgement(rootPost, candidates, judge
     selected,
     selected_shortcodes: selectedShortcodes,
     rationale: typeof judgement?.rationale === 'string' ? judgement.rationale : null,
-    candidate_labels: Array.isArray(judgement?.candidate_labels) ? judgement.candidate_labels : []
+    candidate_labels: []
   };
 }
 
