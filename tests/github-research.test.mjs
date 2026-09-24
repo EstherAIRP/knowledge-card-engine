@@ -36,7 +36,8 @@ const files = {
   LICENSE: { sha: '3'.repeat(40), text: 'Synthetic license text.\n' },
   'docs/architecture.md': { sha: '4'.repeat(40), text: '# Architecture\n\nRequests enter the API layer, then enqueue background jobs.\n' },
   'src/auth.js': { sha: '5'.repeat(40), text: 'export function authorize(session) { return Boolean(session?.user); }\n' },
-  'src/jobs.js': { sha: '6'.repeat(40), text: 'export async function runJob(queue, payload) { return queue.add(payload); }\n' }
+  'src/jobs.js': { sha: '6'.repeat(40), text: 'export async function runJob(queue, payload) { return queue.add(payload); }\n' },
+  'src/session-store.js': { sha: '8'.repeat(40), text: 'export function readSession(store, id) { return store.get(id); }\n' }
 };
 
 function fileEntry(path, type = 'blob') {
@@ -100,7 +101,8 @@ function githubResearchFetch({ researchReadmeSha = files['README.md'].sha } = {}
     truncated: false,
     tree: [
       { ...fileEntry('src/auth.js'), path: 'auth.js' },
-      { ...fileEntry('src/jobs.js'), path: 'jobs.js' }
+      { ...fileEntry('src/jobs.js'), path: 'jobs.js' },
+      { ...fileEntry('src/session-store.js'), path: 'session-store.js' }
     ]
   };
 
@@ -206,6 +208,7 @@ test('GitHub research discovery pins one revision and prioritizes bounded primar
   assert.equal(candidates.get('docs/architecture.md')?.kind, 'documentation');
   assert.equal(candidates.get('src/auth.js')?.kind, 'auth');
   assert.equal(candidates.get('src/jobs.js')?.kind, 'background_job');
+  assert.equal(candidates.get('src/session-store.js')?.kind, 'source');
   assert.equal(candidates.has('logo.png'), false);
   assert.equal([...candidates.keys()].some((path) => path.startsWith('vendor/')), false);
   assert.equal(validateGitHubResearchDiscovery(discovery, evidence), discovery);
