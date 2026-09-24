@@ -112,7 +112,7 @@ URL
 → Card + accepted source state + optional research provenance persistence
 ```
 
-GitHub 以 repository metadata + README 為 accepted evidence；需要超出 README 的研究型分析時，可另外固定同一 repository revision、從 bounded candidate set 擷取 selected primary-source evidence，形成獨立 Analysis Evidence Bundle。研究 expansion 由 Engine 的 progress / continuation contract 控制：預設最多兩輪，item / byte budget 累計計算；第二輪 plan 必須綁定上一輪 `analysis_evidence_digest`，不得重複已讀 path 或選取與 `needs_evidence` 無關的 candidate。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
+GitHub 以 repository metadata + README 為 accepted evidence；需要超出 README 的研究型分析時，可另外固定同一 repository revision，由 Agent 先提出 material-question research plan 與 selected primary-source paths，再由 Engine 驗證並擷取成獨立 Analysis Evidence Bundle。Discovery candidate catalog 提供 navigation hint，不限制 Agent 只能選 candidate；candidate 之外的 path 仍必須是同一 revision 可驗證的安全文字檔。研究 expansion 由 Engine 的 progress / continuation contract 控制：預設最多兩輪，item / byte budget 累計計算；第二輪 plan 必須綁定上一輪 `analysis_evidence_digest`，不得重複已讀 path 或選取與 `needs_evidence` 無關的 evidence。Threads 必須先解析到具體貼文，再收斂到根貼文 identity；share token 或串文中間篇不能直接當成正式來源身分。Threads 先以 strict structural reconstruction 判定完整性；只有在結構資料不足但屬於可受控的 continuation uncertainty 時，才允許 digest-bound semantic judgement，且必須再通過 deterministic acceptance gates。語意判定不能覆蓋已知缺篇、結構歧義或來源身分衝突。
 
 ### 來源證據
 
@@ -139,8 +139,10 @@ chore/ingest-* branch + request
 → pinned Engine / Node.js 24 source verification
 → optional Threads semantic handoff / digest-bound judgement
 → accepted evidence
-→ GitHub: revision-pinned discovery + deterministic initial research pack
-→ GitHub: Agent analysis，必要時先做一次 digest-bound optional research expansion
+→ GitHub: revision-pinned discovery + empty round-0 research state
+→ GitHub: Agent material-question research plan + selected paths
+→ GitHub: validated first research bundle，必要時再做一次 digest-bound Agent-directed expansion
+→ GitHub: Agent analysis
 → GitHub analysis_version: 2 / Threads analysis_version: 1
 → pinned Engine writer apply + full validation
 → 清除 handoff 暫存資料
@@ -149,9 +151,9 @@ chore/ingest-* branch + request
 
 Threads 需要語意 continuation 判定時，runner 先把公開 root/candidate evidence 與 digest 寫入受控 handoff；Agent 只回填固定 contract 的 judgement。後續 run 必須重新取得 live source、重建候選並確認 digest 未變，再由 Engine 的 deterministic gate 決定能否形成 accepted evidence。
 
-GitHub accepted evidence 建立後，runner 固定 repository revision、產生 candidate discovery，並以 deterministic selection 從同 revision candidate 擷取 initial research pack；`research-evidence.json` 因此在第一次 prepare commit 就具有非空 bundle、`analysis_evidence_digest` 與 `completed_rounds: 1`。Agent 可直接依這個 bundle 提交 version 2 analysis。只有初始 bundle 仍缺少 material evidence 時，才提交綁定目前 `analysis_evidence_digest` 的 `research-plan.json`；runner 驗 plan、round / item / byte budget、重複 path 與 candidate relevance 後做唯一一次 optional expansion。第二輪後只能進入分析，不得自由增加第三輪或繞過 candidate / budget 守門。
+GitHub accepted evidence 建立後，runner 固定 repository revision、產生 bounded discovery，並建立 `completed_rounds: 0`、`bundle: null` 的 `research-evidence.json`。Agent 必須先根據 material questions 提交 `research-plan.json` 與 selected paths；runner 在同一 pinned revision 驗證安全 repository-relative text path、排除目錄、item / byte budget 與 research-plan relevance 後，才擷取第一輪 validated bundle。Selected path 可以是 discovery candidate，也可以是 candidate catalog 之外但能在 pinned revision 驗證存在的文字 primary source，因此 discovery 只作為 navigation hint，不是 allowlist。第一輪後 Agent 可提交 version 2 analysis；若仍缺 material evidence，可再提交綁定目前 `analysis_evidence_digest` 的第二份 research plan。第二輪後只能進入分析，不得增加第三輪或繞過 revision / path / budget 守門。
 
-Agent 只負責建立受控 request、必要時產生 Threads digest-bound semantic judgement、讀取 accepted / research evidence、產生 evidence-bound analysis，並在 GitHub initial research pack 不足時才產生 digest-bound research plan / selected paths；正式 Card/source-state/research-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
+Agent 只負責建立受控 request、必要時產生 Threads digest-bound semantic judgement、判斷 GitHub material questions 與 selected evidence paths、讀取 validated accepted / research evidence、產生 evidence-bound analysis，並在第一輪 GitHub bundle 不足時產生第二份 digest-bound research plan / selected paths；正式 Card/source-state/research-state 寫入仍由 runner 內的 Engine writer 完成。若 Remote Ingest 本身不可用或失敗，應回報 execution backend failure，不得繞過 writer。
 
 ## 6. 分析結果
 
