@@ -32,6 +32,7 @@ test('initial GitHub research pack is deterministic and covers diverse high-valu
     candidate('src/jobs.js', 'background_job', 3),
     candidate('SECURITY.md', 'security', 0),
     candidate('Dockerfile', 'deployment', 2),
+    candidate('.github/workflows/publish-release.yml', 'deployment', 2),
     candidate('LICENSE', 'license', 1),
     candidate('config/app.yaml', 'configuration', 5),
     candidate('tests/app.test.js', 'test', 8),
@@ -73,4 +74,42 @@ test('initial GitHub research pack obeys item and byte limits while continuing p
   });
 
   assert.deepEqual(selected, ['README.md', 'package.json']);
+});
+
+
+test('initial GitHub research pack prefers substantive docs and runtime files over low-signal placeholders', () => {
+  const input = discovery([
+    candidate('README.md', 'readme', 0),
+    candidate('CONTRIBUTING.md', 'documentation', 3),
+    candidate('docs/index.md', 'documentation', 3),
+    candidate('docs/introduction.md', 'documentation', 3),
+    candidate('docs/android/methodology.md', 'documentation', 3),
+    candidate('docs/ios/methodology.md', 'documentation', 3),
+    candidate('docs/development/plugins.md', 'documentation', 3),
+    candidate('pyproject.toml', 'manifest', 1),
+    candidate('src/app/cli.py', 'entrypoint', 4),
+    candidate('src/app/worker.py', 'source', 7),
+    candidate('src/app/__init__.py', 'source', 7),
+    candidate('SECURITY.md', 'security', 0),
+    candidate('docs/license.md', 'license', 1),
+    candidate('.github/workflows/add-issue-to-project.yml', 'deployment', 2),
+    candidate('.github/workflows/mypy.yml', 'deployment', 2),
+    candidate('Dockerfile', 'deployment', 2),
+    candidate('tests/__init__.py', 'test', 8),
+    candidate('tests/test_cli.py', 'test', 8)
+  ]);
+
+  const selected = selectGitHubInitialResearchPaths(input);
+
+  assert.ok(selected.includes('docs/introduction.md'));
+  assert.ok(selected.includes('docs/android/methodology.md'));
+  assert.ok(selected.includes('docs/development/plugins.md'));
+  assert.ok(selected.includes('Dockerfile'));
+  assert.ok(selected.includes('src/app/worker.py'));
+  assert.equal(selected.includes('CONTRIBUTING.md'), false);
+  assert.equal(selected.includes('.github/workflows/add-issue-to-project.yml'), false);
+  assert.equal(selected.includes('.github/workflows/mypy.yml'), false);
+  assert.equal(selected.includes('.github/workflows/publish-release.yml'), false);
+  assert.equal(selected.includes('src/app/__init__.py'), false);
+  assert.equal(selected.includes('tests/__init__.py'), false);
 });
