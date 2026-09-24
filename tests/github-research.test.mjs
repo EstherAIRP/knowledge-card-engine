@@ -511,6 +511,47 @@ test('GitHub research continuation stops deterministically for complete plans an
   assert.equal(exhausted.remaining.items, 0);
 });
 
+test('GitHub research expansion enforces the remaining cumulative item budget after Agent path selection', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, {
+    fetchImpl,
+    limits: { max_selected_items: 2 }
+  });
+  const initial = createGitHubResearchProgress(evidence, discovery);
+  const firstPlan = bindPlan(researchPlan(), evidence);
+  const first = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    firstPlan,
+    initial,
+    ['docs/architecture.md'],
+    { fetchImpl }
+  );
+
+  const secondPlan = bindPlan(researchPlan({
+    priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
+    needs: {
+      implementation_support: {
+        evidence_kinds: ['auth', 'background_job'],
+        path_hints: ['src/auth.js', 'src/jobs.js']
+      }
+    }
+  }), evidence);
+
+  await assert.rejects(
+    fetchGitHubResearchExpansion(
+      evidence,
+      discovery,
+      secondPlan,
+      first.progress,
+      ['src/auth.js', 'src/jobs.js'],
+      { previousBundle: first.bundle, fetchImpl }
+    ),
+    (error) => error.code === 'GITHUB_RESEARCH_BUDGET_EXCEEDED'
+  );
+});
+
 test('GitHub research progress is derived from the current cumulative bundle and fails closed on tampering', async () => {
   const fetchImpl = githubResearchFetch();
   const evidence = await acceptedEvidence(fetchImpl);
