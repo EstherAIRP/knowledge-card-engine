@@ -15,7 +15,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state / research-state transactional persistence。 |
 | `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
 
-模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。GitHub research-bound version 2 analysis 必須把 validated Analysis Evidence Bundle 一併交給 Workspace writer。GitHub Remote Ingest 在 accepted evidence 後固定 revision、執行至少一輪 bounded research expansion，最後只接受 version 2；Threads 沒有 research bundle contract，因此其 Remote Ingest 與 provider-specific direct CLI 維持 accepted-source version 1。
+模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。GitHub research-bound version 2 analysis 必須把 validated Analysis Evidence Bundle 一併交給 Workspace writer。GitHub Remote Ingest 在 accepted evidence 後固定 revision，先由 Engine deterministic 建立第一輪 research pack；Agent 可直接提交 version 2 analysis，只有證據不足時才使用剩餘的一輪 budget 做 digest-bound optional expansion。Threads 沒有 research bundle contract，因此其 Remote Ingest 與 provider-specific direct CLI 維持 accepted-source version 1。
 
 ## 目前資料流
 
@@ -33,7 +33,7 @@ source URL
 → Card + accepted source state + optional compact research provenance
 ```
 
-GitHub 以 repository metadata + README 建立 accepted evidence。Research path 會在 accepted README 尚未變更的前提下固定 default branch commit，受限展開 repository tree，只暴露可分析的文字候選，並只從候選集合擷取選定 blob 形成 analysis evidence bundle。GitHub Remote Ingest 必須完成至少一輪 bounded expansion 後提交 version 2 analysis；直接 `ingest:github` CLI 不接收 research bundle，因此走 accepted-source version 1。Threads 先解析到具體貼文，再依 reply/root 關係與可用的結構證據重建根貼文及完整有序串文，必要時使用 digest-bound semantic continuation handoff；Threads 不建立 GitHub research bundle，正式分析使用 version 1。
+GitHub 以 repository metadata + README 建立 accepted evidence。Research path 會在 accepted README 尚未變更的前提下固定 default branch commit，受限展開 repository tree，只暴露可分析的文字候選；Remote Ingest 先按穩定 kind / candidate priority / path 規則擷取跨類型的 initial research pack，直接形成 analysis evidence bundle。Agent 可立即提交 version 2 analysis；若仍缺 material evidence，才從未讀 candidate 做一次額外 expansion。直接 `ingest:github` CLI 不接收 research bundle，因此走 accepted-source version 1。Threads 先解析到具體貼文，再依 reply/root 關係與可用的結構證據重建根貼文及完整有序串文，必要時使用 digest-bound semantic continuation handoff；Threads 不建立 GitHub research bundle，正式分析使用 version 1。
 
 Card 與 state 寫入前會完成 evidence、analysis binding、ownership 與 collection validation。GitHub version 2 另建立不含來源全文的 compact research provenance state；Card、accepted source state 與 research state 由同一個檔案交易提交，任一步驟失敗都回復已提交項目。GitHub version 1 更新若遇到既有 research state，會在同一交易移除該過期 provenance。
 

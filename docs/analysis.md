@@ -62,7 +62,7 @@ Research plan 使用 `research_version: 1`，並固定十個 research question�
 
 只有 `needs_evidence` 可要求 `evidence_kinds` 或 `path_hints`。Path hint 必須是安全的 repository-relative path；它只是研究提示，不是可直接執行的外部 URL、shell command 或 fetch 權限。
 
-GitHub multi-round expansion 在 ingestion 層另有 retry binding：第一輪 plan 不帶 `prior_analysis_evidence_digest`；已取得一輪 cumulative bundle 後，下一份 plan 必須把 `prior_analysis_evidence_digest` 設為目前 bundle 的 `analysis_evidence_digest`。這個欄位用來證明新的 material-question 判定是基於目前研究證據，而不是較舊 bundle。
+GitHub multi-round expansion 在 ingestion 層另有 retry binding：contract 本身允許從 round 0 建立不帶 `prior_analysis_evidence_digest` 的 initial plan；但 Remote Ingest 會由 Engine deterministic 建立第一輪 bundle，因此 Agent 若要求 optional expansion，該 plan 必須把 `prior_analysis_evidence_digest` 設為目前 bundle 的 `analysis_evidence_digest`。這個欄位用來證明新的 material-question 判定是基於目前研究證據，而不是較舊 bundle。
 
 目前可表達的 evidence kind 包含 README、documentation、manifest、configuration、entrypoint、API、data model、auth、security、background job、deployment、license、source、test 與 other。
 
@@ -196,7 +196,7 @@ research == validated structured research report
 
 GitHub version 2 成功寫入時，Workspace 只保存 compact research provenance，不永久保存 evidence item 的 `text`、structured findings 或 unknowns。若之後同一 GitHub Card 以 version 1 成功更新，舊 research provenance state 會在同一寫入交易中移除，避免過期 provenance 繼續被視為目前 Card 的研究依據。
 
-Remote Ingest 的 GitHub handoff 會先建立 revision-pinned discovery / progress，再由 Agent 回填受控 research plan 與 selected candidate paths。每輪 expansion 更新 cumulative Analysis Evidence Bundle；最終 `analysis_version: 2` 必須綁定該 bundle，runner 再把 bundle 一併交給正式 writer。Threads 目前沒有 research evidence bundle contract，因此 Remote Ingest 仍使用 version 1。任何 provider 都不得以手工 Card 寫入繞過 writer。
+Remote Ingest 的 GitHub handoff 會先建立 revision-pinned discovery，並由 Engine deterministic 擷取第一輪 initial research pack，直接形成 cumulative Analysis Evidence Bundle。Agent 可立即提交綁定該 bundle 的 `analysis_version: 2`；只有證據不足時才回填一次綁定 current digest 的 research plan 與 selected candidate paths，進行 optional second-round expansion。Runner 最終把目前 bundle 一併交給正式 writer。Threads 目前沒有 research evidence bundle contract，因此 Remote Ingest 仍使用 version 1。任何 provider 都不得以手工 Card 寫入繞過 writer。
 
 ## 錯誤語意
 

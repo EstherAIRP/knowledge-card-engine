@@ -75,7 +75,7 @@ npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.js
 
 `npm run ingest:github:handoff` 保留為相容 alias。
 
-此 CLI 只讀取 configured state root 下的固定 handoff 檔名，不接受任意 handoff 路徑。GitHub 流程使用 `request.json`、`evidence.json`、`research-evidence.json`、Agent 回填的 `research-plan.json` 與最終 `analysis.json`；research plan 每輪只能選 discovery candidate，並受 round / item / byte budget 與 prior digest 守門。Threads 流程保留 `semantic-handoff.json` / `semantic-judgement.json`，accepted evidence 後直接等待 version 1 analysis。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
+此 CLI 只讀取 configured state root 下的固定 handoff 檔名，不接受任意 handoff 路徑。GitHub 流程使用 `request.json`、`evidence.json`、`research-evidence.json` 與最終 `analysis.json`；第一次 prepare 會 deterministic 建立 revision-pinned initial research pack，正常情況可直接提交 analysis。只有 initial bundle 不足時才由 Agent 回填一次 `research-plan.json`，其 selected path 只能來自尚未擷取的 discovery candidate，並受剩餘 round / item / byte budget 與 prior digest 守門。Threads 流程保留 `semantic-handoff.json` / `semantic-judgement.json`，accepted evidence 後直接等待 version 1 analysis。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
 
 ## 私人網站
 
@@ -104,7 +104,7 @@ Generated-data 契約見 [generated-data.md](./generated-data.md)，E／S／P、
 - `.github/workflows/validate.yml`：engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable workflow；驗 Workspace pin、Taxonomy / Cards、accepted source state 與 research provenance state。
 - `.github/workflows/release-workspace.yml`：Workspace 以固定 engine SHA 呼叫的 reusable release workflow；固定 E/S、建立 generated artifacts、建立 generated-only P、執行 stale/lineage guards、finalize release 並更新 current pointer。
-- `.github/workflows/ingest-workspace.yml`：Workspace `chore/ingest-*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 依 request provider 執行 GitHub accepted-evidence + bounded research handoff 或 Threads accepted-evidence + semantic handoff，並以 stale guard、stage-specific changed-path allowlist、Card/source/research-state validation 限制正式寫入。
+- `.github/workflows/ingest-workspace.yml`：Workspace `chore/ingest-*` 分支呼叫的 reusable Remote Ingest workflow；Node.js 24 依 request provider 執行 GitHub accepted-evidence + deterministic initial research pack + optional bounded expansion，或 Threads accepted-evidence + semantic handoff，並以 stale guard、stage-specific changed-path allowlist、Card/source/research-state validation 限制正式寫入。
 
 Workspace 的 validation、release 與 ingestion 薄層 workflow 都必須用完整 SHA pin 同一個 `engine.lock.json.engine_commit`。Validation workflow 會逐一驗證三個 reusable workflow pin；release / ingestion runner 也會在執行時再次驗自己的 caller pin。
 
