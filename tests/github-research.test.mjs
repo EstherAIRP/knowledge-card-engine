@@ -37,7 +37,8 @@ const files = {
   'docs/architecture.md': { sha: '4'.repeat(40), text: '# Architecture\n\nRequests enter the API layer, then enqueue background jobs.\n' },
   'src/auth.js': { sha: '5'.repeat(40), text: 'export function authorize(session) { return Boolean(session?.user); }\n' },
   'src/jobs.js': { sha: '6'.repeat(40), text: 'export async function runJob(queue, payload) { return queue.add(payload); }\n' },
-  'src/session-store.js': { sha: '8'.repeat(40), text: 'export function readSession(store, id) { return store.get(id); }\n' }
+  'src/session-store.js': { sha: '8'.repeat(40), text: 'export function readSession(store, id) { return store.get(id); }\n' },
+  'skills/core/SKILL.md': { sha: '9'.repeat(40), text: '# Core Skill\n\nThis primary-source skill defines the repository workflow model.\n' }
 };
 
 function fileEntry(path, type = 'blob') {
@@ -127,6 +128,21 @@ function githubResearchFetch({ researchReadmeSha = files['README.md'].sha } = {}
     if (value.endsWith('/git/trees/' + DOCS_TREE)) return response(200, docsTree);
     if (value.endsWith('/git/trees/' + SRC_TREE)) return response(200, srcTree);
     if (value.includes('/git/trees/' + VENDOR_TREE)) throw new Error('vendor directory should not be traversed');
+    const contentsMatch = /\/contents\/(.+)\?ref=[^&]+$/u.exec(value);
+    if (contentsMatch) {
+      const filePath = contentsMatch[1]
+        .split('/')
+        .map((segment) => decodeURIComponent(segment))
+        .join('/');
+      const file = files[filePath];
+      if (!file) return response(404, {});
+      return response(200, {
+        type: 'file',
+        path: filePath,
+        sha: file.sha,
+        size: Buffer.byteLength(file.text, 'utf8')
+      });
+    }
     const blobMatch = /\/git\/blobs\/([0-9a-f]{40})$/u.exec(value);
     if (blobMatch) {
       const file = bySha.get(blobMatch[1]);
@@ -214,26 +230,29 @@ test('GitHub research discovery pins one revision and prioritizes bounded primar
   assert.equal(validateGitHubResearchDiscovery(discovery, evidence), discovery);
 });
 
-test('GitHub research evidence only fetches approved candidates and produces a valid analysis evidence bundle', async () => {
+test('GitHub research evidence resolves agent-selected safe paths at the pinned revision', async () => {
   const fetchImpl = githubResearchFetch();
   const evidence = await acceptedEvidence(fetchImpl);
   const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
+  assert.equal(discovery.candidates.some((candidate) => candidate.path === 'skills/core/SKILL.md'), false);
+
   const bundle = await fetchGitHubResearchEvidence(
     evidence,
     discovery,
-    ['src/auth.js', 'docs/architecture.md'],
+    ['src/auth.js', 'skills/core/SKILL.md'],
     { fetchImpl }
   );
 
   assert.equal(bundle.repository_revision, REVISION);
   assert.equal(bundle.items.length, 2);
-  assert.deepEqual(bundle.items.map((item) => item.path), ['docs/architecture.md', 'src/auth.js']);
+  assert.deepEqual(bundle.items.map((item) => item.path), ['skills/core/SKILL.md', 'src/auth.js']);
+  assert.equal(bundle.items.find((item) => item.path === 'skills/core/SKILL.md')?.kind, 'documentation');
   assert.equal(validateAnalysisEvidenceBundle(bundle, evidence), bundle);
   assert.match(bundle.analysis_evidence_digest, /^[0-9a-f]{64}$/u);
 
   await assert.rejects(
     fetchGitHubResearchEvidence(evidence, discovery, ['vendor/secret.js'], { fetchImpl }),
-    (error) => error.code === 'GITHUB_RESEARCH_PATH_NOT_CANDIDATE'
+    (error) => error.code === 'GITHUB_RESEARCH_PATH_EXCLUDED'
   );
 });
 
@@ -279,7 +298,14 @@ test('GitHub bounded research expansion accumulates evidence across at most two 
   const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
   const initialProgress = createGitHubResearchProgress(evidence, discovery);
 
-  const firstPlan = bindPlan(researchPlan(), evidence);
+  const firstPlan = bindPlan(researchPlan({
+    needs: {
+      core_model: {
+        evidence_kinds: ['documentation'],
+        path_hints: ['skills/core/SKILL.md']
+      }
+    }
+  }), evidence);
   const firstDecision = evaluateGitHubResearchContinuation(
     firstPlan,
     evidence,
@@ -296,12 +322,12 @@ test('GitHub bounded research expansion accumulates evidence across at most two 
     discovery,
     firstPlan,
     initialProgress,
-    ['docs/architecture.md'],
+    ['skills/core/SKILL.md'],
     { fetchImpl }
   );
   assert.equal(first.round, 1);
   assert.equal(first.progress.completed_rounds, 1);
-  assert.deepEqual(first.progress.selected_paths, ['docs/architecture.md']);
+  assert.deepEqual(first.progress.selected_paths, ['skills/core/SKILL.md']);
   assert.equal(first.bundle.items.length, 1);
   assert.equal(validateGitHubResearchProgress(first.progress, evidence, discovery, first.bundle), first.progress);
 
@@ -333,8 +359,8 @@ test('GitHub bounded research expansion accumulates evidence across at most two 
     { previousBundle: first.bundle, fetchImpl }
   );
   assert.equal(second.progress.completed_rounds, 2);
-  assert.deepEqual(second.progress.selected_paths, ['docs/architecture.md', 'src/auth.js']);
-  assert.deepEqual(second.bundle.items.map((item) => item.path), ['docs/architecture.md', 'src/auth.js']);
+  assert.deepEqual(second.progress.selected_paths, ['skills/core/SKILL.md', 'src/auth.js']);
+  assert.deepEqual(second.bundle.items.map((item) => item.path), ['skills/core/SKILL.md', 'src/auth.js']);
   assert.notEqual(second.bundle.analysis_evidence_digest, first.bundle.analysis_evidence_digest);
 
   const stillNeedsEvidence = bindPlan(researchPlan({
