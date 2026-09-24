@@ -1,6 +1,6 @@
 # AGENTS.md
 
-本檔定義 `knowledge-card-engine` 目前有效的開發與資料規則。
+本檔定義 `knowledge-card-engine` 目前有效的開發與資料規則。規則採漸進式揭露：先判定任務類型，再讀取該任務必要契約；不得為保險而預先掃描整個 Repository、全部正式文件、所有分支或 PR。
 
 ## 倉庫責任
 
@@ -8,11 +8,13 @@
 - 真實私人背景、專案、Knowledge Cards、人工設定、來源狀態、生成索引與發布紀錄只屬於私人 Workspace，不得複製到本公開倉庫。
 - 密鑰不得提交，也不得出現在測試、PR、日誌或建置產物。
 
-## 開工前
+## 開工前：漸進式揭露
 
-1. 先讀 README、AGENTS、[`prompts/RUNTIME.md`](./prompts/RUNTIME.md)、[docs/index.md](./docs/index.md) 及本次相關程式。
-2. 確認 `main`、既有分支、PR 與相關修改，避免覆蓋或重複開發。
-3. 以目前 Schema、runtime、tests 與正式規格交叉確認行為；若彼此衝突，先把衝突視為缺陷處理，不自行猜測。
+1. 先讀本檔與 [`prompts/RUNTIME.md`](./prompts/RUNTIME.md) 的任務路由；只有 Engine 開發或需要理解 Repository 能力時才額外讀 `README.md`。
+2. 依任務類型從 [`docs/index.md`](./docs/index.md) 只讀相關正式契約、Schema、程式與測試，不把索引中的全部文件當成必讀清單。
+3. 單張 Knowledge Card 收錄／更新屬 Workspace 日常資料任務，不應因此掃描 Engine 全部程式、文件、branches 或 PR；只讀 Workspace 鎖定 Engine revision 中 ingestion、analysis、Card／writer 所需契約。
+4. 只有會修改 Engine Repository 的任務，才確認 `main`、相關既有分支、open PR 與工作範圍；搜尋應以本次任務關鍵字或預定分支名稱為界，不預設列出全部分支／PR。
+5. 以目前 Schema、runtime、tests 與本次相關正式規格交叉確認行為；若彼此衝突，先把衝突視為缺陷處理，不自行猜測。
 
 ## 資料與修改規則
 
