@@ -5,9 +5,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
   assertAcceptedEvidenceMatchesRequest,
-  createGitHubResearchProgress,
   discoverGitHubResearchCandidates,
   fetchAcceptedEvidence,
+  fetchGitHubResearchEvidence,
   fetchGitHubResearchExpansion,
   validateAcceptedEvidence,
   validateGitHubResearchDiscovery,
@@ -15,6 +15,7 @@ import {
   validateIngestionRequest
 } from '../packages/ingestion/src/index.js';
 import { validateResearchPlan } from '../packages/analysis/src/index.js';
+import { selectGitHubInitialResearchPaths } from '../packages/ingestion/src/github/research-pack.js';
 import {
   THREADS_SEMANTIC_HANDOFF_KIND,
   THREADS_SEMANTIC_HANDOFF_PRODUCER,
@@ -281,12 +282,55 @@ function researchBudgetAvailable(researchHandoff) {
   );
 }
 
+async function createInitialGitHubResearchHandoff(evidence, discovery) {
+  const selectedPaths = selectGitHubInitialResearchPaths(discovery);
+  if (selectedPaths.length === 0) {
+    fail(
+      'REMOTE_INGEST_RESEARCH_REQUIRED',
+      'GitHub research discovery did not produce any candidate that can be captured in the initial research pack.'
+    );
+  }
+
+  const bundle = await fetchGitHubResearchEvidence(
+    evidence,
+    discovery,
+    selectedPaths,
+    { token: process.env.GITHUB_TOKEN || null }
+  );
+  const progress = validateGitHubResearchProgress(
+    {
+      research_version: discovery.research_version,
+      provider: 'github',
+      source_identity: evidence.source_identity,
+      source_evidence_digest: evidence.evidence_digest,
+      repository_revision: discovery.repository_revision,
+      completed_rounds: 1,
+      selected_paths: [...bundle.items.map((item) => item.path)].sort((a, b) => a.localeCompare(b)),
+      total_items: bundle.items.length,
+      total_bytes: bundle.items.reduce((sum, item) => sum + item.bytes, 0),
+      analysis_evidence_digest: bundle.analysis_evidence_digest
+    },
+    evidence,
+    discovery,
+    bundle
+  );
+
+  return {
+    schema_version: 1,
+    provider: 'github',
+    discovery,
+    progress,
+    bundle,
+    selected_paths: selectedPaths
+  };
+}
+
 function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
   const hasBundle = Boolean(researchHandoff.bundle);
   const canExpand = researchBudgetAvailable(researchHandoff);
   return {
     status: 'ok',
-    stage: hasBundle && !canExpand ? 'waiting-for-analysis' : 'waiting-for-research',
+    stage: hasBundle ? 'waiting-for-analysis' : 'waiting-for-research',
     waiting_for: hasBundle
       ? (canExpand ? 'research-plan-or-analysis' : 'analysis')
       : 'research-plan',
@@ -429,12 +473,13 @@ try {
           const discovery = await discoverGitHubResearchCandidates(evidence, {
             token: process.env.GITHUB_TOKEN || null
           });
+          const initialResearch = await createInitialGitHubResearchHandoff(evidence, discovery);
           const researchHandoff = {
-            schema_version: 1,
-            provider: 'github',
-            discovery,
-            progress: createGitHubResearchProgress(evidence, discovery),
-            bundle: null
+            schema_version: initialResearch.schema_version,
+            provider: initialResearch.provider,
+            discovery: initialResearch.discovery,
+            progress: initialResearch.progress,
+            bundle: initialResearch.bundle
           };
           await Promise.all([
             writeJson(evidencePath, evidence),
@@ -444,10 +489,15 @@ try {
           result = {
             status: 'ok',
             stage: 'research-prepared',
-            waiting_for: 'research-plan',
+            waiting_for: researchBudgetAvailable(researchHandoff)
+              ? 'research-plan-or-analysis'
+              : 'analysis',
             source_identity: evidence.source_identity,
             evidence_digest: evidence.evidence_digest,
             repository_revision: discovery.repository_revision,
+            analysis_evidence_digest: researchHandoff.bundle.analysis_evidence_digest,
+            research_progress: researchHandoff.progress,
+            initial_research_paths: initialResearch.selected_paths,
             research_candidate_count: discovery.candidates.length,
             handoff_paths: handoffPaths,
             allowed_changed_paths: allowed
