@@ -9,14 +9,14 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - Node.js 24 / npm workspaces 工具鏈。
 - Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
 - Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research candidate discovery、最多兩輪 digest-bound evidence expansion 與 cumulative primary-source evidence bundle。
+- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research discovery、Agent-selected safe repository path resolution、最多兩輪 digest-bound evidence expansion 與 cumulative primary-source evidence bundle。
 - Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
 - 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub `analysis_version: 2` Card、accepted source state 與 compact research provenance。
 - 依 source identity / canonical URL 判斷 create 或 update。
 - 保護 user/stable-owned state 的 Workspace writer。
 - GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
 - reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards、accepted source state 與 research provenance state。
-- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 執行 GitHub / Threads accepted evidence。GitHub 會固定 repository revision、建立 bounded candidate discovery，並 deterministic 擷取 initial research pack；Agent 可直接提交 `analysis_version: 2`，只有初始 bundle 不足時才提交 digest-bound `research-plan.json` 做一次 optional expansion，最後交給正式 writer 寫入 Card/source-state/research-state；Threads 保留 digest-bound semantic continuation handoff 與 version 1 writer 流程。
+- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 執行 GitHub / Threads accepted evidence。GitHub 會固定 repository revision、建立 bounded discovery 與 round-0 research state，先等待 Agent 提交 digest-bound `research-plan.json` 與 selected paths；runner 只在同一 revision 擷取經驗證的安全文字 primary source，形成第一輪 bundle 後 Agent 可提交 `analysis_version: 2`，或在剩餘 budget 內再做一次 Agent-directed expansion，最後交給正式 writer 寫入 Card/source-state/research-state；Threads 保留 digest-bound semantic continuation handoff 與 version 1 writer 流程。
 - GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
 - GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
 - Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。
@@ -31,7 +31,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
 - `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
 - `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
-- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research candidate discovery、deterministic initial research pack / bounded optional expansion、create/update resolution 與 provider-specific source-state contract。
+- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research discovery、Agent-selected safe-path evidence capture / bounded expansion、create/update resolution 與 provider-specific source-state contract。
 - `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
 - `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
 - `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state / research-state transactional 寫入。
