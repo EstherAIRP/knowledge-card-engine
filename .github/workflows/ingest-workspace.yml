@@ -68,6 +68,12 @@ jobs:
           node engine/scripts/validate-source-state.mjs workspace
           node engine/scripts/validate-research-state.mjs workspace
 
+      - name: Resolve existing source target
+        shell: bash
+        run: |
+          set -euo pipefail
+          node engine/scripts/inspect-ingestion-target.mjs workspace
+
       - name: Capture branch source
         id: source
         shell: bash
