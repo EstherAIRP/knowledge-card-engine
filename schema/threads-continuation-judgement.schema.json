@@ -10,8 +10,7 @@
     "root_only",
     "confidence",
     "complete",
-    "rationale",
-    "candidate_labels"
+    "rationale"
   ],
   "properties": {
     "selected_shortcodes": {
@@ -27,7 +26,8 @@
     "candidate_labels": {
       "type": "array",
       "maxItems": 8,
-      "items": { "$ref": "#/$defs/candidateLabel" }
+      "items": { "$ref": "#/$defs/candidateLabel" },
+      "description": "Optional per-candidate explanation metadata. It is required by runtime only for root_only=true; continuation reconstruction is authoritative from selected_shortcodes."
     }
   },
   "$defs": {
