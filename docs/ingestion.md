@@ -213,7 +213,7 @@ digest 不一致時回報 `GITHUB_RESEARCH_PLAN_STALE`，不得把舊 material-q
 
 目前預設最多兩個 expansion rounds。第二輪後即使仍有 material unknown，也必須停止 expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
 
-最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 會把 validated bundle 一併交給正式 Workspace writer，writer 只永久保存 compact research provenance。GitHub Remote Ingest 會透過 `research-evidence.json` / `research-plan.json` 交換 bounded research 狀態，完成至少一輪 expansion 後才接受最終 version 2 analysis；直接 `ingest:github` CLI 不接收 research bundle，因此仍使用 accepted-source version 1。
+最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 會把 validated bundle 一併交給正式 Workspace writer，writer 只永久保存 compact research provenance。GitHub Remote Ingest 會在 prepare 階段直接建立 deterministic initial research pack 並寫入 `research-evidence.json`；Agent 可直接提交最終 version 2 analysis，只有 initial bundle 不足時才用 `research-plan.json` 要求一次 optional expansion。直接 `ingest:github` CLI 不接收 research bundle，因此仍使用 accepted-source version 1。
 
 ## Threads accepted evidence
 
@@ -447,8 +447,9 @@ GitHub request 第一次執行時，runner：
 
 1. 取得並驗證 accepted source evidence，寫入 `evidence.json`。
 2. 固定 default-branch repository revision，建立 bounded candidate discovery。
-3. 建立 round 0 research progress。
-4. 把 discovery、progress 與目前 bundle 寫入 `research-evidence.json`。
+3. 依穩定的 evidence kind、candidate priority 與 path 排序，從 discovery candidate deterministic 選取跨類型的 initial research paths。
+4. 在既有 item / byte budget 內依 frozen blob SHA 擷取 initial research pack，形成第一份 cumulative Analysis Evidence Bundle。
+5. 把 discovery、`completed_rounds: 1` 的 progress 與非空 bundle 寫入 `research-evidence.json`。
 
 `research-evidence.json` 是 runner 管理的暫存狀態，固定外層：
 
@@ -457,14 +458,25 @@ GitHub request 第一次執行時，runner：
   "schema_version": 1,
   "provider": "github",
   "discovery": {},
-  "progress": {},
-  "bundle": null
+  "progress": {
+    "completed_rounds": 1,
+    "analysis_evidence_digest": "..."
+  },
+  "bundle": {
+    "items": [],
+    "analysis_evidence_digest": "..."
+  }
 }
 ```
 
-完成 expansion 後，`bundle` 會是 cumulative Analysis Evidence Bundle，包含 selected primary-source text。這些全文只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
+Initial selection 優先讓 README、architecture / documentation、manifest、entrypoint / representative source、API / data model、auth / security、background job、deployment / license 等不同 evidence kind 都有代表性來源；先覆蓋不同 kind，再以剩餘額度補高優先 candidate。所有 path 仍必須來自同一 revision 的 discovery allowlist，且受同一單檔、累計 item 與 byte budget 約束。Bundle 內的 selected primary-source text 只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
 
-Agent 依 `evidence.json`、`research-evidence.json.discovery`、目前 cumulative bundle 與允許的 Workspace context 產生：
+Agent 讀取 initial bundle 後有兩個合法下一步：
+
+- 證據已足夠：直接產生最終 `analysis.json`。
+- 仍缺 material evidence：提交一次 `research-plan.json`，要求 optional second-round expansion。
+
+Optional plan 的固定外層：
 
 ```json
 {
@@ -477,19 +489,19 @@ Agent 依 `evidence.json`、`research-evidence.json.discovery`、目前 cumulati
 }
 ```
 
-其中 `plan` 必須符合正式 Research Plan contract；retry plan 必須以 `prior_analysis_evidence_digest` 綁定目前 cumulative bundle。每個 `selected_paths` 都必須是 discovery 已核准 candidate，而且符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
+其中 `plan` 必須符合正式 Research Plan contract，並以 `prior_analysis_evidence_digest` 綁定 initial cumulative bundle。每個 `selected_paths` 都必須是 discovery 已核准且尚未擷取的 candidate，而且符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
 
 runner 讀到 `research-plan.json` 後：
 
-1. 重新驗證 accepted evidence、discovery、progress、current bundle 與 plan binding。
-2. 套用 round / cumulative item / cumulative byte budget。
-3. 依 frozen blob SHA 取得本輪新 evidence；不得重複先前 round 已讀 path。
+1. 重新驗證 accepted evidence、discovery、progress、current bundle 與 prior digest binding。
+2. 套用剩餘 round / cumulative item / cumulative byte budget。
+3. 依 frozen blob SHA 取得新 evidence；不得重複 initial pack 已讀 path。
 4. 合併成新的 cumulative bundle、重算 `analysis_evidence_digest`。
 5. 更新 `research-evidence.json` 並移除已消費的 `research-plan.json`。
 
-預設最多兩個 expansion rounds。Round 1 後，Agent 可以在 budget 允許時提交第二份 digest-bound research plan，或直接產生最終 `analysis.json`；budget 已耗盡時只能進入分析，不得自由擴張第三輪。
+目前最大 `max_expansion_rounds` 仍為 2；deterministic initial pack 已使用第一輪，因此 Agent-directed expansion 最多一次。第二輪後即使仍有 material unknown，也只能進入分析，以 `unavailable` / `budget_exhausted` 表達缺口。
 
-GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式 writer。成功後留下正式 Card、accepted source state 與 compact research provenance state，並清除全部 ingestion handoff。
+GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式 writer。成功後留下正式 Card、accepted source state 與 compact research provenance state，並清除全部 ingestion handoff。
 
 ### Threads semantic handoff
 
