@@ -35,7 +35,7 @@ Research contract 不降低 accepted source evidence 的 provider-specific 驗�
 
 目前 analysis evidence bundle 只定義 GitHub Repository 形式；其他 provider 若沒有正式 research bundle contract，validator 會 fail closed。
 
-GitHub research evidence 由 ingestion 層的受控 capture API 產生：先固定 default-branch commit 並建立 bounded candidate set，再只讀取被選定的 candidate blob。完整 revision pin、tree budget、path guard 與 binary / UTF-8 規則見 [來源收錄契約](./ingestion.md)。
+GitHub research evidence 由 ingestion 層的受控 capture API 產生：先固定 default-branch commit 並建立 bounded discovery，再由 Agent 提交 material-question plan 與 selected repository-relative paths；runner 在同一 revision 重新驗證 selected path 並讀取對應 blob。Discovery candidates 可提供導航與已知 blob 快取，但不是 selected evidence allowlist。完整 revision pin、tree budget、path guard 與 binary / UTF-8 規則見 [來源收錄契約](./ingestion.md)。
 
 ## Research plan
 
@@ -62,7 +62,7 @@ Research plan 使用 `research_version: 1`，並固定十個 research question�
 
 只有 `needs_evidence` 可要求 `evidence_kinds` 或 `path_hints`。Path hint 必須是安全的 repository-relative path；它只是研究提示，不是可直接執行的外部 URL、shell command 或 fetch 權限。
 
-GitHub multi-round expansion 在 ingestion 層另有 retry binding：contract 本身允許從 round 0 建立不帶 `prior_analysis_evidence_digest` 的 initial plan；但 Remote Ingest 會由 Engine deterministic 建立第一輪 bundle，因此 Agent 若要求 optional expansion，該 plan 必須把 `prior_analysis_evidence_digest` 設為目前 bundle 的 `analysis_evidence_digest`。這個欄位用來證明新的 material-question 判定是基於目前研究證據，而不是較舊 bundle。
+GitHub multi-round expansion 在 ingestion 層另有 retry binding：Remote Ingest 從 round 0 開始，第一份 Agent research plan 不帶 `prior_analysis_evidence_digest`；第一輪 validated bundle 形成後，若 Agent 還需要第二輪 evidence，新的 plan 必須把 `prior_analysis_evidence_digest` 設為目前 bundle 的 `analysis_evidence_digest`。這個欄位用來證明新的 material-question 判定是基於目前研究證據，而不是較舊 bundle。
 
 目前可表達的 evidence kind 包含 README、documentation、manifest、configuration、entrypoint、API、data model、auth、security、background job、deployment、license、source、test 與 other。
 
@@ -196,7 +196,7 @@ research == validated structured research report
 
 GitHub version 2 成功寫入時，Workspace 只保存 compact research provenance，不永久保存 evidence item 的 `text`、structured findings 或 unknowns。若之後同一 GitHub Card 以 version 1 成功更新，舊 research provenance state 會在同一寫入交易中移除，避免過期 provenance 繼續被視為目前 Card 的研究依據。
 
-Remote Ingest 的 GitHub handoff 會先建立 revision-pinned discovery，並由 Engine deterministic 擷取第一輪 initial research pack，直接形成 cumulative Analysis Evidence Bundle。Agent 可立即提交綁定該 bundle 的 `analysis_version: 2`；只有證據不足時才回填一次綁定 current digest 的 research plan 與 selected candidate paths，進行 optional second-round expansion。Runner 最終把目前 bundle 一併交給正式 writer。Threads 目前沒有 research evidence bundle contract，因此 Remote Ingest 仍使用 version 1。任何 provider 都不得以手工 Card 寫入繞過 writer。
+Remote Ingest 的 GitHub handoff 會先建立 revision-pinned discovery 與空的 round-0 research state。Agent 必須先回填 research plan 與 selected paths；runner 驗證 plan、path、revision 與 budget 後建立第一輪 cumulative Analysis Evidence Bundle。Agent 接著可提交綁定該 bundle 的 `analysis_version: 2`，或再回填一次綁定 current digest 的 research plan 做第二輪 expansion。Runner 最終把目前 bundle 一併交給正式 writer。Threads 目前沒有 research evidence bundle contract，因此 Remote Ingest 仍使用 version 1。任何 provider 都不得以手工 Card 寫入繞過 writer。
 
 ## 錯誤語意
 

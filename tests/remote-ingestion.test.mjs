@@ -149,10 +149,10 @@ test('remote ingestion handoff contract includes bounded GitHub research files a
   assert.match(script, /researchPlan:\s*'research-plan\.json'/);
   assert.match(script, /researchEvidence:\s*'research-evidence\.json'/);
   assert.match(script, /discoverGitHubResearchCandidates/);
-  assert.match(script, /selectGitHubInitialResearchPaths/);
-  assert.match(script, /fetchGitHubResearchEvidence/);
-  assert.match(script, /completed_rounds:\s*1/);
-  assert.match(script, /research-plan-or-analysis/);
+  assert.match(script, /createGitHubResearchProgress/);
+  assert.match(script, /bundle:\s*null/);
+  assert.match(script, /waiting_for:\s*'research-plan'/);
+  assert.doesNotMatch(script, /selectGitHubInitialResearchPaths/);
   assert.match(script, /fetchGitHubResearchExpansion/);
   assert.match(script, /analysisEvidenceBundle:\s*researchHandoff\.bundle/);
   assert.match(script, /applied\.research_state_path/);

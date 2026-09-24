@@ -100,10 +100,11 @@ Engine 提供固定 revision 的 discovery / fetch primitives，以及可驗證�
 ```text
 accepted GitHub evidence
 → discoverGitHubResearchCandidates(...)
-→ fixed repository revision + bounded candidate set
-→ research plan
-→ createGitHubResearchProgress(...)
+→ fixed repository revision + bounded candidate hints
+→ createGitHubResearchProgress(...) at round 0
+→ Agent material-question research plan + selected paths
 → evaluateGitHubResearchContinuation(...)
+→ validate selected paths at the pinned revision
 → fetchGitHubResearchExpansion(...)
 → cumulative Analysis Evidence Bundle
 → optional second research plan bound to prior analysis_evidence_digest
@@ -124,7 +125,7 @@ Discovery 先讀 default branch 目前 commit，固定：
 
 ### Candidate discovery
 
-Repository tree 以 non-recursive Git tree API 受限展開。Engine 只暴露可能具研究價值、可視為文字 primary source 的候選，例如：
+Repository tree 以 non-recursive Git tree API 受限展開。Engine 產生可能具研究價值、可視為文字 primary source 的 candidate hints，例如：
 
 - README、架構／設計文件。
 - dependency / build manifest。
@@ -136,7 +137,7 @@ Repository tree 以 non-recursive Git tree API 受限展開。Engine 只暴露�
 - LICENSE。
 - representative source / test。
 
-常見 generated、vendor、dependency、build/cache 目錄，以及 lockfile、minified file、非文字副檔名不進候選集合。
+常見 generated、vendor、dependency、build/cache 目錄，以及 lockfile、minified file、非文字副檔名不進候選集合。Candidate discovery 用於提供 bounded repository navigation 與已知 blob metadata；它不是 selected evidence allowlist。
 
 Discovery 有硬上限；目前預設：
 
@@ -163,9 +164,9 @@ Discovery 若因 budget 或 GitHub truncated response 未完整走完，會把 `
 
 ### Selected evidence
 
-`fetchGitHubResearchEvidence(...)` 只能讀取 discovery 已核准的 exact candidate path；不能新增任意 URL、任意 branch、任意 repository path 或 shell command。
+`fetchGitHubResearchEvidence(...)` 接受 non-empty、unique 的安全 repository-relative selected paths。若 path 已存在 discovery candidate，Engine 可直接使用 discovery 的 blob metadata；若不在 candidate catalog，Engine 會以固定的 `repository_revision` 重新解析該 exact path，確認它是存在於同一 Repository revision 的一般文字檔，再取得其 blob。Selected path 不能指定任意 URL、任意 branch、其他 Repository、被排除的 generated/vendor/dependency/build/cache 目錄、非文字內容或 shell command。
 
-實際檔案以 discovery 記錄的 blob SHA 直接讀取，因此內容固定於同一 repository revision。每個 selected item 會保存：
+因此 discovery candidate 之外的核心 primary source 仍可由 Agent 主動選取，但內容仍固定於同一 repository revision，且受完全相同的 path、binary、UTF-8、item 與 byte budget 守門。每個 selected item 會保存：
 
 - deterministic `evidence_id`
 - repository-relative `path`
@@ -205,15 +206,16 @@ digest 不一致時回報 `GITHUB_RESEARCH_PLAN_STALE`，不得把舊 material-q
 
 `fetchGitHubResearchExpansion(...)` 另外限制：
 
-- 每輪 selected path 必須仍在同一 discovery candidate set。
+- 每輪 selected path 必須是安全 repository-relative path；candidate 之外的 path 由 Engine 在同一 pinned revision 重新解析與驗證。
+- selected path 不得落在 Engine 排除目錄，且必須是受支援的文字 primary source。
 - 已在先前 round 使用的 path 不可重複擷取。
-- selected candidate 必須符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
+- selected evidence 必須符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
 - item / byte budget 以累計 bundle 計算，不會因拆成多輪而重置。
 - 每次成功 expansion 都重新計算 cumulative `analysis_evidence_digest`。
 
-目前 research progress 最多記錄兩輪。Remote Ingest 的 deterministic initial research pack 使用第一輪；若仍有 material unknown，最多再做一次 Agent-directed expansion。第二輪後必須停止 research expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
+目前 research progress 最多記錄兩輪。Remote Ingest 從空的 round 0 開始；第一輪與可能的第二輪都由 Agent 根據 material questions 選取 evidence paths，再交給 Engine 驗證與擷取。第二輪後必須停止 research expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
 
-最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 會把 validated bundle 一併交給正式 Workspace writer，writer 只永久保存 compact research provenance。GitHub Remote Ingest 會在 prepare 階段直接建立 deterministic initial research pack 並寫入 `research-evidence.json`；Agent 可直接提交最終 version 2 analysis，只有 initial bundle 不足時才用 `research-plan.json` 要求一次 optional expansion。直接 `ingest:github` CLI 不接收 research bundle，因此仍使用 accepted-source version 1。
+最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 會把 validated bundle 一併交給正式 Workspace writer，writer 只永久保存 compact research provenance。GitHub Remote Ingest 的 prepare 階段只寫入 accepted evidence、revision-pinned discovery 與 `completed_rounds: 0` / `bundle: null` 的 `research-evidence.json`；Agent 必須先用 `research-plan.json` 指定第一輪 material evidence。第一輪 bundle 形成後可直接提交最終 version 2 analysis，或在剩餘 budget 內再要求一次 digest-bound expansion。直接 `ingest:github` CLI 不接收 research bundle，因此仍使用 accepted-source version 1。
 
 ## Threads accepted evidence
 
@@ -448,11 +450,11 @@ GitHub request 第一次執行時，runner：
 
 1. 取得並驗證 accepted source evidence，寫入 `evidence.json`。
 2. 固定 default-branch repository revision，建立 bounded candidate discovery。
-3. 依穩定的 evidence kind、candidate priority 與 path 排序，從 discovery candidate deterministic 選取跨類型的 initial research paths。
-4. 在既有 item / byte budget 內依 frozen blob SHA 擷取 initial research pack，形成第一份 cumulative Analysis Evidence Bundle。
-5. 把 discovery、`completed_rounds: 1` 的 progress 與非空 bundle 寫入 `research-evidence.json`。
+3. 以 `createGitHubResearchProgress(...)` 建立 `completed_rounds: 0`、尚未擷取任何 research item 的 progress。
+4. 把 discovery、round-0 progress 與 `bundle: null` 寫入 `research-evidence.json`。
+5. 回報 `waiting_for: research-plan`；此階段不得直接提交 GitHub version 2 analysis。
 
-`research-evidence.json` 是 runner 管理的暫存狀態，固定外層：
+`research-evidence.json` 是 runner 管理的暫存狀態，第一次 prepare 的外層形狀為：
 
 ```json
 {
@@ -460,26 +462,15 @@ GitHub request 第一次執行時，runner：
   "provider": "github",
   "discovery": {},
   "progress": {
-    "completed_rounds": 1,
-    "analysis_evidence_digest": "..."
+    "completed_rounds": 0,
+    "selected_paths": [],
+    "analysis_evidence_digest": null
   },
-  "bundle": {
-    "items": [
-      { "path": "README.md", "evidence_id": "..." }
-    ],
-    "analysis_evidence_digest": "..."
-  }
+  "bundle": null
 }
 ```
 
-Initial selection 優先讓 README、具架構／概念／方法論價值的 documentation、manifest、entrypoint / representative source、API / data model、auth / security、background job、deployment / license 等 evidence kind 都有代表性來源；每個 kind 有上限，並以穩定偏好排序避免一般 CI、dependabot、contributing、空殼 `__init__` / test placeholder 在已有更強 primary-source evidence 時占用核心名額。之後才以剩餘額度補高價值 candidate。所有 path 仍必須來自同一 revision 的 discovery allowlist，且受同一單檔、累計 item 與 byte budget 約束。Bundle 內的 selected primary-source text 只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
-
-Agent 讀取 initial bundle 後有兩個合法下一步：
-
-- 證據已足夠：直接產生最終 `analysis.json`。
-- 仍缺 material evidence：提交一次 `research-plan.json`，要求 optional second-round expansion。
-
-Optional plan 的固定外層：
+Discovery candidates 提供 bounded repository navigation、evidence kind 與已知 blob metadata，但不是 Agent selected evidence 的 allowlist。Agent 必須先判斷 material questions，再提交第一份 `research-plan.json`：
 
 ```json
 {
@@ -487,24 +478,40 @@ Optional plan 的固定外層：
   "provider": "github",
   "plan": {},
   "selected_paths": [
+    "skills/example/SKILL.md",
     "docs/architecture.md"
   ]
 }
 ```
 
-其中 `plan` 必須符合正式 Research Plan contract，並以 `prior_analysis_evidence_digest` 綁定 initial cumulative bundle。每個 `selected_paths` 都必須是 discovery 已核准且尚未擷取的 candidate，而且符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
+第一份 `plan` 必須符合正式 Research Plan contract，且不得帶 `prior_analysis_evidence_digest`。每個 `selected_paths` 都必須符合至少一個 `needs_evidence` question 的 evidence kind 或 exact path hint。
 
 runner 讀到 `research-plan.json` 後：
 
-1. 重新驗證 accepted evidence、discovery、progress、current bundle 與 prior digest binding。
-2. 套用剩餘 round / cumulative item / cumulative byte budget。
-3. 依 frozen blob SHA 取得新 evidence；不得重複 initial pack 已讀 path。
-4. 合併成新的 cumulative bundle、重算 `analysis_evidence_digest`。
-5. 更新 `research-evidence.json` 並移除已消費的 `research-plan.json`。
+1. 重新驗證 accepted evidence、discovery 與 round-0 progress。
+2. 套用 round / cumulative item / cumulative byte budget。
+3. 對每個 selected path 做安全 repository-relative path 驗證。
+4. 若 path 已存在 discovery candidate，使用其 fixed-revision blob metadata；若不在 candidate catalog，則以同一 `repository_revision` 重新解析 exact path，確認它是存在於該 revision 的受支援文字 primary source。
+5. 拒絕 Engine 排除目錄、任意 URL／branch／Repository、binary／非 UTF-8、超過單檔或累計 budget 的內容。
+6. 依 frozen blob SHA 擷取第一輪 evidence，建立 cumulative Analysis Evidence Bundle。
+7. 更新 `research-evidence.json` 為 `completed_rounds: 1`、非空 bundle，並移除已消費的 `research-plan.json`。
 
-目前最大 `max_expansion_rounds` 仍為 2；deterministic initial pack 已使用第一輪，因此 Agent-directed expansion 最多一次。第二輪後即使仍有 material unknown，也只能進入分析，以 `unavailable` / `budget_exhausted` 表達缺口。
+第一輪 bundle 形成後，Agent 有兩個合法下一步：
 
-GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式 writer。成功後留下正式 Card、accepted source state 與 compact research provenance state，並清除全部 ingestion handoff。
+- 證據已足夠：提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
+- 仍缺 material evidence：提交第二份 `research-plan.json` 做第二輪 expansion。
+
+第二份 research plan 必須以：
+
+```text
+prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
+```
+
+綁定目前 cumulative evidence。Runner 會再次驗證 prior digest、剩餘 round / item / byte budget、重複 path 與 plan relevance；第二輪 selected path 同樣可以是 discovery candidate 或 candidate catalog 之外、但能在同一 pinned revision 被驗證的安全文字 primary source。
+
+目前最大 `max_expansion_rounds` 為 2，因此最多有兩輪 Agent-directed evidence capture。第二輪後即使仍有 material unknown，也只能進入分析，以 `unavailable` / `budget_exhausted` 表達缺口。
+
+Bundle 內的 selected primary-source text 只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式 writer。成功後留下正式 Card、accepted source state 與 compact research provenance state，並清除全部 ingestion handoff。
 
 ### Threads semantic handoff
 
