@@ -262,16 +262,26 @@ function analysisFrom(evidence, bundle, variant) {
 async function prepareInitialResearch(root, variant) {
   const evidencePath = path.join(handoffDir(root), 'evidence.json');
   const researchEvidencePath = path.join(handoffDir(root), 'research-evidence.json');
+  const researchPlanPath = path.join(handoffDir(root), 'research-plan.json');
 
   const prepared = runHandoff(root, variant);
   assert.equal(prepared.result.stage, 'research-prepared');
-  assert.equal(prepared.result.waiting_for, 'research-plan-or-analysis');
-  assert.match(prepared.result.analysis_evidence_digest, /^[0-9a-f]{64}$/u);
-  assert.ok(Array.isArray(prepared.result.initial_research_paths));
-  assert.ok(prepared.result.initial_research_paths.length > 1);
+  assert.equal(prepared.result.waiting_for, 'research-plan');
+  assert.equal(prepared.result.analysis_evidence_digest, null);
 
   const evidence = await readJson(evidencePath);
-  const researchEvidence = await readJson(researchEvidencePath);
+  let researchEvidence = await readJson(researchEvidencePath);
+  assert.equal(researchEvidence.progress.completed_rounds, 0);
+  assert.equal(researchEvidence.progress.analysis_evidence_digest, null);
+  assert.equal(researchEvidence.bundle, null);
+
+  await writeJson(researchPlanPath, researchPlan(evidence));
+  const expanded = runHandoff(root, variant);
+  assert.equal(expanded.result.stage, 'research-expanded');
+  assert.equal(expanded.result.research_round, 1);
+  assert.equal(expanded.result.waiting_for, 'research-plan-or-analysis');
+
+  researchEvidence = await readJson(researchEvidencePath);
   assert.equal(researchEvidence.progress.completed_rounds, 1);
   assert.ok(researchEvidence.bundle);
   assert.equal(
@@ -282,7 +292,7 @@ async function prepareInitialResearch(root, variant) {
   assert.ok(researchEvidence.bundle.items.some((item) => item.path === 'src/jobs.js'));
   assert.ok(researchEvidence.bundle.items.length > 1);
   await assert.rejects(
-    fs.access(path.join(handoffDir(root), 'research-plan.json')),
+    fs.access(researchPlanPath),
     (error) => error.code === 'ENOENT'
   );
 
@@ -292,7 +302,7 @@ async function prepareInitialResearch(root, variant) {
   };
 }
 
-test('synthetic GitHub Remote Ingest prepares research before analysis, rejects stale analysis, and preserves ownership on update', async () => {
+test('synthetic GitHub Remote Ingest requires Agent-selected research before analysis, rejects stale analysis, and preserves ownership on update', async () => {
   const root = await tempWorkspace();
   try {
     await writeRequest(root);
