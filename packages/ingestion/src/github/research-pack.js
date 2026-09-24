@@ -81,6 +81,12 @@ function candidateScore(candidate) {
   return candidate.priority * 1000 + preferenceAdjustment(candidate);
 }
 
+function isLowSignalInitialCandidate(candidate) {
+  if (!['source', 'test'].includes(candidate.kind)) return false;
+  const base = candidate.path.toLowerCase().split('/').at(-1) || '';
+  return /^__init__\.[^/]+$/u.test(base) || /(?:^|[._-])index\.[^/]+$/u.test(base);
+}
+
 function compareCandidate(a, b) {
   return candidateScore(a) - candidateScore(b) || a.path.localeCompare(b.path);
 }
@@ -111,6 +117,7 @@ export function selectGitHubInitialResearchPaths(discovery, options = {}) {
       && Number.isInteger(candidate.priority)
       && Number.isInteger(candidate.bytes)
       && candidate.bytes >= 0
+      && !isLowSignalInitialCandidate(candidate)
     ))
     .sort(compareCandidate);
 
