@@ -814,6 +814,9 @@ async function resolveGitHubResearchSelection(evidence, discovery, selectedPaths
   token,
   limits
 }) {
+  if (selectedPaths.length > limits.max_selected_items) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_selected_items.');
+  }
   const candidateByPath = new Map(discovery.candidates.map((candidate) => [candidate.path, candidate]));
   const headers = githubHeaders(token);
   const apiBase = githubResearchApiBase(evidence);
