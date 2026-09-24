@@ -795,6 +795,127 @@ function decodeGitHubResearchBlob(payload, candidate, limits) {
   return { buffer, text };
 }
 
+function researchDescriptorForSelectedPath(pathValue) {
+  const descriptor = classifyGitHubResearchCandidate(pathValue);
+  if (descriptor) return descriptor;
+  if (isResearchTextPath(pathValue)) return { kind: 'other', priority: 9 };
+  fail('GITHUB_RESEARCH_PATH_UNSUPPORTED', `GitHub research path is not a supported text primary source: ${pathValue}.`);
+}
+
+function encodedGitHubResearchPath(pathValue) {
+  return safeResearchPath(pathValue)
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+async function resolveGitHubResearchSelection(evidence, discovery, selectedPaths, {
+  fetchImpl,
+  token,
+  limits
+}) {
+  const candidateByPath = new Map(discovery.candidates.map((candidate) => [candidate.path, candidate]));
+  const headers = githubHeaders(token);
+  const apiBase = githubResearchApiBase(evidence);
+  const selected = [];
+
+  for (const pathValue of [...selectedPaths].sort()) {
+    safeResearchPath(pathValue);
+    if (shouldSkipResearchDirectory(pathValue)) {
+      fail('GITHUB_RESEARCH_PATH_EXCLUDED', `GitHub research path is inside an excluded repository directory: ${pathValue}.`);
+    }
+
+    const discovered = candidateByPath.get(pathValue);
+    if (discovered) {
+      selected.push(discovered);
+      continue;
+    }
+
+    const descriptor = researchDescriptorForSelectedPath(pathValue);
+    const payload = await fetchJson(
+      fetchImpl,
+      `${apiBase}/contents/${encodedGitHubResearchPath(pathValue)}?ref=${encodeURIComponent(discovery.repository_revision)}`,
+      headers,
+      'research-path'
+    );
+    const blobSha = String(payload?.sha || '').toLowerCase();
+    const bytes = Number(payload?.size);
+    if (
+      payload?.type !== 'file'
+      || payload?.path !== pathValue
+      || !/^[0-9a-f]{40}$/u.test(blobSha)
+      || !Number.isInteger(bytes)
+      || bytes < 0
+    ) {
+      fail('SOURCE_INCOMPLETE', `GitHub research path response is incomplete for ${pathValue}.`);
+    }
+    if (bytes > limits.max_item_bytes) {
+      fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', `GitHub research item exceeds max_item_bytes: ${pathValue}.`);
+    }
+    selected.push({
+      path: pathValue,
+      kind: descriptor.kind,
+      blob_sha: blobSha,
+      bytes,
+      priority: descriptor.priority
+    });
+  }
+
+  const estimatedTotal = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
+  if (estimatedTotal > limits.max_total_bytes) {
+    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_total_bytes.');
+  }
+  return selected;
+}
+
+async function fetchGitHubResearchEvidenceForSelection(evidence, discovery, selected, {
+  fetchImpl,
+  token,
+  limits
+}) {
+  const headers = githubHeaders(token);
+  const apiBase = githubResearchApiBase(evidence);
+  const items = [];
+  let totalBytes = 0;
+
+  for (const candidate of selected) {
+    const blobPayload = await fetchJson(
+      fetchImpl,
+      `${apiBase}/git/blobs/${encodeURIComponent(candidate.blob_sha)}`,
+      headers,
+      'research-blob'
+    );
+    const { buffer, text } = decodeGitHubResearchBlob(blobPayload, candidate, limits);
+    totalBytes += buffer.length;
+    if (totalBytes > limits.max_total_bytes) {
+      fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research evidence exceeds max_total_bytes.');
+    }
+    items.push({
+      evidence_id: `file-${sha256(candidate.path).slice(0, 16)}`,
+      path: candidate.path,
+      kind: candidate.kind,
+      blob_sha: candidate.blob_sha,
+      content_sha256: sha256(buffer),
+      bytes: buffer.length,
+      text
+    });
+  }
+
+  const bundleBase = {
+    research_version: ANALYSIS_RESEARCH_VERSION,
+    provider: 'github',
+    source_identity: evidence.source_identity,
+    source_evidence_digest: evidence.evidence_digest,
+    repository_revision: discovery.repository_revision,
+    items
+  };
+  const bundle = {
+    ...bundleBase,
+    analysis_evidence_digest: computeAnalysisEvidenceDigest(bundleBase)
+  };
+  return validateAnalysisEvidenceBundle(bundle, evidence);
+}
+
 export async function fetchGitHubResearchEvidence(evidence, discovery, selectedPaths, {
   fetchImpl = globalThis.fetch,
   token = null,
@@ -814,58 +935,26 @@ export async function fetchGitHubResearchEvidence(evidence, discovery, selectedP
     fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_selected_items.');
   }
 
-  const candidateByPath = new Map(validatedDiscovery.candidates.map((candidate) => [candidate.path, candidate]));
-  const selected = [...selectedPaths].sort().map((pathValue) => {
-    safeResearchPath(pathValue);
-    const candidate = candidateByPath.get(pathValue);
-    if (!candidate) fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', `GitHub research path is not an approved discovery candidate: ${pathValue}.`);
-    return candidate;
-  });
-  const estimatedTotal = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
-  if (estimatedTotal > appliedLimits.max_total_bytes) {
-    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research selection exceeds max_total_bytes.');
-  }
-
-  const headers = githubHeaders(token);
-  const apiBase = githubResearchApiBase(accepted);
-  const items = [];
-  let totalBytes = 0;
-  for (const candidate of selected) {
-    const blobPayload = await fetchJson(
+  const selected = await resolveGitHubResearchSelection(
+    accepted,
+    validatedDiscovery,
+    selectedPaths,
+    {
       fetchImpl,
-      `${apiBase}/git/blobs/${encodeURIComponent(candidate.blob_sha)}`,
-      headers,
-      'research-blob'
-    );
-    const { buffer, text } = decodeGitHubResearchBlob(blobPayload, candidate, appliedLimits);
-    totalBytes += buffer.length;
-    if (totalBytes > appliedLimits.max_total_bytes) {
-      fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research evidence exceeds max_total_bytes.');
+      token,
+      limits: appliedLimits
     }
-    items.push({
-      evidence_id: `file-${sha256(candidate.path).slice(0, 16)}`,
-      path: candidate.path,
-      kind: candidate.kind,
-      blob_sha: candidate.blob_sha,
-      content_sha256: sha256(buffer),
-      bytes: buffer.length,
-      text
-    });
-  }
-
-  const bundleBase = {
-    research_version: ANALYSIS_RESEARCH_VERSION,
-    provider: 'github',
-    source_identity: accepted.source_identity,
-    source_evidence_digest: accepted.evidence_digest,
-    repository_revision: validatedDiscovery.repository_revision,
-    items
-  };
-  const bundle = {
-    ...bundleBase,
-    analysis_evidence_digest: computeAnalysisEvidenceDigest(bundleBase)
-  };
-  return validateAnalysisEvidenceBundle(bundle, accepted);
+  );
+  return fetchGitHubResearchEvidenceForSelection(
+    accepted,
+    validatedDiscovery,
+    selected,
+    {
+      fetchImpl,
+      token,
+      limits: appliedLimits
+    }
+  );
 }
 
 
@@ -1152,43 +1241,46 @@ export async function fetchGitHubResearchExpansion(
     fail('GITHUB_RESEARCH_SELECTION_INVALID', 'GitHub research expansion selectedPaths must be a non-empty unique array.');
   }
 
-  const candidateByPath = new Map(validatedDiscovery.candidates.map((candidate) => [candidate.path, candidate]));
   const previousPaths = new Set(validatedProgress.selected_paths);
-  const selected = normalizedResearchSelectedPaths(selectedPaths).map((selectedPath) => {
+  for (const selectedPath of normalizedResearchSelectedPaths(selectedPaths)) {
     safeResearchPath(selectedPath);
     if (previousPaths.has(selectedPath)) {
       fail('GITHUB_RESEARCH_SELECTION_REPEATED', `GitHub research path was already selected in an earlier round: ${selectedPath}.`);
     }
-    const candidate = candidateByPath.get(selectedPath);
-    if (!candidate) {
-      fail('GITHUB_RESEARCH_PATH_NOT_CANDIDATE', `GitHub research path is not an approved discovery candidate: ${selectedPath}.`);
-    }
-    if (!candidateRequestedByPlan(candidate, validatedPlan)) {
-      fail(
-        'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED',
-        `GitHub research path is not requested by any needs_evidence question: ${selectedPath}.`
-      );
-    }
-    return candidate;
-  });
-
-  const estimatedBytes = selected.reduce((sum, candidate) => sum + candidate.bytes, 0);
-  if (selected.length > continuation.remaining.items || estimatedBytes > continuation.remaining.bytes) {
-    fail('GITHUB_RESEARCH_BUDGET_EXCEEDED', 'GitHub research expansion exceeds the remaining cumulative item or byte budget.');
   }
 
-  const roundBundle = await fetchGitHubResearchEvidence(
+  const roundLimits = {
+    max_selected_items: continuation.remaining.items,
+    max_item_bytes: validatedDiscovery.discovery.limits.max_item_bytes,
+    max_total_bytes: continuation.remaining.bytes
+  };
+  const selected = await resolveGitHubResearchSelection(
     accepted,
     validatedDiscovery,
-    selected.map((candidate) => candidate.path),
+    selectedPaths,
     {
       fetchImpl,
       token,
-      limits: {
-        max_selected_items: continuation.remaining.items,
-        max_item_bytes: validatedDiscovery.discovery.limits.max_item_bytes,
-        max_total_bytes: continuation.remaining.bytes
-      }
+      limits: normalizeGitHubResearchLimits(roundLimits)
+    }
+  );
+  for (const candidate of selected) {
+    if (!candidateRequestedByPlan(candidate, validatedPlan)) {
+      fail(
+        'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED',
+        `GitHub research path is not requested by any needs_evidence question: ${candidate.path}.`
+      );
+    }
+  }
+
+  const roundBundle = await fetchGitHubResearchEvidenceForSelection(
+    accepted,
+    validatedDiscovery,
+    selected,
+    {
+      fetchImpl,
+      token,
+      limits: normalizeGitHubResearchLimits(roundLimits)
     }
   );
   const mergedBundle = mergeGitHubResearchBundles(
