@@ -471,7 +471,7 @@ GitHub request 第一次執行時，runner：
 }
 ```
 
-Initial selection 優先讓 README、architecture / documentation、manifest、entrypoint / representative source、API / data model、auth / security、background job、deployment / license 等不同 evidence kind 都有代表性來源；先覆蓋不同 kind，再以剩餘額度補高優先 candidate。所有 path 仍必須來自同一 revision 的 discovery allowlist，且受同一單檔、累計 item 與 byte budget 約束。Bundle 內的 selected primary-source text 只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
+Initial selection 優先讓 README、具架構／概念／方法論價值的 documentation、manifest、entrypoint / representative source、API / data model、auth / security、background job、deployment / license 等 evidence kind 都有代表性來源；每個 kind 有上限，並以穩定偏好排序避免一般 CI、dependabot、contributing、空殼 `__init__` / test placeholder 在已有更強 primary-source evidence 時占用核心名額。之後才以剩餘額度補高價值 candidate。所有 path 仍必須來自同一 revision 的 discovery allowlist，且受同一單檔、累計 item 與 byte budget 約束。Bundle 內的 selected primary-source text 只允許存在於專用 ingestion branch 的暫存 handoff；正式 writer 只保存 compact `state/research/**` provenance。
 
 Agent 讀取 initial bundle 後有兩個合法下一步：
 
