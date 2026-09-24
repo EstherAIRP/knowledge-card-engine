@@ -268,9 +268,10 @@ Semantic judgement 是固定資料契約，不直接決定 accepted evidence。R
 - `confidence`
 - `complete`
 - `rationale`
-- 每個候選的 `candidate_labels`
 
-Engine 重新套用 deterministic gate。至少要求整體 `confidence >= 0.90`；選擇 continuation 時，第一個 selected candidate 的 metadata score 必須達最低門檻；判定 `root_only` 時，每個候選都必須明確標成高信心 `followup` 或 `unrelated`，不能有 continuation 或 uncertain candidate。
+一般 continuation reconstruction 以有序 `selected_shortcodes` 作為唯一權威選取結果；`candidate_labels` 可省略，也不參與正文組裝或 continuation acceptance。只有判定 `root_only: true` 時，才必須提供完整 `candidate_labels`，逐一把每個候選高信心標成 `followup` 或 `unrelated`。
+
+Engine 重新套用 deterministic gate。至少要求整體 `confidence >= 0.90`；選擇 continuation 時，selected shortcode 必須來自當前 evidence、不可重複、必須維持時間順序，第一個 selected candidate 的 metadata score 必須達最低門檻；判定 `root_only` 時，每個候選都必須明確排除，不能有 continuation 或 uncertain candidate。
 
 語意復原成功後，accepted evidence 使用：
 

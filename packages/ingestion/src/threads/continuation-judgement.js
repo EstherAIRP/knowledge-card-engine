@@ -5,8 +5,7 @@ export const THREADS_CONTINUATION_JUDGEMENT_REQUIRED_FIELDS = Object.freeze([
   'root_only',
   'confidence',
   'complete',
-  'rationale',
-  'candidate_labels'
+  'rationale'
 ]);
 
 export const THREADS_CONTINUATION_JUDGEMENT_ALLOWED_LABELS = Object.freeze([
@@ -17,7 +16,8 @@ export const THREADS_CONTINUATION_JUDGEMENT_ALLOWED_LABELS = Object.freeze([
 ]);
 
 const REQUIRED = new Set(THREADS_CONTINUATION_JUDGEMENT_REQUIRED_FIELDS);
-const ALLOWED_TOP_LEVEL = new Set([...REQUIRED, '_ranker']);
+const ALLOWED_FIELDS = new Set([...REQUIRED, 'candidate_labels']);
+const ALLOWED_TOP_LEVEL = new Set([...ALLOWED_FIELDS, '_ranker']);
 const ALLOWED_LABELS = new Set(THREADS_CONTINUATION_JUDGEMENT_ALLOWED_LABELS);
 
 function isShortcode(value) {
@@ -34,7 +34,7 @@ export function validateThreadsContinuationJudgementShape(value, options = {}) {
     return { valid: false, errors: ['/ must be an object'] };
   }
 
-  const allowed = options.allowRankerMetadata === true ? ALLOWED_TOP_LEVEL : REQUIRED;
+  const allowed = options.allowRankerMetadata === true ? ALLOWED_TOP_LEVEL : ALLOWED_FIELDS;
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) errors.push(`/${key} is not allowed`);
   }
@@ -60,9 +60,9 @@ export function validateThreadsContinuationJudgementShape(value, options = {}) {
     errors.push('/rationale must be a string with at most 1000 characters');
   }
 
-  if (!Array.isArray(value.candidate_labels) || value.candidate_labels.length > 8) {
+  if (value.candidate_labels !== undefined && (!Array.isArray(value.candidate_labels) || value.candidate_labels.length > 8)) {
     errors.push('/candidate_labels must be an array with at most 8 items');
-  } else {
+  } else if (Array.isArray(value.candidate_labels)) {
     for (const [index, item] of value.candidate_labels.entries()) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) {
         errors.push(`/candidate_labels/${index} must be an object`);

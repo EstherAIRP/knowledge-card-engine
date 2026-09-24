@@ -9,6 +9,7 @@ import {
   createThreadsSemanticHandoffCaptureRanker,
   createThreadsSemanticHandoffRanker
 } from '../packages/ingestion/src/threads/semantic-handoff.js';
+import { recoverThreadsContinuation } from '../packages/ingestion/src/threads/continuation-recovery.js';
 
 function rawPost({
   id,
@@ -334,4 +335,87 @@ test('semantic recovery produces llm_assisted accepted evidence with provenance'
   assert.deepEqual(evidence.parts.map((part) => part.shortcode), ['SEMROOT2', 'SEMCONT2']);
   assert.equal(evidence.thread.recovery.ranker.method, 'agent_semantic_handoff');
   assert.equal(evidence.extraction.inferred, true);
+});
+
+
+test('continuation reconstruction follows selected_shortcodes even when candidate_labels metadata is inconsistent', async () => {
+  const rootPost = {
+    id: 'v1-root',
+    shortcode: 'V1ROOT',
+    username: 'alice',
+    text: '第一段，正文接續在留言。',
+    timestamp: '2026-09-22T10:00:00Z',
+    is_reply: false,
+    has_replies: true
+  };
+  const partTwo = {
+    id: 'v1-part-2',
+    shortcode: 'V1PART2',
+    username: 'alice',
+    text: '第二段正文。',
+    timestamp: '2026-09-22T10:01:00Z',
+    is_reply: true,
+    has_replies: true
+  };
+  const partThree = {
+    id: 'v1-part-3',
+    shortcode: 'V1PART3',
+    username: 'alice',
+    text: '第三段正文。',
+    timestamp: '2026-09-22T10:02:00Z',
+    is_reply: true,
+    has_replies: false
+  };
+
+  const recovery = await recoverThreadsContinuation(rootPost, [partTwo, partThree], {
+    continuationRanker: async () => ({
+      selected_shortcodes: ['V1PART2', 'V1PART3'],
+      root_only: false,
+      confidence: 0.99,
+      complete: true,
+      rationale: 'Both replies continue the article in chronological order.',
+      candidate_labels: [
+        { shortcode: 'V1PART2', label: 'continuation', confidence: 0.99 },
+        { shortcode: 'V1PART2', label: 'continuation', confidence: 0.99 }
+      ]
+    })
+  });
+
+  assert.equal(recovery.accepted, true);
+  assert.deepEqual(recovery.selected_shortcodes, ['V1PART2', 'V1PART3']);
+  assert.deepEqual(recovery.candidate_labels, []);
+});
+
+test('root-only recovery still requires complete per-candidate exclusion labels', async () => {
+  const rootPost = {
+    id: 'root-only-root',
+    shortcode: 'ROOTONLY',
+    username: 'alice',
+    text: '根貼文本身是完整內容。',
+    timestamp: '2026-09-22T11:00:00Z',
+    is_reply: false,
+    has_replies: true
+  };
+  const followup = {
+    id: 'root-only-followup',
+    shortcode: 'FOLLOWUP',
+    username: 'alice',
+    text: '後續補充。',
+    timestamp: '2026-09-22T11:01:00Z',
+    is_reply: true,
+    has_replies: false
+  };
+
+  const recovery = await recoverThreadsContinuation(rootPost, [followup], {
+    continuationRanker: async () => ({
+      selected_shortcodes: [],
+      root_only: true,
+      confidence: 0.99,
+      complete: true,
+      rationale: 'The root is complete.'
+    })
+  });
+
+  assert.equal(recovery.accepted, false);
+  assert.equal(recovery.reason, 'root_only_candidate_labels_incomplete');
 });
