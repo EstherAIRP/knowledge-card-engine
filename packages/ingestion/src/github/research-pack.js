@@ -12,7 +12,7 @@ const INITIAL_KIND_CAPS = Object.freeze({
   auth: 2,
   background_job: 2,
   security: 1,
-  deployment: 2,
+  deployment: 1,
   license: 1,
   configuration: 2,
   test: 2,
@@ -39,6 +39,7 @@ function preferenceAdjustment(candidate) {
     if (/architecture|design|internals|overview/u.test(lower)) return -700;
     if (/introduction|concepts?|core[-_. ]?model/u.test(lower)) return -600;
     if (/methodology|workflow|data[-_. ]?flow|control[-_. ]?flow/u.test(lower)) return -550;
+    if (/plugins?|extensions?|custom[-_. ]?commands?/u.test(lower)) return -525;
     if (/^docs?\/(?:index|readme)\.(?:md|mdx)$/u.test(lower)) return -500;
     if (/usage|guide|getting[-_. ]?started/u.test(lower)) return -350;
     if (/contributing|code[-_. ]?of[-_. ]?conduct|changelog|release[-_. ]?notes/u.test(lower)) return 700;
