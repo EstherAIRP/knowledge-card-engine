@@ -509,7 +509,7 @@ function classifyGitHubResearchCandidate(pathValue) {
     return { kind: 'documentation', priority: /architecture|design|internals|overview/u.test(lower) ? 1 : 3 };
   }
 
-  if (/auth|oauth|session|permission|authorization/u.test(lower)) return { kind: 'auth', priority: 2 };
+  if (/auth|oauth|permission|authorization/u.test(lower)) return { kind: 'auth', priority: 2 };
   if (/security|threat|trust|attest|secret/u.test(lower)) return { kind: 'security', priority: 2 };
   if (/job|queue|worker|inngest|scheduler|cron|background/u.test(lower)) return { kind: 'background_job', priority: 3 };
   if (/schema|model|migration|prisma|drizzle|database|(^|\/)db([./]|$)/u.test(lower)) return { kind: 'data_model', priority: 3 };
