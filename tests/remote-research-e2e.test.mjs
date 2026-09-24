@@ -259,34 +259,32 @@ function analysisFrom(evidence, bundle, variant) {
   }, evidence, bundle);
 }
 
-async function expandOnce(root, variant) {
+async function prepareInitialResearch(root, variant) {
   const evidencePath = path.join(handoffDir(root), 'evidence.json');
   const researchEvidencePath = path.join(handoffDir(root), 'research-evidence.json');
 
   const prepared = runHandoff(root, variant);
   assert.equal(prepared.result.stage, 'research-prepared');
-  assert.equal(prepared.result.waiting_for, 'research-plan');
+  assert.equal(prepared.result.waiting_for, 'research-plan-or-analysis');
+  assert.match(prepared.result.analysis_evidence_digest, /^[0-9a-f]{64}$/u);
+  assert.ok(Array.isArray(prepared.result.initial_research_paths));
+  assert.ok(prepared.result.initial_research_paths.length > 1);
 
   const evidence = await readJson(evidencePath);
-  const initialResearch = await readJson(researchEvidencePath);
-  assert.equal(initialResearch.bundle, null);
-  assert.equal(initialResearch.progress.completed_rounds, 0);
-  assert.ok(initialResearch.discovery.candidates.some((item) => item.path === 'docs/architecture.md'));
-
-  const plan = researchPlan(evidence);
-  assert.equal(plan.plan.questions.architecture.status, 'needs_evidence');
-  await writeJson(path.join(handoffDir(root), 'research-plan.json'), plan);
-
-  const expanded = runHandoff(root, variant);
-  assert.equal(expanded.result.stage, 'research-expanded');
-  assert.equal(expanded.result.research_round, 1);
-
   const researchEvidence = await readJson(researchEvidencePath);
   assert.equal(researchEvidence.progress.completed_rounds, 1);
   assert.ok(researchEvidence.bundle);
+  assert.equal(
+    researchEvidence.progress.analysis_evidence_digest,
+    researchEvidence.bundle.analysis_evidence_digest
+  );
   assert.ok(researchEvidence.bundle.items.some((item) => item.path === 'docs/architecture.md'));
   assert.ok(researchEvidence.bundle.items.some((item) => item.path === 'src/jobs.js'));
   assert.ok(researchEvidence.bundle.items.length > 1);
+  await assert.rejects(
+    fs.access(path.join(handoffDir(root), 'research-plan.json')),
+    (error) => error.code === 'ENOENT'
+  );
 
   return {
     evidence,
@@ -294,11 +292,11 @@ async function expandOnce(root, variant) {
   };
 }
 
-test('synthetic GitHub Remote Ingest expands beyond README, rejects stale analysis, and preserves ownership on update', async () => {
+test('synthetic GitHub Remote Ingest prepares research before analysis, rejects stale analysis, and preserves ownership on update', async () => {
   const root = await tempWorkspace();
   try {
     await writeRequest(root);
-    const firstResearch = await expandOnce(root, 1);
+    const firstResearch = await prepareInitialResearch(root, 1);
     const firstAnalysis = analysisFrom(
       firstResearch.evidence,
       firstResearch.researchEvidence.bundle,
@@ -342,7 +340,7 @@ test('synthetic GitHub Remote Ingest expands beyond README, rejects stale analys
     await fs.writeFile(firstCardPath, editedRaw, 'utf8');
 
     await writeRequest(root);
-    const secondResearch = await expandOnce(root, 2);
+    const secondResearch = await prepareInitialResearch(root, 2);
     assert.notEqual(
       secondResearch.researchEvidence.bundle.analysis_evidence_digest,
       firstResearch.researchEvidence.bundle.analysis_evidence_digest
