@@ -211,7 +211,7 @@ digest 不一致時回報 `GITHUB_RESEARCH_PLAN_STALE`，不得把舊 material-q
 - item / byte budget 以累計 bundle 計算，不會因拆成多輪而重置。
 - 每次成功 expansion 都重新計算 cumulative `analysis_evidence_digest`。
 
-目前預設最多兩個 expansion rounds。第二輪後即使仍有 material unknown，也必須停止 expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
+目前 research progress 最多記錄兩輪。Remote Ingest 的 deterministic initial research pack 使用第一輪；若仍有 material unknown，最多再做一次 Agent-directed expansion。第二輪後必須停止 research expansion；後續 structured research report 應以 `unavailable` / `budget_exhausted` 表達，而不是繼續無界限讀取 Repository。
 
 最後形成的 Analysis Evidence Bundle 由 [Analysis 與 Research 契約](./analysis.md) 驗證，並產生獨立 `analysis_evidence_digest`。這份全文 bundle 是 analysis input，不是 accepted source state。GitHub `analysis_version: 2` 會把 validated bundle 一併交給正式 Workspace writer，writer 只永久保存 compact research provenance。GitHub Remote Ingest 會在 prepare 階段直接建立 deterministic initial research pack 並寫入 `research-evidence.json`；Agent 可直接提交最終 version 2 analysis，只有 initial bundle 不足時才用 `research-plan.json` 要求一次 optional expansion。直接 `ingest:github` CLI 不接收 research bundle，因此仍使用 accepted-source version 1。
 
@@ -325,7 +325,7 @@ Analysis provider 不屬於 ingestion。Engine 不固定特定 LLM 供應商。
 
 正式 analysis result 必須符合 [Analysis 與 Research 契約](./analysis.md)：
 
-- Version 1 綁定 `source_identity + evidence_digest`；provider-specific direct CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用 version 1，必須在至少一輪 bounded research expansion 後提交 version 2。
+- Version 1 綁定 `source_identity + evidence_digest`；provider-specific direct CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用 version 1；prepare 階段必須先建立非空、revision-pinned 的 validated Analysis Evidence Bundle，之後才能提交 version 2。
 - GitHub Version 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供 validated Analysis Evidence Bundle 與 structured research report。
 - 兩種版本都提供 Card 契約要求的 AI-owned metadata 與 10 個正文段落；summary 不超過 600 字元，relevance score 為 1–5 整數。
 - Threads 目前沒有 research evidence bundle contract，因此不得使用 version 2。
@@ -463,7 +463,9 @@ GitHub request 第一次執行時，runner：
     "analysis_evidence_digest": "..."
   },
   "bundle": {
-    "items": [],
+    "items": [
+      { "path": "README.md", "evidence_id": "..." }
+    ],
     "analysis_evidence_digest": "..."
   }
 }
