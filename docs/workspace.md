@@ -18,6 +18,21 @@ Workspace root 必須包含：
 
 實際目錄名稱由 `workspace.yaml.paths` 指定；七個 logical path 都必須存在且互不重複。
 
+## Profile 與分析政策
+
+`profile/` 保存使用者明確授權的私人背景與 analysis policy。這些政策不是 Card 正文來源，也不會因為位於 Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入 Card，仍依各 Workspace 明確授權處理。
+
+Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，Knowledge Card 的產生、重新分析與 Remote Ingest analysis 在建立 AI-owned 自然語言內容前必須讀取它；若不存在，使用 Runtime 的預設語言規則。
+
+語言政策只控制 AI-owned 敘述層，不可：
+
+- 覆蓋 Card Schema、Taxonomy、evidence binding 或 ownership 契約。
+- 改寫 accepted evidence、直接引用或程式碼。
+- 修改任何 user-owned override 或完整 `## 使用者備註`。
+- 從聊天記憶或其他未授權來源補充私人背景。
+
+`profile/` 內容屬私人 Workspace 資料，不得複製到公開 Engine、公開 PR、測試 fixture 或建置產物。
+
 ## workspace.yaml
 
 目前支援的 Workspace schema version 是 `1`。

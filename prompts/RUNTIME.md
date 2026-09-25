@@ -8,10 +8,14 @@
 
 ## 語言與術語
 
-- 一般中文回覆、Knowledge Card 正文、文件與任務完成回報，以自然繁體中文為主。
+- 一般中文回覆、Knowledge Card 的 AI-owned 自然語言內容、文件與任務完成回報，預設以自然繁體中文為主。
+- Workspace 若有明確的分析語言政策，Agent 在產生或重新分析 Card 前必須讀取並遵守；語言政策只控制 AI-owned 敘述，不擴張私人背景的可用範圍或寫入權限。
+- 目標語言為中文時，不模仿來源的中英夾雜語體，也不因來源本身是英文或技術文件，就把已有成熟中文譯名的一般概念大量保留為英文。
 - 已有成熟中文譯名的一般技術概念優先使用中文。
-- 官方專案／產品名稱、程式碼、指令、API、函式／參數／欄位名稱、識別字、檔案路徑、縮寫、錯誤碼與狀態值保留原文。
+- 官方專案／產品名稱、程式碼、指令、API、函式／參數／欄位名稱、識別字、檔案路徑、縮寫、錯誤碼、狀態值與不宜硬譯的標準名稱保留原文。
 - 重要術語需要中英對照時，首次可使用「中文（English）」格式，後續優先使用中文。
+- Accepted evidence、直接引用與程式碼保持來源原文；語言整理發生在 analysis / Card 敘述層，不改寫來源證據。
+- 語言整理不得改寫任何 user-owned override 或完整 `## 使用者備註`。
 
 ## 1. 任務判定
 
@@ -55,7 +59,7 @@ Workspace 任務開工前至少讀取：
 2. Workspace `AGENTS.md`
 3. `workspace.yaml`
 4. `engine.lock.json`
-5. 本次任務需要的 Workspace 設定與既有資料
+5. 本次任務需要的 Workspace 設定、`profile/` 分析政策與既有資料
 6. `engine.lock.json.engine_commit` 指定 commit 的 Engine 正式契約與實作
 
 Workspace 不追隨 Engine `main`。任何會影響實際寫入、驗證、來源 provider、Schema、CLI 或 release 的能力，都必須存在於 Workspace 鎖定的完整 Engine SHA。不能因 Engine `main` 已有某功能，就假設目前 Workspace 可以使用。
@@ -166,6 +170,7 @@ Analysis 必須：
 - GitHub Version 2 同時綁定 `source_evidence_digest` 與 validated Analysis Evidence Bundle 的 `analysis_evidence_digest`，並通過 structured research quality gate。
 - 使用 Workspace Taxonomy 中有效的受控值。
 - 提供 Card contract 要求的 AI-owned metadata 與正文段落。
+- 遵守 Workspace 明確的輸出語言政策；沒有額外政策時遵守本 Runtime 的語言與術語規則。
 - 區分來源可驗證事實與分析推論。
 - 不臆造功能、架構、授權、相容性、成熟度、基準測試或維護狀態。
 
