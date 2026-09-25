@@ -1,6 +1,6 @@
 # Knowledge Card 契約
 
-Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符合前置中繼資料（frontmatter）、工作區分類體系、正文結構、所有權、集合唯一性與穩定路徑等契約；任一層驗證失敗，都不能視為合法卡片。
+Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符合前置中繼資料、工作區分類體系、正文結構、所有權、集合唯一性與穩定路徑等契約；任一層驗證失敗，都不能視為合法卡片。
 
 ## 權威來源
 
@@ -10,7 +10,7 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 2. 工作區 `config/taxonomy.yaml`：定義實際受控詞彙。
 3. `packages/core` 驗證器：驗證正文順序、分類體系成員資格、所有權規則、日期順序、集合唯一性與穩定路徑。
 
-分類體系本身由 [`schema/taxonomy.schema.json`](../schema/taxonomy.schema.json) 驗證。JSON Schema 不重複保存工作區的受控詞彙值；卡片通過結構驗證後，Core 驗證器再依分類體系檢查各欄位是否使用合法值。
+分類體系本身由 [`schema/taxonomy.schema.json`](../schema/taxonomy.schema.json) 驗證。JSON Schema 不重複保存工作區的受控詞彙值；卡片通過結構驗證後，`packages/core` 驗證器再依分類體系檢查各欄位是否使用合法值。
 
 ## 前置中繼資料
 
@@ -37,7 +37,7 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 | `actions` | `ai` 值為非空唯一字串陣列；`user` 值為 `null` 或唯一字串陣列；值需是分類體系 `actions` 的鍵。 |
 | `status` | `{ ai, user }` 所有權包裝結構；值需存在於分類體系 `statuses`。 |
 
-Schema 設定 `additionalProperties: false`，因此未定義的前置中繼資料欄位會被拒絕。
+JSON Schema 設定 `additionalProperties: false`，因此未定義的前置中繼資料欄位會被拒絕。
 
 ## 分類體系契約
 
@@ -83,7 +83,7 @@ effective = user ?? ai
 - 所有 `*.user` 覆寫
 - 完整 `## 使用者備註` 段落
 
-`compareUserOwnedState(before, after)` 會直接比較兩份卡片，不依賴 Git HEAD。
+`compareUserOwnedState(before, after)` 會直接比較兩份卡片，不依賴 Git 的 `HEAD`。
 
 ## AI 文字語言契約
 
@@ -97,7 +97,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 - 重要術語首次需要中英對照時，可使用「中文（English）」格式，後續優先使用中文。
 - 直接引用、程式碼與來源證據保持原文，不為符合卡片敘述語言而改寫證據。
 
-語言整理只適用於 AI 可更新內容，不得因此重寫任何 `*.user` 覆寫或完整 `## 使用者備註`。目前 Core 與 Schema 驗證器會驗證卡片的資料形狀、正文結構、分類體系、所有權、日期、唯一性與穩定路徑，**不會使用英文比例或文體分類器來機器判定語言自然度**；語言規則屬於分析與 Agent 的輸出契約，違反時應視為分析品質缺陷。
+語言整理只適用於 AI 可更新內容，不得因此重寫任何 `*.user` 覆寫或完整 `## 使用者備註`。目前 `packages/core` 驗證器與 JSON Schema 會驗證卡片的資料形狀、正文結構、分類體系、所有權、日期、唯一性與穩定路徑，**不會使用英文比例或文體分類器來機器判定語言自然度**；語言規則屬於分析與代理程式的輸出契約，違反時應視為分析品質缺陷。
 
 ## 正文契約
 
@@ -153,7 +153,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 content/knowledge/{created_at year}/{id}.md
 ```
 
-既有卡片更新時沿用原有檔案路徑，不因標題、AI 分析或 URL 輸入形式改名。
+既有卡片更新時沿用原有檔案路徑，不因標題、AI 分析或網址輸入形式改名。
 
 ## 驗證
 
@@ -163,4 +163,4 @@ content/knowledge/{created_at year}/{id}.md
 npm run cards:validate -- /path/to/workspace
 ```
 
-此命令會載入工作區分類體系與所有卡片，並執行分類體系、Schema、正文、日期、成員資格與集合唯一性驗證。
+此命令會載入工作區分類體系與所有卡片，並執行分類體系、結構規格、正文、日期、成員資格與集合唯一性驗證。
