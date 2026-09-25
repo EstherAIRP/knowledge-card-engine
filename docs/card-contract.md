@@ -85,6 +85,20 @@ effective = user ?? ai
 
 `compareUserOwnedState(before, after)` 直接比較兩份 Card；不依賴 Git HEAD。
 
+## AI 文字語言契約
+
+Knowledge Card 的 AI-owned 自然語言內容包含 `title`、`summary` 與前 10 個分析正文段落。這些內容除了符合結構與 evidence contract，也必須遵守 Workspace 明確的分析語言政策；若 Workspace 沒有額外政策，則遵守 Runtime 的預設語言與術語規則。
+
+當目標語言為中文時：
+
+- 使用自然繁體中文敘述，不模仿來源的中英夾雜語體。
+- 已有成熟中文譯名的一般概念優先使用中文；來源是英文或技術文件，不構成大量保留英文敘述的理由。
+- 官方專案／產品名稱、程式碼、API、函式、參數、欄位、識別字、指令、檔案路徑、縮寫、錯誤碼、狀態值與不宜硬譯的標準名稱保留原文。
+- 重要術語首次需要對照時可使用「中文（English）」；後續優先使用中文。
+- 直接引用、程式碼與來源證據保持原文，不為符合 Card 敘述語言而改寫 evidence。
+
+語言整理只適用於 AI-owned 內容，不得因此重寫任何 `*.user` override 或完整 `## 使用者備註`。目前 Core / Schema validator 驗證 Card 的資料形狀、正文結構、Taxonomy、ownership、日期、唯一性與 stable path，**不以英文比例或文體分類器機器判定語言自然度**；語言規則屬 analysis / Agent 輸出契約，違反時應視為分析品質缺陷處理。
+
 ## 正文契約
 
 正文必須有一個 H1，且 H1 文字與 frontmatter `title` 完全一致。
