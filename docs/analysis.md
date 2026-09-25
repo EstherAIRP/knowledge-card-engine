@@ -15,6 +15,19 @@
 
 兩個版本都必須提供相同的 Card AI-owned metadata 與十個正文段落，並維持 summary 長度、relevance score 與 section contract。
 
+## 輸出語言與術語
+
+Analysis 產生的 Card AI-owned metadata、十個正文段落，以及會進入 Card 敘述的自由文字，必須符合 [Knowledge Card 契約](./card-contract.md) 的 AI 文字語言規則與 Workspace 明確的分析語言政策。Research report 的敘述性 finding 若會供 Card analysis 使用，也應遵守同一政策，但 evidence reference、程式識別字與受控狀態值維持原 contract。
+
+語言整理不得：
+
+- 改寫 accepted source evidence 或 Analysis Evidence Bundle 內的來源文字。
+- 把直接引用、程式碼或官方識別字為了中文化而翻譯。
+- 因來源為英文就讓 Card 敘述大量沿用英文一般概念。
+- 修改 user-owned override、使用者備註或其他受 ownership 保護的狀態。
+
+目前 analysis validator 驗證 version、欄位、digest binding、research coverage / findings 與品質守門，但不以自然語言分類器判斷中英夾雜程度；因此輸出語言仍由 Runtime、Workspace policy 與執行 Agent 共同約束，不能把通過 schema / validator 誤稱為已通過語言品質檢測。
+
 ## Source acceptance 與 analysis evidence
 
 Source acceptance 與 research evidence 是不同責任：
