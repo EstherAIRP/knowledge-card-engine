@@ -402,7 +402,7 @@ test('synthetic GitHub Remote Ingest invalidates first-round analysis after a se
     await writeJson(path.join(handoffDir(root), 'analysis.json'), firstRoundAnalysis);
     const stale = runHandoff(root, 1, { expectSuccess: false });
     assert.equal(stale.result.status, 'error');
-    assert.equal(stale.result.code, 'ANALYSIS_EVIDENCE_STALE');
+    assert.equal(stale.result.code, 'ANALYSIS_RESEARCH_EVIDENCE_STALE');
 
     const finalAnalysis = analysisFrom(firstResearch.evidence, finalResearch.bundle, 1);
     await writeJson(path.join(handoffDir(root), 'analysis.json'), finalAnalysis);
