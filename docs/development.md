@@ -75,7 +75,9 @@ npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.js
 
 `npm run ingest:github:handoff` 保留為相容 alias。
 
-此 CLI 只讀取 configured state root 下的固定 handoff 檔名，不接受任意 handoff 路徑。GitHub 流程使用 `request.json`、`evidence.json`、`research-evidence.json`、`research-plan.json` 與最終 `analysis.json`；第一次 prepare 只建立 revision-pinned discovery 與空的 round-0 research state，必須由 Agent 先提交 material-question research plan 與 selected paths。Runner 會在同一 revision 驗證 selected safe text paths 並形成第一輪 bundle；之後可直接提交 analysis，或在剩餘 round / item / byte budget 與 prior digest 守門下再做一次 Agent-directed expansion。Threads 流程保留 `semantic-handoff.json` / `semantic-judgement.json`，accepted evidence 後直接等待 version 1 analysis。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
+此 CLI 只讀取 configured state root 下的固定 handoff 檔名，不接受任意 handoff 路徑。GitHub 流程使用 `request.json`、`evidence.json`、`research-evidence.json`、`research-plan.json` 與最終 `analysis.json`；第一次 prepare 只建立 revision-pinned discovery 與空的 round-0 research state，必須由 Agent 先提交 material-question research plan 與 selected paths。Runner 會在同一 revision 驗證 selected safe text paths 並形成第一輪 bundle；之後可直接提交 analysis，或在剩餘 round / item / byte budget 與 prior digest 守門下再做一次 Agent-directed expansion。Threads 流程保留 `semantic-handoff.json` / `semantic-judgement.json`，accepted evidence 後直接等待 version 1 analysis。
+
+當 analysis 已是合法下一步時，runner result 會提供 `analysis_handoff`，列出本輪必須重新閱讀的 `input_paths`、要寫入的 `analysis.json` 路徑，以及目前 evidence digest。這個提示不是新的持久狀態；新 session 直接從目前分支上的 handoff 檔案接手即可。GitHub 若再完成第二輪 research，必須使用更新後的 `analysis_evidence_digest` 重新整合，舊 analysis 會被 stale guard 拒絕。完整 handoff 契約見 [ingestion.md](./ingestion.md)。
 
 ## 私人網站
 
