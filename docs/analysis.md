@@ -32,16 +32,18 @@
 
 分析資料契約只規定輸出的可驗證形狀與證據綁定；它不把研究計畫、研究覆蓋或 Card section 順序定義成模型的閱讀順序。
 
-在正式建立分析結果前，執行 Agent 必須依 [Knowledge Card 知識編輯提示契約](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據：
+在正式建立分析結果前，執行 Agent 必須先依 [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據：
 
 - Version 1：重新閱讀目前已接受來源證據。
 - GitHub Version 2：重新閱讀目前已接受來源證據與最終 Analysis Evidence Bundle 內的 selected source text。
-- 若 Version 2 的 bundle 因第二輪研究而改變，先前以舊 `analysis_evidence_digest` 形成的整理不得沿用。
+- 若 Version 2 的 bundle 因第二輪研究而改變，先前以舊 `analysis_evidence_digest` 形成的理解不得沿用。
+- 形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)，也不使用 Card section 當閱讀來源的分類框架。
 - 更新既有 Card 時，先依本輪證據形成新的整體理解，再讀既有 Card；舊 AI 正文不是本輪證據。
+- 整體理解形成後，才讀 `CARD_STYLE.md` 與 Card Contract，把既有理解映射成 analysis result。
 
 這一步是 Agent 的知識整理順序，不新增 `analysis_version`、不新增持久化欄位，也不要求保存新的中間推理資料。最終仍只輸出本文件定義的 analysis result；完整內部推理過程不屬於資料契約。
 
-結構化研究報告用來驗證證據覆蓋、研究結果與證據引用是否成立，但不能直接取代最終來源閱讀，也不應被逐欄改寫成 Card 正文。Card 的十個正文段落是在整體理解形成後才映射的輸出結構。
+結構化研究報告用來驗證證據覆蓋、研究結果與證據引用是否成立，但不能直接取代最終來源閱讀，也不應被逐欄改寫成 Card 正文。Card 的十個正文段落與寫作樣式都只在整體理解形成後才套用。
 
 ## 來源接受與分析證據
 
