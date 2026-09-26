@@ -281,6 +281,18 @@ function researchBudgetAvailable(researchHandoff) {
   );
 }
 
+function createAnalysisHandoff(evidence, handoffPaths, researchHandoff = null) {
+  const inputPaths = [handoffPaths.evidence];
+  if (researchHandoff?.bundle) inputPaths.push(handoffPaths.research_evidence);
+  return {
+    reread_required: true,
+    input_paths: inputPaths,
+    output_path: handoffPaths.analysis,
+    evidence_digest: evidence.evidence_digest,
+    analysis_evidence_digest: researchHandoff?.bundle?.analysis_evidence_digest || null
+  };
+}
+
 function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
   const hasBundle = Boolean(researchHandoff.bundle);
   const canExpand = researchBudgetAvailable(researchHandoff);
@@ -295,6 +307,7 @@ function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
     repository_revision: researchHandoff.discovery.repository_revision,
     analysis_evidence_digest: researchHandoff.bundle?.analysis_evidence_digest || null,
     research_progress: researchHandoff.progress,
+    ...(hasBundle ? { analysis_handoff: createAnalysisHandoff(evidence, handoffPaths, researchHandoff) } : {}),
     handoff_paths: handoffPaths,
     allowed_changed_paths: []
   };
@@ -467,8 +480,10 @@ try {
           result = {
             status: 'ok',
             stage: 'prepared',
+            waiting_for: 'analysis',
             source_identity: evidence.source_identity,
             evidence_digest: evidence.evidence_digest,
+            analysis_handoff: createAnalysisHandoff(evidence, handoffPaths),
             handoff_paths: handoffPaths,
             allowed_changed_paths: allowed
           };
@@ -565,6 +580,7 @@ try {
           research_round: expansion.round,
           analysis_evidence_digest: expansion.bundle.analysis_evidence_digest,
           research_progress: expansion.progress,
+          analysis_handoff: createAnalysisHandoff(evidence, handoffPaths, researchHandoff),
           handoff_paths: handoffPaths,
           allowed_changed_paths: [
             handoffPaths.research_plan,
@@ -582,8 +598,10 @@ try {
         result = {
           status: 'ok',
           stage: 'waiting-for-analysis',
+          waiting_for: 'analysis',
           source_identity: evidence.source_identity,
           evidence_digest: evidence.evidence_digest,
+          analysis_handoff: createAnalysisHandoff(evidence, handoffPaths),
           handoff_paths: handoffPaths,
           allowed_changed_paths: []
         };
