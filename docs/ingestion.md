@@ -448,6 +448,25 @@ Provider 邊界固定：
 }
 ```
 
+當 runner 已具備可產生 analysis 的最終證據時，結果會額外回傳暫存的 `analysis_handoff` 提示：
+
+~~~json
+{
+  "reread_required": true,
+  "input_paths": [
+    "state/ingestion/evidence.json",
+    "state/ingestion/research-evidence.json"
+  ],
+  "output_path": "state/ingestion/analysis.json",
+  "evidence_digest": "<accepted evidence digest>",
+  "analysis_evidence_digest": "<final GitHub bundle digest or null>"
+}
+~~~
+
+這個物件只存在於 runner result / log，不是新的 Workspace 狀態，也不會提交到 `main`。GitHub 在第一輪或第二輪 bundle 形成後，`input_paths` 包含 accepted evidence 與目前的 `research-evidence.json`；Threads accepted evidence 完成後只包含 `evidence.json`。新的 Agent session 應直接依這些目前 handoff 檔案重新讀取，不依賴前一段對話或舊摘要。
+
+若 GitHub 又完成一輪 research expansion，新的 result 會帶新的 `analysis_evidence_digest`；任何綁定舊 digest 的 `analysis.json` 都會由正式分析驗證拒絕。
+
 ### GitHub research handoff
 
 GitHub request 第一次執行時，runner：

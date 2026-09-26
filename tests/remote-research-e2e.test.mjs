@@ -129,6 +129,37 @@ function researchPlan(evidence) {
   };
 }
 
+function secondResearchPlan(evidence, bundle) {
+  return {
+    schema_version: 1,
+    provider: 'github',
+    plan: {
+      research_version: 1,
+      provider: 'github',
+      source_identity: evidence.source_identity,
+      source_evidence_digest: evidence.evidence_digest,
+      prior_analysis_evidence_digest: bundle.analysis_evidence_digest,
+      questions: Object.fromEntries(RESEARCH_QUESTION_IDS.map((questionId) => [
+        questionId,
+        questionId === 'operational_boundaries'
+          ? {
+              status: 'needs_evidence',
+              rationale: 'The second round needs deployment evidence before final analysis.',
+              evidence_kinds: ['deployment'],
+              path_hints: ['DEPLOYMENT.md']
+            }
+          : {
+              status: 'already_supported',
+              rationale: 'The first validated bundle already supports this question.',
+              evidence_kinds: [],
+              path_hints: []
+            }
+      ]))
+    },
+    selected_paths: ['DEPLOYMENT.md']
+  };
+}
+
 function analysisFrom(evidence, bundle, variant) {
   const refByPath = new Map(bundle.items.map((item) => [item.path, item.evidence_id]));
   const ref = (filePath) => {
@@ -280,6 +311,12 @@ async function prepareInitialResearch(root, variant) {
   assert.equal(expanded.result.stage, 'research-expanded');
   assert.equal(expanded.result.research_round, 1);
   assert.equal(expanded.result.waiting_for, 'research-plan-or-analysis');
+  assert.equal(expanded.result.analysis_handoff.reread_required, true);
+  assert.deepEqual(
+    expanded.result.analysis_handoff.input_paths,
+    ['state/ingestion/evidence.json', 'state/ingestion/research-evidence.json']
+  );
+  assert.equal(expanded.result.analysis_handoff.output_path, 'state/ingestion/analysis.json');
 
   researchEvidence = await readJson(researchEvidencePath);
   assert.equal(researchEvidence.progress.completed_rounds, 1);
@@ -291,6 +328,25 @@ async function prepareInitialResearch(root, variant) {
   assert.ok(researchEvidence.bundle.items.some((item) => item.path === 'docs/architecture.md'));
   assert.ok(researchEvidence.bundle.items.some((item) => item.path === 'src/jobs.js'));
   assert.ok(researchEvidence.bundle.items.length > 1);
+  assert.equal(expanded.result.analysis_handoff.evidence_digest, evidence.evidence_digest);
+  assert.equal(
+    expanded.result.analysis_handoff.analysis_evidence_digest,
+    researchEvidence.bundle.analysis_evidence_digest
+  );
+
+  const resumed = runHandoff(root, variant);
+  assert.equal(resumed.result.stage, 'waiting-for-analysis');
+  assert.equal(resumed.result.waiting_for, 'research-plan-or-analysis');
+  assert.equal(resumed.result.analysis_handoff.reread_required, true);
+  assert.deepEqual(
+    resumed.result.analysis_handoff.input_paths,
+    ['state/ingestion/evidence.json', 'state/ingestion/research-evidence.json']
+  );
+  assert.equal(
+    resumed.result.analysis_handoff.analysis_evidence_digest,
+    researchEvidence.bundle.analysis_evidence_digest
+  );
+
   await assert.rejects(
     fs.access(researchPlanPath),
     (error) => error.code === 'ENOENT'
@@ -301,6 +357,63 @@ async function prepareInitialResearch(root, variant) {
     researchEvidence
   };
 }
+
+test('synthetic GitHub Remote Ingest invalidates first-round analysis after a second research expansion', async () => {
+  const root = await tempWorkspace();
+  try {
+    await writeRequest(root);
+    const firstResearch = await prepareInitialResearch(root, 1);
+    const firstRoundAnalysis = analysisFrom(
+      firstResearch.evidence,
+      firstResearch.researchEvidence.bundle,
+      1
+    );
+
+    await writeJson(
+      path.join(handoffDir(root), 'research-plan.json'),
+      secondResearchPlan(firstResearch.evidence, firstResearch.researchEvidence.bundle)
+    );
+    const secondExpanded = runHandoff(root, 1);
+    assert.equal(secondExpanded.result.stage, 'research-expanded');
+    assert.equal(secondExpanded.result.research_round, 2);
+    assert.equal(secondExpanded.result.waiting_for, 'analysis');
+
+    const finalResearch = await readJson(path.join(handoffDir(root), 'research-evidence.json'));
+    assert.equal(finalResearch.progress.completed_rounds, 2);
+    assert.ok(finalResearch.bundle.items.some((item) => item.path === 'DEPLOYMENT.md'));
+    assert.notEqual(
+      finalResearch.bundle.analysis_evidence_digest,
+      firstResearch.researchEvidence.bundle.analysis_evidence_digest
+    );
+    assert.equal(
+      secondExpanded.result.analysis_handoff.analysis_evidence_digest,
+      finalResearch.bundle.analysis_evidence_digest
+    );
+
+    const resumed = runHandoff(root, 1);
+    assert.equal(resumed.result.stage, 'waiting-for-analysis');
+    assert.equal(resumed.result.waiting_for, 'analysis');
+    assert.equal(resumed.result.analysis_handoff.reread_required, true);
+    assert.equal(
+      resumed.result.analysis_handoff.analysis_evidence_digest,
+      finalResearch.bundle.analysis_evidence_digest
+    );
+
+    await writeJson(path.join(handoffDir(root), 'analysis.json'), firstRoundAnalysis);
+    const stale = runHandoff(root, 1, { expectSuccess: false });
+    assert.equal(stale.result.status, 'error');
+    assert.equal(stale.result.code, 'ANALYSIS_RESEARCH_EVIDENCE_STALE');
+
+    const finalAnalysis = analysisFrom(firstResearch.evidence, finalResearch.bundle, 1);
+    await writeJson(path.join(handoffDir(root), 'analysis.json'), finalAnalysis);
+    const applied = runHandoff(root, 1);
+    assert.equal(applied.result.stage, 'applied');
+    assert.equal(applied.result.analysis_version, 2);
+    await assert.rejects(fs.access(handoffDir(root)), (error) => error.code === 'ENOENT');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 
 test('synthetic GitHub Remote Ingest requires Agent-selected research before analysis, rejects stale analysis, and preserves ownership on update', async () => {
   const root = await tempWorkspace();

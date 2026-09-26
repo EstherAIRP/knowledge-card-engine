@@ -38,6 +38,7 @@ const files = {
     ? 'export async function dispatch(queue, payload) { return queue.add(payload); }\n'
     : 'export async function dispatch(queue, payload) { validate(payload); return queue.add(payload); }\nfunction validate(payload) { if (!payload) throw new Error("payload required"); }\n',
   'SECURITY.md': '# Security\n\nAuthentication is enforced before queue dispatch; queue payloads must not contain credentials.\n',
+  'DEPLOYMENT.md': '# Deployment\n\nThe synthetic service runs as an API process plus a separately deployed queue worker.\n',
   LICENSE: 'Synthetic permissive license for public test fixtures.\n'
 };
 
@@ -92,6 +93,7 @@ const rootTree = {
     fileEntry('README.md', 'README.md'),
     fileEntry('package.json', 'package.json'),
     fileEntry('SECURITY.md', 'SECURITY.md'),
+    fileEntry('DEPLOYMENT.md', 'DEPLOYMENT.md'),
     fileEntry('LICENSE', 'LICENSE'),
     { path: 'docs', type: 'tree', sha: docsTreeSha },
     { path: 'src', type: 'tree', sha: srcTreeSha }
