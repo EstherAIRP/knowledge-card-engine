@@ -335,6 +335,10 @@ Analysis provider 不屬於 ingestion。Engine 不固定特定 LLM 供應商。
 
 舊 source evidence 或舊 research bundle 產生的 analysis 不能套用到新的 digest；binding 不一致時 fail closed，且不得寫入 Card / accepted source state / research state。
 
+當本輪 evidence 已固定並準備產生最終 analysis 時，Agent 必須先依 [Knowledge Card 知識編輯提示契約](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀目前有效的來源證據。GitHub version 2 另須重新閱讀目前 final bundle 的 selected source text；若又完成一輪 expansion，舊整理與舊 analysis 都不得沿用。Threads 則重新閱讀最終 accepted conversation，不以 semantic judgement 草稿、搜尋摘要或先前候選代替來源。
+
+這個重新閱讀步驟不建立新的 ingestion state；它只規定 Agent 從已驗證 handoff 證據產生 `analysis.json` 前的處理順序。
+
 ## Create / update resolution
 
 Workspace writer 載入完整 Card collection 後依序解析：
@@ -498,8 +502,8 @@ runner 讀到 `research-plan.json` 後：
 
 第一輪 bundle 形成後，Agent 有兩個合法下一步：
 
-- 證據已足夠：提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
-- 仍缺 material evidence：提交第二份 `research-plan.json` 做第二輪 expansion。
+- 證據已足夠：重新閱讀目前 `evidence.json` 與 final `research-evidence.json` bundle，完成知識整合後，再提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
+- 仍缺 material evidence：提交第二份 `research-plan.json` 做第二輪 expansion；新的 bundle 形成後，再以新證據重新閱讀與整合。
 
 第二份 research plan 必須以：
 
