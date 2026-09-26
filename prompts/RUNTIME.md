@@ -150,7 +150,7 @@ chore/ingest-* 分支 + request
 → GitHub：固定版本探索 + 空的第 0 輪研究狀態
 → GitHub：Agent 提交關鍵研究問題計畫與選定路徑
 → GitHub：形成已驗證的第一輪研究證據包，必要時再做一次綁定摘要值的 Agent 指定擴充
-→ GitHub：Agent 產生分析
+→ GitHub：Agent 以最終證據重新閱讀與整合後產生分析
 → GitHub 使用 `analysis_version: 2`；Threads 使用 `analysis_version: 1`
 → 固定版本 Engine 寫入器套用結果並完成完整驗證
 → 清除交接暫存資料
@@ -168,6 +168,10 @@ Agent 只負責建立受控請求、必要時產生 Threads 綁定摘要值的�
 ## 6. 分析結果
 
 收錄與分析是不同責任層。Engine 不固定特定模型供應商，但正式分析結果必須符合目前鎖定 Engine 的分析契約。
+
+正式產生分析前，Agent 必須依 [Knowledge Card 知識編輯提示契約](./KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據，再形成整體理解。GitHub 研究型分析至少重新閱讀目前的已接受來源證據與最終 Analysis Evidence Bundle；Threads 重新閱讀最終 accepted evidence。若 GitHub 後續又完成新的研究擴充，先前依較舊 bundle 形成的整理立即失效，必須以新的 `analysis_evidence_digest` 重新執行。研究計畫、結構化研究覆蓋或 findings 可用來檢查證據，但不能取代重新閱讀來源文字，也不能直接當成卡片大綱。
+
+更新既有卡片時，先依本輪最終證據形成新的整體理解，再讀既有卡片判斷差異、關聯與需要保留的上下文；既有 AI 正文不得作為本輪事實證據。Card sections、Relevance、Action、分類、標籤與關聯都在整體理解形成後才決定。
 
 分析必須：
 
