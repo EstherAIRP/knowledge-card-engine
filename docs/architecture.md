@@ -15,7 +15,7 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證與共用�
 | `packages/workspace` | Workspace loader、engine pin，以及經驗證的 Card + source-state / research-state transactional persistence。 |
 | `packages/release` | E／S／P、generated artifact manifest、release description / pointer 與 lineage 驗證。 |
 
-模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。GitHub research-bound version 2 analysis 必須把 validated Analysis Evidence Bundle 一併交給 Workspace writer。GitHub Remote Ingest 在 accepted evidence 後固定 revision 並建立 round-0 research state；Agent 先判斷 material questions 與 selected paths，Engine 再於同一 revision 驗證並擷取第一輪 evidence。第一輪 bundle 形成後，Agent 可提交 version 2 analysis，或使用剩餘的一輪 budget 做第二次 digest-bound expansion。Threads 沒有 research bundle contract，因此其 Remote Ingest 與 provider-specific direct CLI 維持 accepted-source version 1。
+模組透過明確資料契約連接：ingestion 不直接寫 Card；analysis 不自行擷取外部來源或操作 Workspace filesystem；Workspace writer 不自行推論來源內容。GitHub research-bound version 2 analysis 必須把 validated Analysis Evidence Bundle 一併交給 Workspace writer。GitHub Remote Ingest 在 accepted evidence 後固定 revision 並建立 round-0 research state；Agent 先判斷 material questions 與 selected paths，Engine 再於同一 revision 驗證並擷取第一輪 evidence。第一輪 bundle 形成後，Agent 可選擇使用剩餘的一輪 budget 做第二次 digest-bound expansion；當本輪證據固定並準備分析時，Agent 重新閱讀 accepted evidence 與 final bundle，先形成整體理解，再建立 version 2 analysis。Threads 沒有 research bundle contract，因此其 Remote Ingest 與 provider-specific direct CLI 維持 accepted-source version 1，但同樣在產生分析前重新閱讀最終 accepted evidence。
 
 ## 目前資料流
 
@@ -26,6 +26,7 @@ source URL
 → provider-specific resolution / canonical identity
 → provider-specific accepted evidence
 → optional provider-specific analysis evidence expansion
+→ final evidence reread + Agent knowledge synthesis
 → evidence-bound analysis result
 → identity / canonical URL create-or-update resolution
 → ownership-safe Card candidate
