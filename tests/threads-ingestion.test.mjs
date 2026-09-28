@@ -93,7 +93,7 @@ function analysisTemplate(evidence, overrides = {}) {
 
 async function tempWorkspace() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'knowledge-card-threads-'));
-  await fs.cp(path.resolve('examples/synthetic-workspace'), root, { recursive: true });
+  await fs.cp(path.resolve('tests/fixtures/synthetic-workspace'), root, { recursive: true });
   return root;
 }
 

@@ -42,8 +42,8 @@ function blob(text) {
 }
 
 async function fixture() {
-  const taxonomyText = await fs.readFile(new URL('../examples/synthetic-workspace/config/taxonomy.yaml', import.meta.url), 'utf8');
-  const firstText = await fs.readFile(new URL('../examples/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md', import.meta.url), 'utf8');
+  const taxonomyText = await fs.readFile(new URL('../tests/fixtures/synthetic-workspace/config/taxonomy.yaml', import.meta.url), 'utf8');
+  const firstText = await fs.readFile(new URL('../tests/fixtures/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md', import.meta.url), 'utf8');
   const secondText = firstText
     .replaceAll('synthetic-example-project', 'synthetic-second-project')
     .replaceAll('Synthetic Example Project', 'Synthetic Second Project')

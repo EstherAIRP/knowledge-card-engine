@@ -31,8 +31,8 @@ function findCookie(response, name) {
 }
 
 async function fixtureTexts() {
-  const taxonomy = await fs.readFile(new URL('../examples/synthetic-workspace/config/taxonomy.yaml', import.meta.url), 'utf8');
-  const first = await fs.readFile(new URL('../examples/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md', import.meta.url), 'utf8');
+  const taxonomy = await fs.readFile(new URL('../tests/fixtures/synthetic-workspace/config/taxonomy.yaml', import.meta.url), 'utf8');
+  const first = await fs.readFile(new URL('../tests/fixtures/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md', import.meta.url), 'utf8');
   const second = first
     .replaceAll('synthetic-example-project', 'synthetic-second-project')
     .replaceAll('Synthetic Example Project', 'Synthetic Second Project')
