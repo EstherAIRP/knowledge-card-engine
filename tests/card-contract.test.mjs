@@ -15,7 +15,7 @@ import {
   validateTaxonomy
 } from '../packages/core/src/index.js';
 
-const fixtureRoot = path.resolve('examples/synthetic-workspace');
+const fixtureRoot = path.resolve('tests/fixtures/synthetic-workspace');
 const taxonomyPath = path.join(fixtureRoot, 'config/taxonomy.yaml');
 const cardsRoot = path.join(fixtureRoot, 'content/knowledge');
 

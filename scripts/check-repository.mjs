@@ -47,14 +47,14 @@ const requiredFiles = [
   'scripts/release-workspace.mjs',
   'scripts/documentation-policy.mjs',
   'tests/documentation-policy.test.mjs',
-  'examples/synthetic-workspace/fixture.json',
-  'examples/synthetic-workspace/workspace.yaml',
-  'examples/synthetic-workspace/engine.lock.json',
-  'examples/synthetic-workspace/config/taxonomy.yaml',
-  'examples/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md',
-  'examples/synthetic-workspace/state/sources/github/example--synthetic-example.json',
-  ...['profile', 'projects', 'config', 'state', 'data', 'releases'].map((name) => 'examples/synthetic-workspace/' + name + '/README.md'),
-  'examples/synthetic-workspace/content/knowledge/README.md',
+  'tests/fixtures/synthetic-workspace/fixture.json',
+  'tests/fixtures/synthetic-workspace/workspace.yaml',
+  'tests/fixtures/synthetic-workspace/engine.lock.json',
+  'tests/fixtures/synthetic-workspace/config/taxonomy.yaml',
+  'tests/fixtures/synthetic-workspace/content/knowledge/2026/synthetic-example-project.md',
+  'tests/fixtures/synthetic-workspace/state/sources/github/example--synthetic-example.json',
+  'tests/fixtures/synthetic-workspace/README.md',
+  ...['profile', 'projects', 'data', 'releases'].map((name) => 'tests/fixtures/synthetic-workspace/' + name + '/README.md'),
   ...['web', 'server'].flatMap((name) => ['apps/' + name + '/package.json', 'apps/' + name + '/src/index.js']),
   'apps/web/src/graph-runtime.js',
   ...['index', 'tokens', 'base', 'layout', 'shared', 'radar', 'detail', 'search', 'graph'].map((name) => 'apps/web/src/styles/' + name + '.js'),
@@ -108,8 +108,8 @@ const documentationFiles = [
   'prompts/README.md',
   'prompts/RUNTIME.md',
   'defaults/README.md',
-  ...['README.md', 'config/README.md', 'content/knowledge/README.md', 'profile/README.md', 'projects/README.md', 'state/README.md', 'data/README.md', 'releases/README.md']
-    .map((relative) => 'examples/synthetic-workspace/' + relative)
+  ...['README.md', 'profile/README.md', 'projects/README.md', 'data/README.md', 'releases/README.md']
+    .map((relative) => 'tests/fixtures/synthetic-workspace/' + relative)
 ];
 
 const errors = [];
@@ -148,7 +148,7 @@ if (releaseWorkflowText.includes('git diff --name-only')) {
 }
 
 try {
-  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'examples/synthetic-workspace/fixture.json'), 'utf8'));
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/synthetic-workspace/fixture.json'), 'utf8'));
   if (fixture.synthetic !== true) errors.push('Synthetic workspace fixture must declare synthetic=true.');
   if (fixture.contains_private_data !== false) errors.push('Synthetic workspace fixture must declare contains_private_data=false.');
 } catch (error) {
@@ -156,7 +156,7 @@ try {
 }
 
 try {
-  const workspace = await loadWorkspace(path.join(root, 'examples/synthetic-workspace'));
+  const workspace = await loadWorkspace(path.join(root, 'tests/fixtures/synthetic-workspace'));
   const taxonomy = await loadTaxonomyFile(path.join(workspace.paths.config, 'taxonomy.yaml'));
   const cards = await loadCardDocuments(workspace.paths.knowledge);
   const issues = await validateCardCollection(cards, taxonomy);

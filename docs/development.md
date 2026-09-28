@@ -19,6 +19,8 @@ npm run validate
 1. `npm run check`：必要檔案、合成 fixture、current-only 文件政策與 repository-level contract check。
 2. `npm test`：Node tests，涵蓋 Workspace、Card、Taxonomy、analysis / research contract、GitHub accepted / research evidence / multi-round budget、Remote Ingest synthetic research E2E、research provenance persistence / ownership / state binding、Threads ingestion、source-state atomicity、private login / authorization、Web UI layout contract，以及 generated-data / release / release-reader 一致性案例。
 
+共用完整 Workspace 測試資料位於 `tests/fixtures/synthetic-workspace/`。它只保留目前契約測試需要的合成資料，不作為使用者範例或 Workspace 範本；必須存在但沒有內容的 Workspace 目錄，以該 fixture 內的 README 保留在 Git。
+
 Web UI layout contract 可單獨執行：
 
 ```bash

@@ -100,4 +100,4 @@ npm run site:serve
 
 ## 公私資料邊界
 
-公開測試、範例與 fixture 只能使用明確標示的合成資料。`examples/synthetic-workspace/` 用來驗證 Workspace、Taxonomy、Card、source-state 與 research-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。
+公開測試與 fixture 只能使用明確標示的合成資料。`tests/fixtures/synthetic-workspace/` 是共用 Workspace 契約測試 fixture，不是使用者範例或 Workspace 範本；用來驗證 Workspace、Taxonomy、Card、source-state 與 research-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。

@@ -10,7 +10,7 @@ import {
   validateWorkspaceConfig
 } from '../packages/workspace/src/index.js';
 
-const fixtureRoot = path.resolve('examples/synthetic-workspace');
+const fixtureRoot = path.resolve('tests/fixtures/synthetic-workspace');
 
 async function tempFixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'kc-workspace-'));
