@@ -10,7 +10,7 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 2. 工作區 `config/taxonomy.yaml`：定義實際受控詞彙。
 3. `packages/core` 驗證器：驗證正文順序、分類體系成員資格、所有權規則、日期順序、集合唯一性與穩定路徑。
 
-分類體系本身由 [`schema/taxonomy.schema.json`](../schema/taxonomy.schema.json) 驗證。JSON Schema 不重複保存工作區的受控詞彙值；卡片通過結構驗證後，Core 驗證器再依分類體系檢查各欄位是否使用合法值。
+分類體系本身由 [`schema/taxonomy.schema.json`](../schema/taxonomy.schema.json) 驗證。JSON Schema 不重複保存工作區的受控詞彙值；卡片通過結構驗證後，`packages/core` 驗證器再依分類體系檢查各欄位是否使用合法值。
 
 ## 前置中繼資料
 
@@ -97,7 +97,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 - 重要術語首次需要中英對照時，可使用「中文（English）」格式，後續優先使用中文。
 - 直接引用、程式碼與來源證據保持原文，不為符合卡片敘述語言而改寫證據。
 
-語言整理只適用於 AI 可更新內容，不得因此重寫任何 `*.user` 覆寫或完整 `## 使用者備註`。目前 Core 與 Schema 驗證器會驗證卡片的資料形狀、正文結構、分類體系、所有權、日期、唯一性與穩定路徑，**不會使用英文比例或文體分類器來機器判定語言自然度**；語言規則屬於分析與 Agent 的輸出契約，違反時應視為分析品質缺陷。
+語言整理只適用於 AI 可更新內容，不得因此重寫任何 `*.user` 覆寫或完整 `## 使用者備註`。目前 `packages/core` 與 Schema 驗證器會驗證卡片的資料形狀、正文結構、分類體系、所有權、日期、唯一性與穩定路徑，**不會使用英文比例或文體分類器來機器判定語言自然度**；語言規則屬於分析與 Agent 的輸出契約，違反時應視為分析品質缺陷。
 
 ## 正文契約
 
@@ -120,7 +120,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 
 前 10 段屬於分析結果中的 AI 內容；「使用者備註」在一般重新分析時必須逐字保留。寫入器可在「更新紀錄」追加建立紀錄或實質分析更新紀錄。
 
-前 10 段是最終呈現結構，不是研究計畫或閱讀來源的順序。Agent 應先依 [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) 讀完本輪最終證據並形成整體理解；**完成理解後才讀 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)**，不得先用 section 或模板分類來源，也不得把 research question、structured findings 或 README 章節逐項改寫成正文。
+前 10 段是最終呈現結構，不是研究計畫或閱讀來源的順序。Agent 應先依 [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) 讀完本輪最終證據並形成整體理解；**完成理解後才讀 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)**，不得先按正文段落或模板分類來源，也不得把研究問題、結構化研究結果或 README 章節逐項改寫成正文。
 
 目前寫作樣式要求：
 
@@ -131,7 +131,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 - 「限制與風險」使用條列詳述真正影響採用、操作、可靠性、成本、安全、授權或成熟度判斷的問題。
 - 其他段落的敘述節奏與具體寫法以 `CARD_STYLE.md` 為準。
 
-這些是新分析產生時必須遵守的寫作樣式，不改變前置中繼資料 Schema，也不新增正文 section。現有 Core 驗證器仍負責 H1、頂層 section 順序、分類、所有權、日期、唯一性與穩定路徑；它目前不以 Markdown 子標題數量或條列型態拒絕既有卡片。
+這些是新分析產生時必須遵守的寫作樣式，不改變前置中繼資料 Schema，也不新增正文段落。現有 `packages/core` 驗證器仍負責 H1、頂層段落順序、分類、所有權、日期、唯一性與穩定路徑；它目前不以 Markdown 子標題數量或條列型態拒絕既有卡片。
 
 各段不要求固定字數。來源簡單時可保持簡潔，證據不足時應誠實表達未知，不得為了湊滿內容而臆造資訊；只有 `CARD_STYLE.md` 明確指定的主題數與呈現方式屬目前寫作樣式。
 
