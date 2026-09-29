@@ -458,8 +458,8 @@ state/ingestion/analysis.json
     "state/ingestion/research-evidence.json"
   ],
   "output_path": "state/ingestion/analysis.json",
-  "evidence_digest": "<accepted evidence digest>",
-  "analysis_evidence_digest": "<final GitHub bundle digest or null>"
+  "evidence_digest": "<已接受證據摘要值>",
+  "analysis_evidence_digest": "<最終 GitHub 證據包摘要值或 null>"
 }
 ~~~
 
