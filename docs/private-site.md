@@ -151,7 +151,7 @@ Engine 另提供 `createRestSessionStore`，使用 Redis-compatible REST command
 - `limit`：1–100，預設 50
 - `cursor`：由伺服器產生、綁定倉庫版本的 cursor
 
-只回傳 Card 摘要，不回正文。摘要目前包含 stable id、title、summary、canonical URL、source type、effective resource kind／navigation／tags／relevance／actions／status，以及建立、更新與最近檢查日期。這些欄位供已授權的 Radar 首頁呈現、排序與瀏覽器端篩選；正文仍只由 Card Detail API 提供。
+只回傳 Card 摘要，不回正文。摘要目前包含 stable id、title、summary、標準網址、source type、effective resource kind／navigation／tags／relevance／actions／status，以及建立、更新與最近檢查日期。這些欄位供已授權的 Radar 首頁呈現、排序與瀏覽器端篩選；正文仍只由 Card Detail API 提供。
 
 Cursor 綁定 Workspace commit SHA；如果下一頁請求時設定的 ref 已移到另一個版本，回 409 `DATA_VERSION_CHANGED`，要求從第一頁重新讀取，避免跨版本混頁。
 
