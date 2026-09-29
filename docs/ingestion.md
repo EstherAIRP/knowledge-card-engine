@@ -33,10 +33,10 @@
 
 以下形式都解析到 GitHub 倉庫根網址：
 
-- `github.com/owner/repo`
-- `www.github.com/owner/repo/`
-- `github.com/owner/repo.git`
-- 帶 query／fragment 的 GitHub 倉庫 URL
+- `github.com/owner／repo`
+- `www.github.com/owner／repo/`
+- `github.com/owner／repo.git`
+- 帶查詢參數／片段的 GitHub 倉庫 URL
 - `/tree/...`、`/blob/...` 等 GitHub 倉庫子路徑
 
 正規化後產生：
@@ -47,7 +47,7 @@
 - 來源識別：`github:{owner-lower}/{repo-lower}`
 - 建議 ID：`github-{owner-lower}-{repo-lower}`
 
-已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫 owner/repo。
+已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫 owner／repo。
 
 ### Threads
 
@@ -57,7 +57,7 @@
 - `/share/<token>`
 - `/t/<token>`
 
-直接貼文 URL 可立即得到該貼文的 shortcode 識別；`share`／`t` token 只是暫時導向識別，**不得**作為正式 `source.identity`。來源供應者必須先解析到具體 Threads 貼文，再依結構證據重建其根貼文；正式來源識別只使用：
+直接貼文 URL 可立即取得該貼文的 shortcode 識別；`share`／`t` token 只是暫時導向識別，**不得**作為正式 `source.identity`。來源供應者必須先解析到具體 Threads 貼文，再依結構證據重建其根貼文；正式來源識別只使用：
 
 ```text
 threads:{root_shortcode}
@@ -130,7 +130,7 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Engine 產生可�
 - README、架構／設計文件。
 - 相依套件／建置 manifest。
 - 設定、進入點、API／路由。
-- 資料模型／schema／migration。
+- 資料模型／Schema／遷移。
 - 授權／安全。
 - 背景工作／工作流程。
 - 部署／容器。
@@ -152,7 +152,7 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Engine 產生可�
 | 單一項目 | 163840 bytes |
 | 選定證據包總量（累計） | 786432 bytes |
 
-呼叫端只能把上限調低，不能透過 options 提高 Engine 的硬性上限。
+呼叫端只能把上限調低，不能透過選項提高 Engine 的硬性上限。
 
 探索程序若因上限或 GitHub 回應被截斷而未完整走完，會把 `exhaustive` 設為 `false`，並保存確定性的 `stop_reasons`；目前可能值：
 
@@ -247,11 +247,11 @@ Threads input URL
 - `provider: threads`、`accepted: true`、`source_type: article`。
 - 根貼文標準網址 與 `threads:{root_shortcode}` 完全一致。
 - `requested_url` 與 `resolved_input_url` 可追溯本次輸入與實際貼文。
-- `resolved_input_url` / `input_shortcode` 指向的實際輸入貼文必須在 accepted `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接 post request 不得解析成另一個 shortcode。
+- `resolved_input_url`／`input_shortcode` 指向的實際輸入貼文必須在已接受的 `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接貼文請求不得解析成另一個 shortcode。
 - `thread.complete: true` 且 `thread.verification: structural`。
 - 串文狀態 只能是 `SINGLE_POST` 或 `COMPLETE_THREAD`。
 - `thread.total`、`detected_parts` 與 `parts.length` 一致。
-- 每個 part 都有可驗證 shortcode、標準網址、作者與固定順序。
+- 每個 part 都有可驗證的 shortcode、標準網址、作者與固定順序。
 - 所有 part 與根貼文為同一作者。
 - `combined_text` 必須等於有序 parts 的文字串接。
 - 來源至少包含文字或媒體等可分析內容。
@@ -273,24 +273,24 @@ Threads input URL
 
 一般續篇重建 以有序 `selected_shortcodes` 作為唯一具有權威性的選取結果；`candidate_labels` 可省略，也不參與正文組裝或 續篇接受判定。只有判定 `root_only: true` 時，才必須提供完整 `candidate_labels`，逐一把每個候選高信心標成 `followup` 或 `unrelated`。
 
-Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；選擇 continuation 時，選定 shortcode 必須來自當前 evidence、不可重複、必須維持時間順序，第一個 selected candidate 的 中繼資料分數 必須達最低門檻；判定 `root_only` 時，每個候選都必須明確排除，不能有 續篇或不確定候選項目。
+Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；選擇續篇時，選定 shortcode 必須來自目前證據、不得重複，且必須維持時間順序；第一個選定候選項目的中繼資料分數必須達最低門檻。判定 `root_only` 時，每個候選都必須明確排除，不能存在續篇或不確定候選項目。
 
 語意復原成功後，已接受證據使用：
 
 - `thread.verification: llm_assisted`
 - `INFERRED_THREAD_HIGH_CONFIDENCE` 或 `INFERRED_SINGLE_POST_HIGH_CONFIDENCE`
 - `extraction.inferred: true`
-- `thread.recovery` 保存 confidence、選取 shortcode、candidate labels 與 排序器追溯資訊
+- `thread.recovery` 保存 confidence、選取 shortcode、`candidate_labels` 與排序器追溯資訊
 
 這個能力只能處理結構資料「不足以辨識 continuation」的缺口，不能覆蓋更強且互相衝突的結構證據，也不能把已知缺篇或 有歧義的關係圖 推定成完整。
 
 ### 與摘要值綁定的語意交接
 
-Remote Ingest 需要語意判定時，Engine 先輸出 `semantic-handoff.json`，其中包含公開根貼文／候選證據及其 SHA-256 摘要值。Agent 回填的 `semantic-judgement.json` 必須帶相同摘要值。
+Remote Ingest 需要語意判定時，Knowledge Card Engine 先輸出 `semantic-handoff.json`，其中包含公開根貼文／候選證據及其 SHA-256 摘要值。Agent 回填的 `semantic-judgement.json` 必須帶相同摘要值。
 
 第二次執行不直接信任先前快照；Engine 會重新取得來源、重新建立候選並重新計算摘要值。若來源或候選證據已改變，回報 `THREADS_CONTINUATION_HANDOFF_EVIDENCE_MISMATCH` 並停止，不得把舊判定套到新來源。
 
-Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與各 part 的雜湊／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 的易變 query／fragment 不參與證據摘要值的穩定內容識別。
+Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與各 part 的雜湊值／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 的易變 query／fragment 不參與證據摘要值的穩定內容識別。
 
 ## 驗證失敗即拒絕的錯誤
 
@@ -301,13 +301,13 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 | `SOURCE_URL_INVALID` | URL 不是合法支援格式。 |
 | `SOURCE_PROVIDER_UNSUPPORTED` | 請求／證據的來源供應者 尚未支援。 |
 | `INGESTION_EXECUTION_FAILED` | 網路、速率限制、外部服務或執行環境使驗證無法完成。 |
-| `SOURCE_NOT_FOUND` | Provider 明確證明來源不存在；目前主要由 GitHub 404 使用。 |
+| `SOURCE_NOT_FOUND` | 來源供應者明確證明來源不存在；目前主要由 GitHub 404 使用。 |
 | `SOURCE_ACCESS_DENIED` | Provider 明確拒絕授權。 |
 | `SOURCE_FETCH_FAILED` | 其他可辨識的來源 HTTP 失敗。 |
 | `SOURCE_INCOMPLETE` | 必要證據、來源完整性或 digest 驗證未通過。 |
 | `SOURCE_IDENTITY_MISMATCH` | 請求、解析、標準 或來源內容 identity 不一致。 |
 | `SOURCE_CAPTURE_TIME_INVALID` | 擷取時間 無效。 |
-| `SOURCE_RESEARCH_STALE` | GitHub 已接受 README 已與 研究版本 的 README blob 不一致。 |
+| `SOURCE_RESEARCH_STALE` | GitHub 已接受 README 與固定研究版本的 README blob 已不一致。 |
 | `GITHUB_RESEARCH_LIMIT_INVALID` | 呼叫端提供的 研究上限 無效或試圖使用未定義 budget。 |
 | `GITHUB_RESEARCH_DISCOVERY_INVALID` | GitHub 研究探索 結構、候選項目或受限中繼資料 無效。 |
 | `GITHUB_RESEARCH_PATH_INVALID` | 研究路徑不是安全的倉庫相對路徑。 |
@@ -328,14 +328,14 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 
 正式分析結果必須符合 [分析與研究契約](./analysis.md)：
 
-- 版本 1 綁定 `source_identity + evidence_digest`；來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用版本 1；prepare 階段必須先建立非空、固定倉庫版本且已驗證的分析證據包，之後才能提交 版本 2。
+- 版本 1 綁定 `source_identity + evidence_digest`；來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用版本 1；準備階段必須先建立非空、固定倉庫版本且已驗證的分析證據包，之後才能提交版本 2。
 - GitHub 版本 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供 已驗證分析證據包與結構化研究報告。
-- 兩種版本都提供 Card 契約要求的 AI 管理中繼資料 與 10 個正文段落；summary 不超過 600 字元，相關性分數 為 1–5 整數。
+- 兩種版本都提供 Card 契約要求的 AI 管理中繼資料與 10 個正文段落；`summary` 不超過 600 字元，相關性分數為 1–5 整數。
 - Threads 目前沒有 研究證據包契約，因此不得使用 版本 2。
 
 由舊來源證據或舊研究證據包產生的分析不能套用到新的摘要值；綁定不一致時一律拒絕，且不得寫入 Card、已接受來源狀態或研究狀態。
 
-當本輪證據已固定並準備產生最終分析時，Agent 必須先依 [Knowledge Card 知識編輯提示契約](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀目前有效的來源證據。GitHub 版本 2 另須重新閱讀目前 final bundle 的 selected source text；若又完成一輪 expansion，舊整理與舊 analysis 都不得沿用。Threads 則重新閱讀最終 已接受串文，不以 semantic judgement 草稿、搜尋摘要或先前候選代替來源。
+當本輪證據已固定並準備產生最終分析時，Agent 必須先依 [Knowledge Card 知識編輯提示契約](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀目前有效的來源證據。GitHub 版本 2 另須重新閱讀目前最終證據包中的已選來源原文；若又完成一輪擴充，舊整理與舊分析都不得沿用。Threads 則重新閱讀最終已接受串文，不以語意判定草稿、搜尋摘要或先前候選代替來源。
 
 這個重新閱讀步驟不建立新的來源收錄狀態；它只規定 Agent 從已驗證交接證據產生 `analysis.json` 前的處理順序。
 
@@ -348,8 +348,8 @@ Workspace 寫入器載入完整 Card 集合後依序解析：
 
 規則：
 
-- identity 或 標準網址 有多張 Card：fail closed。
-- identity 與 標準網址 分別指向不同 Card：fail closed。
+- 來源識別或標準網址對應多張 Card：一律拒絕。
+- 來源識別與標準網址分別指向不同 Card：一律拒絕。
 - 任一方式解析到同一張既有 Card：`update`。
 - 兩者都沒有既有 Card：`create`，使用來源供應者建議的 stable id。
 
@@ -367,7 +367,7 @@ Workspace 寫入器載入完整 Card 集合後依序解析：
 4. 解析新建／更新目標。
 5. 建立合併後 Card 候選。
 6. 更新時比較使用者／穩定所有狀態。
-7. 對候選的完整集合 執行 Card / Taxonomy / uniqueness 驗證。
+7. 對候選的完整集合執行 Card／分類體系／唯一性驗證。
 8. 建立並驗證對應 provider 的 已接受來源狀態。
 9. GitHub 版本 2 建立並驗證 精簡研究追溯狀態。
 
@@ -381,7 +381,7 @@ GitHub：
 state/sources/github/{owner-lower}--{repo-lower}.json
 ```
 
-保存倉庫中繼資料摘要、README SHA／內容 SHA-256／位元組數、evidence digest 與 Card 對應，不保存 README 全文。
+保存倉庫中繼資料摘要、README SHA／內容 SHA-256／位元組數、`evidence_digest` 與 Card 對應，不保存 README 全文。
 
 Threads：
 
@@ -389,7 +389,7 @@ Threads：
 state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 ```
 
-保存根來源識別／標準網址、author、串文狀態 / total / verification、每個 part 的 shortcode / canonical / reply-root 結構、文字位元組數 與文字／媒體／引用 SHA-256，以及 Card 對應；不保存 Threads 原文。
+保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 part 的 shortcode／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
 
 `npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於 設定的知識根目錄，且 狀態中的 Card id／來源識別／標準網址 與實際 Card 相同。
 
@@ -403,11 +403,11 @@ state/research/github/{owner-lower}--{repo-lower}.json
 
 此狀態只保存來源／研究摘要值、倉庫版本、證據項目的 path／kind／blob SHA／內容雜湊／位元組數、覆蓋狀態、分析時間與 Card 對應；不保存證據 `text`、結構化研究結果、`unknowns` 或憑證。
 
-`npm run research-state:validate` 會驗證 研究狀態 自身結構、固定路徑，並交叉確認目前 已接受來源狀態 的 evidence digest / captured time / Card 對應，以及實際 Card 的 id / identity / 標準網址。GitHub 關鍵覆蓋維度 不可在持久化狀態 中改成 `not_applicable`。
+`npm run research-state:validate` 會驗證研究狀態本身的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id／來源識別／標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。
 
 ## Remote Ingest 交接
 
-當互動環境不能安全執行目前 Knowledge Card Workspace 鎖定的 Engine 時，Workspace 可使用 可重用的 `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套寫入器；最終套用仍走 `applyAcceptedSourceAnalysis(...)`。
+當互動環境不能安全執行目前 Knowledge Card Workspace 鎖定的 Engine 時，Workspace 可使用可重用的 `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套寫入器；最終套用仍走 `applyAcceptedSourceAnalysis(...)`。
 
 每個任務使用獨立 `chore/ingest-*` Workspace 分支。交接目錄只允許下列暫存檔：
 
@@ -426,7 +426,7 @@ state/ingestion/analysis.json
 - `semantic-handoff.json` / `semantic-judgement.json` 只可出現在 Threads。
 - `research-plan.json` / `research-evidence.json` 只可出現在 GitHub。
 - `research-plan.json` 與 `analysis.json` 不得同時存在；一次執行 只能表示「再研究一輪」或「提交最終分析」。
-- 上述交接檔全部是分支內暫存資料，正式 apply 成功後必須移除；不得進入 Workspace `main`。
+- 上述交接檔全部是分支內暫存資料，正式套用成功後必須移除；不得進入 Workspace `main`。
 
 `request.json` 必須且只能包含：
 
@@ -434,7 +434,7 @@ state/ingestion/analysis.json
 {
   "schema_version": 1,
   "provider": "github",
-  "source_url": "https://github.com/owner/repo"
+  "source_url": "https://github.com/owner／repo"
 }
 ```
 
@@ -471,11 +471,11 @@ state/ingestion/analysis.json
 
 GitHub 請求第一次執行時，執行器：
 
-1. 取得並驗證 accepted source evidence，寫入 `evidence.json`。
-2. 固定 default-branch repository revision，建立 受限候選探索。
+1. 取得並驗證已接受來源證據，寫入 `evidence.json`。
+2. 固定預設分支的倉庫版本，建立受限候選探索。
 3. 以 `createGitHubResearchProgress(...)` 建立 `completed_rounds: 0`、尚未擷取任何 研究項目 的 progress。
 4. 把 discovery、第 0 輪進度 與 `bundle: null` 寫入 `research-evidence.json`。
-5. 回報 `waiting_for: research-plan`；此階段不得直接提交 GitHub 版本 2 analysis。
+5. 回報 `waiting_for: research-plan`；此階段不得直接提交 GitHub 版本 2 分析。
 
 `research-evidence.json` 是執行器管理的暫存狀態，第一次 準備階段的外層形狀為：
 
@@ -507,34 +507,34 @@ GitHub 請求第一次執行時，執行器：
 }
 ```
 
-第一份 `plan` 必須符合正式研究計畫契約，且不得帶 `prior_analysis_evidence_digest`。每個 `selected_paths` 都必須符合至少一個 `needs_evidence` 問題 的 evidence kind 或 精確路徑 hint。
+第一份 `plan` 必須符合正式研究計畫契約，且不得帶 `prior_analysis_evidence_digest`。每個 `selected_paths` 都必須符合至少一個 `needs_evidence` 問題的證據類型或精確路徑提示。
 
 執行器讀到 `research-plan.json` 後：
 
 1. 重新驗證 已接受證據、discovery 與 第 0 輪進度。
 2. 套用輪次、累計項目數與累計位元組上限。
-3. 對每個 selected path 做安全倉庫相對路徑驗證。
-4. 若 path 已存在 discovery candidate，使用其 固定版本的 blob 中繼資料；若不在 候選目錄，則以同一 `repository_revision` 重新解析 精確路徑，確認它是存在於該 revision 的受支援第一手文字來源。
-5. 拒絕 Engine 排除目錄、任意 URL／branch／Repository、二進位／非 UTF-8、超過單檔或累計上限 的內容。
-6. 依 固定 blob SHA 擷取第一輪 evidence，建立 累積分析證據包。
+3. 對每個選定路徑做安全的倉庫相對路徑驗證。
+4. 若路徑已存在於探索候選集合，使用其固定版本 blob 中繼資料；若不在候選目錄，則以同一 `repository_revision` 重新解析精確路徑，確認它是存在於該倉庫版本的受支援第一手文字來源。
+5. 拒絕 Engine 排除目錄、任意 URL／分支／其他倉庫、二進位／非 UTF-8，以及超過單檔或累計上限的內容。
+6. 依固定 blob SHA 擷取第一輪證據，建立累積分析證據包。
 7. 更新 `research-evidence.json` 為 `completed_rounds: 1`、非空證據包，並移除已消費的 `research-plan.json`。
 
-第一輪證據包 形成後，Agent 有兩個合法下一步：
+第一輪證據包形成後，Agent 有兩個合法下一步：
 
 - 證據已足夠：重新閱讀目前 `evidence.json` 與 最終 `research-evidence.json` 證據包，完成知識整合後，再提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
-- 仍缺 關鍵證據：提交第二份 `research-plan.json` 做第二輪 expansion；新的 bundle 形成後，再以新證據重新閱讀與整合。
+- 仍缺關鍵證據：提交第二份 `research-plan.json` 做第二輪擴充；新的證據包形成後，再以新證據重新閱讀與整合。
 
-第二份 research plan 必須以：
+第二份研究計畫必須以：
 
 ```text
 prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
 ```
 
-綁定目前 cumulative evidence。Runner 會再次驗證 先前摘要值、剩餘 round / 項目數／位元組上限、重複路徑 與 研究計畫相關性；第二輪 selected path 同樣可以是 discovery candidate 或 候選目錄 之外、但能在同一 固定版本 被驗證的安全文字 primary source。
+綁定目前累積證據。執行器會再次驗證先前摘要值、剩餘輪次／項目數／位元組上限、重複路徑與研究計畫相關性；第二輪選定路徑同樣可以是探索候選項目，或候選目錄之外但能在同一固定版本驗證的安全第一手文字來源。
 
 目前最大 `max_expansion_rounds` 為 2，因此最多有兩輪 Agent 指定的證據擷取。第二輪後即使仍有 關鍵未知事項，也只能進入分析，以 `unavailable` / `budget_exhausted` 表達缺口。
 
-Bundle 內的 已選第一手來源原文 只允許存在於專用來源收錄分支 的暫存交接；正式寫入器 只保存 精簡 `state/research/**` 追溯資訊。GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。Runner 重新驗證整份 analysis / source / research binding，再把 bundle 一併交給正式寫入器。成功後留下正式 Card、已接受來源狀態 與 精簡研究追溯狀態，並清除全部 來源收錄交接。
+證據包內的已選第一手來源原文只允許存在於專用來源收錄分支的暫存交接檔；正式寫入器只保存精簡的 `state/research/**` 追溯資訊。GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。執行器會重新驗證完整的分析／來源／研究綁定，再把證據包一併交給正式寫入器。成功後留下正式 Card、已接受來源狀態與精簡研究追溯狀態，並清除全部來源收錄交接檔。
 
 ### Threads 語意交接
 
@@ -543,19 +543,19 @@ Threads 保留既有 依來源供應者分流的流程：
 1. 執行器先嘗試嚴格結構重建。
 2. 只有 符合條件的續篇不確定性 才寫入 `semantic-handoff.json`。
 3. Agent 回填 與摘要值綁定的 `semantic-judgement.json`。
-4. 執行器重新擷取即時來源、重建候選並確認 digest 未變，再由 確定性門檻 決定是否形成 accepted `evidence.json`。
+4. 執行器重新擷取即時來源、重建候選並確認摘要值未變，再由確定性門檻決定是否形成已接受的 `evidence.json`。
 5. 已接受證據 後等待 `analysis_version: 1` 的 `analysis.json`，再由正式寫入器 寫入 Card + 已接受來源狀態。
 
 Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究品質規則被迫補寫來源沒有的技術細節。
 
 ### 執行器持久化守門
 
-可重用工作流程 只在 handoff 實際產生 Repository 變更時提交；`waiting-*` stage 不建立空提交。Agent 提交本身也受 版本鏈結守門：初始提交只能改 `request.json`；後續 judgement、research plan 或 analysis 提交只能改當前單一 input 檔，而且必須直接接在上一次執行ner-managed handoff commit 之後。這可阻止在另一個 commit 先竄改 執行器管理的已接受／研究證據，再把舊或偽造狀態 帶入下一輪。
+可重用工作流程只在交接實際產生倉庫變更時提交；`waiting-*` 階段不建立空提交。Agent 提交本身也受版本鏈結守門：初始提交只能改 `request.json`；後續判定、研究計畫或分析提交只能改目前單一輸入檔，而且必須直接接在上一個由執行器管理的交接提交之後。這可防止在其他提交先竄改執行器管理的已接受／研究證據，再把舊或偽造狀態帶入下一輪。
 
 每次持久化都必須：
 
 - 只允許 result 回報的 精確的 `allowed_changed_paths`。
-- 推送前確認遠端 ingestion branch SHA 仍等於 執行開始時的 source SHA。
+- 推送前確認遠端來源收錄分支 SHA 仍等於 執行開始時的來源 SHA。
 - 拒絕任何未列入 交接契約 的檔案、任意 輸出路徑 或 shell 指令。
 - 套用後重新驗證 Cards、已接受來源狀態 與 研究追溯狀態。
 
@@ -566,7 +566,7 @@ Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究�
 GitHub：
 
 ```bash
-npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
+npm run ingest:github -- /path/to/workspace https://github.com/owner／repo \
   --analysis-file=analysis.json
 ```
 
@@ -577,7 +577,7 @@ npm run ingest:threads -- /path/to/workspace https://threads.com/share/token \
   --analysis-file=analysis.json
 ```
 
-兩者都可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需重新驗證的 evidence，並可用 `--captured-at=<iso>` 固定 captured time。GitHub 即時擷取需要授權時使用 `GITHUB_TOKEN`；密鑰不得提交。
+兩者都可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需重新驗證的證據，並可用 `--captured-at=<iso>` 固定擷取時間。GitHub 即時擷取需要授權時使用 `GITHUB_TOKEN`；密鑰不得提交。
 
 受控 Remote Ingest 執行器：
 
@@ -585,4 +585,4 @@ npm run ingest:threads -- /path/to/workspace https://threads.com/share/token \
 npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.json
 ```
 
-Analysis JSON 必須已綁定本次 已接受證據；CLI 不會動態載入任意 analyzer 程式。
+分析 JSON 必須已綁定本次已接受證據；CLI 不會動態載入任意分析器程式。
