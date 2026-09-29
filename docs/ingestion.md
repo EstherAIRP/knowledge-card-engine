@@ -351,7 +351,7 @@ Workspace 寫入器載入完整 Card 集合後依序解析：
 - 來源識別或標準網址對應多張 Card：一律拒絕。
 - 來源識別與標準網址分別指向不同 Card：一律拒絕。
 - 任一方式解析到同一張既有 Card：`update`。
-- 兩者都沒有既有 Card：`create`，使用來源供應者建議的 stable id。
+- 兩者都沒有既有 Card：`create`，使用來源供應者建議的穩定 ID。
 
 新建依 Card 契約建立穩定路徑。更新保留原路徑、`id`、`created_at`、所有使用者覆寫與完整「使用者備註」。
 
@@ -368,10 +368,10 @@ Workspace 寫入器載入完整 Card 集合後依序解析：
 5. 建立合併後 Card 候選。
 6. 更新時比較使用者／穩定所有狀態。
 7. 對候選的完整集合執行 Card／分類體系／唯一性驗證。
-8. 建立並驗證對應 provider 的 已接受來源狀態。
-9. GitHub 版本 2 建立並驗證 精簡研究追溯狀態。
+8. 建立並驗證對應來源供應者的已接受來源狀態。
+9. GitHub 版本 2 建立並驗證精簡研究追溯狀態。
 
-全部驗證完成後，寫入器將 Card、已接受來源狀態 與需要的 研究狀態 視為同一檔案交易。任一 檔案替換失敗時會回復已提交項目；驗證失敗時三者都不前進。若同一 GitHub Card 後續成功套用 version 1，既有 研究狀態 會在同一交易移除，避免過期 追溯資訊被誤認為目前 Card 的研究依據。
+全部驗證完成後，寫入器將 Card、已接受來源狀態與需要的研究狀態視為同一檔案交易。任一檔案替換失敗時會回復已提交項目；驗證失敗時三者都不前進。若同一 GitHub Card 後續成功套用版本 1，既有研究狀態會在同一交易移除，避免過期追溯資訊被誤認為目前 Card 的研究依據。
 
 ## 已接受來源狀態
 
@@ -391,7 +391,7 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 
 保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 part 的 shortcode／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
 
-`npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於 設定的知識根目錄，且 狀態中的 Card id／來源識別／標準網址 與實際 Card 相同。
+`npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id／來源識別／標準網址與實際 Card 相同。
 
 ### GitHub 研究追溯狀態
 
@@ -407,7 +407,7 @@ state/research/github/{owner-lower}--{repo-lower}.json
 
 ## Remote Ingest 交接
 
-當互動環境不能安全執行目前 Knowledge Card Workspace 鎖定的 Engine 時，Workspace 可使用可重用的 `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套寫入器；最終套用仍走 `applyAcceptedSourceAnalysis(...)`。
+當互動環境不能安全執行目前 Knowledge Card Workspace 鎖定的 Knowledge Card Engine 時，Workspace 可使用可重用的 `.github/workflows/ingest-workspace.yml`。Remote Ingest 不建立第二套寫入器；最終套用仍走 `applyAcceptedSourceAnalysis(...)`。
 
 每個任務使用獨立 `chore/ingest-*` Workspace 分支。交接目錄只允許下列暫存檔：
 
@@ -423,9 +423,9 @@ state/ingestion/analysis.json
 
 來源供應者邊界固定：
 
-- `semantic-handoff.json` / `semantic-judgement.json` 只可出現在 Threads。
-- `research-plan.json` / `research-evidence.json` 只可出現在 GitHub。
-- `research-plan.json` 與 `analysis.json` 不得同時存在；一次執行 只能表示「再研究一輪」或「提交最終分析」。
+- `semantic-handoff.json`／`semantic-judgement.json` 只可出現在 Threads。
+- `research-plan.json`／`research-evidence.json` 只可出現在 GitHub。
+- `research-plan.json` 與 `analysis.json` 不得同時存在；一次執行只能表示「再研究一輪」或「提交最終分析」。
 - 上述交接檔全部是分支內暫存資料，正式套用成功後必須移除；不得進入 Workspace `main`。
 
 `request.json` 必須且只能包含：
@@ -434,7 +434,7 @@ state/ingestion/analysis.json
 {
   "schema_version": 1,
   "provider": "github",
-  "source_url": "https://github.com/owner／repo"
+  "source_url": "https://github.com/owner/repo"
 }
 ```
 
@@ -458,14 +458,14 @@ state/ingestion/analysis.json
     "state/ingestion/research-evidence.json"
   ],
   "output_path": "state/ingestion/analysis.json",
-  "evidence_digest": "<已接受證據 digest>",
+  "evidence_digest": "<accepted evidence digest>",
   "analysis_evidence_digest": "<final GitHub bundle digest or null>"
 }
 ~~~
 
-這個物件只存在於 執行器結果／日誌，不是新的 Workspace 狀態，也不會提交到 `main`。GitHub 在第一輪或第二輪證據包形成後，`input_paths` 包含 已接受證據 與目前的 `research-evidence.json`；Threads 已接受證據 完成後只包含 `evidence.json`。新的 Agent 工作階段 應直接依這些目前交接檔案重新讀取，不依賴前一段對話或舊摘要。
+這個物件只存在於執行器結果／日誌，不是新的 Workspace 狀態，也不會提交到 `main`。GitHub 在第一輪或第二輪證據包形成後，`input_paths` 包含已接受證據與目前的 `research-evidence.json`；Threads 已接受證據完成後只包含 `evidence.json`。新的 Agent 工作階段應直接依這些目前交接檔案重新讀取，不依賴前一段對話或舊摘要。
 
-若 GitHub 又完成一輪 研究擴充，新的 result 會帶新的 `analysis_evidence_digest`；任何綁定舊摘要值 的 `analysis.json` 都會由正式分析驗證拒絕。
+若 GitHub 又完成一輪研究擴充，新的結果會帶新的 `analysis_evidence_digest`；任何綁定舊摘要值的 `analysis.json` 都會由正式分析驗證拒絕。
 
 ### GitHub 研究交接
 
@@ -473,11 +473,11 @@ GitHub 請求第一次執行時，執行器：
 
 1. 取得並驗證已接受來源證據，寫入 `evidence.json`。
 2. 固定預設分支的倉庫版本，建立受限候選探索。
-3. 以 `createGitHubResearchProgress(...)` 建立 `completed_rounds: 0`、尚未擷取任何 研究項目 的 progress。
-4. 把 discovery、第 0 輪進度 與 `bundle: null` 寫入 `research-evidence.json`。
+3. 以 `createGitHubResearchProgress(...)` 建立 `completed_rounds: 0`、尚未擷取任何研究項目的進度。
+4. 把探索結果、第 0 輪進度與 `bundle: null` 寫入 `research-evidence.json`。
 5. 回報 `waiting_for: research-plan`；此階段不得直接提交 GitHub 版本 2 分析。
 
-`research-evidence.json` 是執行器管理的暫存狀態，第一次 準備階段的外層形狀為：
+`research-evidence.json` 是執行器管理的暫存狀態，第一次準備階段的外層形狀為：
 
 ```json
 {
@@ -511,7 +511,7 @@ GitHub 請求第一次執行時，執行器：
 
 執行器讀到 `research-plan.json` 後：
 
-1. 重新驗證 已接受證據、discovery 與 第 0 輪進度。
+1. 重新驗證已接受證據、探索結果與第 0 輪進度。
 2. 套用輪次、累計項目數與累計位元組上限。
 3. 對每個選定路徑做安全的倉庫相對路徑驗證。
 4. 若路徑已存在於探索候選集合，使用其固定版本 blob 中繼資料；若不在候選目錄，則以同一 `repository_revision` 重新解析精確路徑，確認它是存在於該倉庫版本的受支援第一手文字來源。
@@ -521,7 +521,7 @@ GitHub 請求第一次執行時，執行器：
 
 第一輪證據包形成後，Agent 有兩個合法下一步：
 
-- 證據已足夠：重新閱讀目前 `evidence.json` 與 最終 `research-evidence.json` 證據包，完成知識整合後，再提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
+- 證據已足夠：重新閱讀目前 `evidence.json` 與最終 `research-evidence.json` 證據包，完成知識整合後，再提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
 - 仍缺關鍵證據：提交第二份 `research-plan.json` 做第二輪擴充；新的證據包形成後，再以新證據重新閱讀與整合。
 
 第二份研究計畫必須以：
@@ -532,19 +532,19 @@ prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
 
 綁定目前累積證據。執行器會再次驗證先前摘要值、剩餘輪次／項目數／位元組上限、重複路徑與研究計畫相關性；第二輪選定路徑同樣可以是探索候選項目，或候選目錄之外但能在同一固定版本驗證的安全第一手文字來源。
 
-目前最大 `max_expansion_rounds` 為 2，因此最多有兩輪 Agent 指定的證據擷取。第二輪後即使仍有 關鍵未知事項，也只能進入分析，以 `unavailable` / `budget_exhausted` 表達缺口。
+目前最大 `max_expansion_rounds` 為 2，因此最多有兩輪 Agent 指定的證據擷取。第二輪後即使仍有關鍵未知事項，也只能進入分析，以 `unavailable`／`budget_exhausted` 表達缺口。
 
 證據包內的已選第一手來源原文只允許存在於專用來源收錄分支的暫存交接檔；正式寫入器只保存精簡的 `state/research/**` 追溯資訊。GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。執行器會重新驗證完整的分析／來源／研究綁定，再把證據包一併交給正式寫入器。成功後留下正式 Card、已接受來源狀態與精簡研究追溯狀態，並清除全部來源收錄交接檔。
 
 ### Threads 語意交接
 
-Threads 保留既有 依來源供應者分流的流程：
+Threads 保留既有依來源供應者分流的流程：
 
 1. 執行器先嘗試嚴格結構重建。
-2. 只有 符合條件的續篇不確定性 才寫入 `semantic-handoff.json`。
-3. Agent 回填 與摘要值綁定的 `semantic-judgement.json`。
+2. 只有符合條件的續篇不確定性才寫入 `semantic-handoff.json`。
+3. Agent 回填與摘要值綁定的 `semantic-judgement.json`。
 4. 執行器重新擷取即時來源、重建候選並確認摘要值未變，再由確定性門檻決定是否形成已接受的 `evidence.json`。
-5. 已接受證據 後等待 `analysis_version: 1` 的 `analysis.json`，再由正式寫入器 寫入 Card + 已接受來源狀態。
+5. 已接受證據後等待 `analysis_version: 1` 的 `analysis.json`，再由正式寫入器寫入 Card 與已接受來源狀態。
 
 Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究品質規則被迫補寫來源沒有的技術細節。
 
@@ -554,10 +554,10 @@ Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究�
 
 每次持久化都必須：
 
-- 只允許 result 回報的 精確的 `allowed_changed_paths`。
-- 推送前確認遠端來源收錄分支 SHA 仍等於 執行開始時的來源 SHA。
-- 拒絕任何未列入 交接契約 的檔案、任意 輸出路徑 或 shell 指令。
-- 套用後重新驗證 Cards、已接受來源狀態 與 研究追溯狀態。
+- 只允許結果回報的精確 `allowed_changed_paths`。
+- 推送前確認遠端來源收錄分支 SHA 仍等於執行開始時的來源 SHA。
+- 拒絕任何未列入交接契約的檔案、任意輸出路徑 或 shell 指令。
+- 套用後重新驗證 Cards、已接受來源狀態與研究追溯狀態。
 
 `state/ingestion/**` 不得合併到 Workspace `main`。
 
@@ -566,7 +566,7 @@ Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究�
 GitHub：
 
 ```bash
-npm run ingest:github -- /path/to/workspace https://github.com/owner／repo \
+npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
   --analysis-file=analysis.json
 ```
 
