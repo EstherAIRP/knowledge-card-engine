@@ -105,7 +105,7 @@ npm run release:validate -- /path/to/workspace
 
 ## GitHub Actions
 
-- `.github/workflows/validate.yml`：Knowledge Card Engine pull request、`main` push 與手動執行；Node 24 + `npm ci` + `npm run validate`。
+- `.github/workflows/validate.yml`：Knowledge Card Engine PR、`main` 推送與手動執行；Node 24 + `npm ci` + `npm run validate`。
 - `.github/workflows/validate-workspace.yml`：Knowledge Card Workspace 以固定 Engine SHA 呼叫的可重用工作流程；驗證 Workspace 版本鎖定、分類體系／Cards、已接受來源狀態與研究追溯狀態。
 - `.github/workflows/release-workspace.yml`：Knowledge Card Workspace 以固定 Engine SHA 呼叫的可重用發布工作流程；固定 E／S、建立生成產物、建立僅含生成資料的 P、執行過期／版本鏈結守門、完成發布並更新目前發布指標。
 - `.github/workflows/ingest-workspace.yml`：Workspace `chore/ingest-*` 分支呼叫的可重用 Remote Ingest 工作流程；Node.js 24 依請求來源供應者執行 GitHub 已接受證據加上 Agent 主導的受限研究擴充，或 Threads 已接受證據加上語意交接，並以過期防護、階段專屬允許變更路徑、Card／來源／研究狀態驗證限制正式寫入。
@@ -119,7 +119,7 @@ Knowledge Card Workspace 的驗證、發布與收錄薄層工作流程都必須�
 - 只寫目前有效的架構、契約、操作與限制。
 - 一般敘述使用自然繁體中文；官方專案／產品名稱、倉庫名稱、程式識別字、欄位、指令、路徑、錯誤碼、狀態值與不宜硬譯的標準名稱保留原文。
 - `Workspace`、`Engine` 等詞必須先判斷是否指正式元件、倉庫名稱或一般概念，再決定保留原文或使用中文，不做機械式全文替換。
-- 不保存 Roadmap、開發階段文件、task plan、archive、產品代際比較或過期設計。
+- 不保存開發路線圖、開發階段文件、任務計畫、封存文件、產品代際比較或過期設計。
 - 不引用外部開發管理倉庫、舊 PR 或聊天紀錄作為理解目前執行行為的前置條件。
 - 真正的機器契約版本，例如 `schema_version: 1`、`analysis_version: 1`，必須保留並說明驗證失敗即拒絕的行為。
 - 文件與 Schema／執行行為／測試不一致時，視為缺陷並修正，不使用歷史敘事補足缺口。
