@@ -1,13 +1,13 @@
 # Workspace 契約
 
-Workspace 是 Knowledge Card 的私人資料根目錄。Engine 只接受呼叫端明確提供的工作區根目錄，不會從目前工作目錄、倉庫名稱或其他環境資訊推測私人資料位置。
+Knowledge Card Workspace 是 Knowledge Card 的私人資料根目錄。Knowledge Card Engine 只接受呼叫端明確提供的工作區根目錄，不會從目前工作目錄、倉庫名稱或其他環境資訊推測私人資料位置。
 
 ## 必要檔案與目錄
 
 工作區根目錄必須包含：
 
-- `workspace.yaml`：工作區識別與標準目錄映射。
-- `engine.lock.json`：核准的 Engine 倉庫、完整提交 SHA 與工作區結構相容資訊。
+- `workspace.yaml`：Workspace 識別與標準目錄映射。
+- `engine.lock.json`：核准的 Knowledge Card Engine 倉庫、完整提交 SHA 與 Workspace 結構相容資訊。
 - `profile/`：經使用者授權的私人背景與分析政策。
 - `projects/`：私人專案背景與需求。
 - `content/knowledge/`：Knowledge Card。
@@ -18,20 +18,20 @@ Workspace 是 Knowledge Card 的私人資料根目錄。Engine 只接受呼叫�
 
 實際目錄名稱由 `workspace.yaml.paths` 指定；七個邏輯路徑都必須存在且互不重複。
 
-## Profile 與分析政策
+## 使用者背景與分析政策
 
-`profile/` 保存使用者明確授權的私人背景與分析政策。這些政策不是 Knowledge Card 正文來源，也不會因為位於 Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入卡片，仍依各工作區明確授權處理。
+`profile/` 保存使用者明確授權的私人背景與分析政策。這些政策不是 Knowledge Card 正文來源，也不會因為位於 Knowledge Card Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入卡片，仍依各 Workspace 的明確授權處理。
 
-Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，建立、重新分析 Knowledge Card 或執行 Remote Ingest 分析時，在產生 AI 自然語言內容前必須先讀取；若不存在，使用執行契約中的預設語言規則。
+Knowledge Card Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，建立、重新分析 Knowledge Card 或執行 Remote Ingest 分析時，在產生 AI 自然語言內容前必須先讀取；若不存在，使用執行契約中的預設語言規則。
 
 語言政策只控制 AI 產生的敘述，不可：
 
 - 覆蓋卡片結構、分類體系、證據綁定或所有權契約。
-- 改寫已接受的證據、直接引用或程式碼。
+- 改寫已接受證據、直接引用或程式碼。
 - 修改任何 `*.user` 覆寫或完整 `## 使用者備註`。
 - 從聊天記憶或其他未授權來源補充私人背景。
 
-`profile/` 內容屬於私人 Workspace 資料，不得複製到公開 Engine、公開 PR、測試樣本或建置產物。
+`profile/` 內容屬於私人 Knowledge Card Workspace 資料，不得複製到公開 Knowledge Card Engine、公開 PR、測試樣本或建置產物。
 
 ## workspace.yaml
 
@@ -89,7 +89,7 @@ paths:
 - `engine_commit`：完整 40 位小寫十六進位 Git SHA。
 - `workspace_schema_version`：正整數，必須與 `workspace.yaml.schema_version` 相同，且必須由目前 Engine 支援。
 
-Workspace 不追隨 Engine `main`。升級 Engine 時必須以新的不可變提交 SHA 更新鎖定檔，不能只修改分支或標籤名稱。
+Knowledge Card Workspace 不追隨 Knowledge Card Engine 的 `main`。升級 Engine 時必須以新的不可變提交 SHA 更新鎖定檔，不能只修改分支或標籤名稱。
 
 結構定義：[`schema/engine-lock.schema.json`](../schema/engine-lock.schema.json)。
 
@@ -110,13 +110,13 @@ Workspace 不追隨 Engine `main`。升級 Engine 時必須以新的不可變提
 
 ## GitHub Actions 的 Engine 版本鎖定
 
-Engine 提供三個可重用的 Workspace 工作流程：
+Knowledge Card Engine 提供三個可重用的 Workspace 工作流程：
 
 - `.github/workflows/validate-workspace.yml`
 - `.github/workflows/release-workspace.yml`
 - `.github/workflows/ingest-workspace.yml`
 
-Workspace 對應的驗證、發布與收錄薄層工作流程都必須以完整 SHA 引用，而且三者必須與 `engine.lock.json.engine_commit` 完全一致。例如：
+Knowledge Card Workspace 對應的驗證、發布與收錄薄層工作流程都必須以完整 SHA 引用，而且三者必須與 `engine.lock.json.engine_commit` 完全一致。例如：
 
 ```yaml
 uses: EstherAIRP/knowledge-card-engine/.github/workflows/ingest-workspace.yml@<40-sha>

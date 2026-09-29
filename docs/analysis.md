@@ -8,7 +8,7 @@
 
 | `analysis_version` | 綁定 | 用途 |
 | --- | --- | --- |
-| `1` | `source_identity + evidence_digest` | 現行 GitHub / Threads 收錄寫入器使用的已接受來源分析。 |
+| `1` | `source_identity + evidence_digest` | 現行 GitHub／Threads 收錄寫入器使用的已接受來源分析。 |
 | `2` | `source_identity + source_evidence_digest + analysis_evidence_digest` | 需要獨立研究證據包的研究型分析契約。 |
 
 `analysis_version: 1` 與 `2` 的摘要值欄位不可混用。版本 1 不接受 `research`、`source_evidence_digest` 或 `analysis_evidence_digest`；版本 2 不使用 `evidence_digest`。
@@ -17,7 +17,7 @@
 
 ## 輸出語言與術語
 
-分析產生的卡片 AI 可更新中繼資料、十個正文段落，以及會進入卡片敘述的自由文字，必須符合 [Knowledge Card 契約](./card-contract.md) 的 AI 文字語言規則與 Workspace 明確的分析語言政策。研究報告中會供卡片分析使用的敘述性研究結果，也應遵守同一政策；證據引用、程式識別字與受控狀態值則維持原契約。
+分析產生的卡片 AI 可更新中繼資料、十個正文段落，以及會進入卡片敘述的自由文字，必須符合 [Knowledge Card 契約](./card-contract.md) 的 AI 文字語言規則與 Knowledge Card Workspace 明確的分析語言政策。研究報告中會供卡片分析使用的敘述性研究結果，也應遵守同一政策；證據引用、程式識別字與受控狀態值則維持原契約。
 
 語言整理不得：
 
@@ -26,22 +26,22 @@
 - 因來源為英文，就讓卡片敘述大量沿用可自然翻成中文的一般概念。
 - 修改使用者覆寫、使用者備註或其他受所有權契約保護的狀態。
 
-目前分析驗證器會驗證版本、欄位、摘要值綁定、研究覆蓋與研究結果，以及品質門檻，但不使用自然語言分類器判斷中英夾雜程度。因此輸出語言仍由執行契約、Workspace 政策與執行 Agent 共同約束；通過結構與資料驗證，不代表已自動通過語言品質檢測。
+目前分析驗證器會驗證版本、欄位、摘要值綁定、研究覆蓋、研究結果與品質門檻，但不使用自然語言分類器判斷中英夾雜程度。因此輸出語言仍由執行契約、Workspace 政策與執行 Agent 共同約束；通過結構與資料驗證，不代表已自動通過語言品質檢測。
 
 ## 分析產生前的重新閱讀與整合
 
-分析資料契約只規定輸出的可驗證形狀與證據綁定；它不把研究計畫、研究覆蓋或 Card section 順序定義成模型的閱讀順序。
+分析資料契約只規定輸出的可驗證形狀與證據綁定；它不把研究計畫、研究覆蓋或 Card 正文段落順序定義成模型的閱讀順序。
 
 在正式建立分析結果前，執行 Agent 必須先依 [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據：
 
-- Version 1：重新閱讀目前已接受來源證據。
-- GitHub Version 2：重新閱讀目前已接受來源證據與最終 Analysis Evidence Bundle 內的 selected source text。
-- 若 Version 2 的 bundle 因第二輪研究而改變，先前以舊 `analysis_evidence_digest` 形成的理解不得沿用。
-- 形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)，也不使用 Card section 當閱讀來源的分類框架。
+- 版本 1：重新閱讀目前已接受來源證據。
+- GitHub 版本 2：重新閱讀目前已接受來源證據與最終分析證據包內的已選來源原文。
+- 若版本 2 的證據包因第二輪研究而改變，先前以舊 `analysis_evidence_digest` 形成的理解不得沿用。
+- 形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)，也不使用 Card 正文段落當作閱讀來源的分類框架。
 - 更新既有 Card 時，先依本輪證據形成新的整體理解，再讀既有 Card；舊 AI 正文不是本輪證據。
-- 整體理解形成後，才讀 `CARD_STYLE.md` 與 Card Contract，把既有理解映射成 analysis result。
+- 整體理解形成後，才讀 `CARD_STYLE.md` 與 Knowledge Card 契約，把既有理解映射成分析結果。
 
-這一步是 Agent 的知識整理順序，不新增 `analysis_version`、不新增持久化欄位，也不要求保存新的中間推理資料。最終仍只輸出本文件定義的 analysis result；完整內部推理過程不屬於資料契約。
+這一步是 Agent 的知識整理順序，不新增 `analysis_version`、不新增持久化欄位，也不要求保存新的中間推理資料。最終仍只輸出本文件定義的分析結果；完整內部推理過程不屬於資料契約。
 
 結構化研究報告用來驗證證據覆蓋、研究結果與證據引用是否成立，但不能直接取代最終來源閱讀，也不應被逐欄改寫成 Card 正文。Card 的十個正文段落與寫作樣式都只在整體理解形成後才套用。
 
@@ -63,7 +63,7 @@
 - `source_identity`
 - `source_evidence_digest`
 
-目前分析證據包只定義 GitHub Repository 形式；其他來源類型若沒有正式研究證據包契約，驗證器會拒絕繼續處理。
+目前分析證據包只定義 GitHub 倉庫形式；其他來源類型若沒有正式研究證據包契約，驗證器會拒絕繼續處理。
 
 GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分支提交並建立受限探索，再由 Agent 提交關鍵研究問題計畫與選定的倉庫相對路徑；執行器會在同一版本重新驗證選定路徑，再讀取對應 blob。探索候選項目可以提供導覽與已知 blob 快取，但不是選定證據的允許清單。完整的版本鎖定、目錄樹上限、路徑防護，以及二進位／UTF-8 規則見 [來源收錄契約](./ingestion.md)。
 
@@ -222,7 +222,7 @@ GitHub 研究的下列覆蓋維度不能用 `not_applicable` 直接略過：
 - GitHub `analysis_version: 2` 必須傳入與已接受證據綁定的分析證據包；寫入器重新執行分析與證據包契約驗證後，才可建立卡片與研究追溯狀態。
 - Threads 目前沒有研究證據包契約，因此正式寫入器仍只接受版本 1 分析。
 
-GitHub 版本 2 成功寫入時，Workspace 只保存精簡研究追溯資訊，不永久保存證據項目的 `text`、結構化研究結果或 `unknowns`。若之後同一 GitHub 卡片以版本 1 成功更新，舊研究追溯狀態會在同一寫入交易中移除，避免過期追溯資訊繼續被視為目前卡片的研究依據。
+GitHub 版本 2 成功寫入時，Knowledge Card Workspace 只保存精簡研究追溯資訊，不永久保存證據項目的 `text`、結構化研究結果或 `unknowns`。若之後同一 GitHub 卡片以版本 1 成功更新，舊研究追溯狀態會在同一寫入交易中移除，避免過期追溯資訊繼續被視為目前卡片的研究依據。
 
 Remote Ingest 的 GitHub 交接會先建立固定版本的探索與空的第 0 輪研究狀態。Agent 必須先回填研究計畫與選定路徑；執行器驗證計畫、路徑、版本與上限後建立第一輪累積分析證據包。Agent 接著可提交綁定該證據包的 `analysis_version: 2`，或再回填一次綁定目前摘要值的研究計畫做第二輪擴充。執行器最後把目前證據包一併交給正式寫入器。Threads 目前沒有研究證據包契約，因此 Remote Ingest 仍使用版本 1。任何來源類型都不得以手工卡片寫入繞過寫入器。
 
