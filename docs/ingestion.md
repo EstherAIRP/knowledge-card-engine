@@ -224,18 +224,18 @@ prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
 來源供應者的處理順序是：
 
 ```text
-Threads input URL
-→ transient URL resolution when needed
-→ public HTTP extraction
-→ public browser fallback when HTTP evidence is insufficient
-→ strict reply/root graph reconstruction
-→ structural completeness checks
-→ 符合條件的續篇不確定性 only
-→ digest-bound semantic judgement
-→ deterministic acceptance gates
-→ ordered parts[]
+Threads 輸入 URL
+→ 必要時解析暫時網址
+→ 公開 HTTP 擷取
+→ HTTP 證據不足時使用公開瀏覽器備援
+→ 嚴格重建回覆／根貼文關係圖
+→ 結構完整性檢查
+→ 只有符合條件的續篇不確定性可繼續
+→ 與摘要值綁定的語意判定
+→ 確定性接受門檻
+→ 有序 parts[]
 → combined_text
-→ 已接受證據 digest
+→ 已接受證據摘要值
 ```
 
 瀏覽器備援只讀取公開 Threads 頁面已渲染的 DOM 與同源公開 JSON 回應，不使用登入狀態、私人 Cookie 或私人帳號資料。若執行器缺少可啟動的瀏覽器執行環境、網路被阻擋或頁面無法取得，屬於執行失敗，不得降級成來源不完整。
@@ -245,23 +245,23 @@ Threads input URL
 結構證據足夠時直接接受，不經語意判定。已接受證據必須符合：
 
 - `provider: threads`、`accepted: true`、`source_type: article`。
-- 根貼文標準網址 與 `threads:{root_shortcode}` 完全一致。
+- 根貼文標準網址與 `threads:{root_shortcode}` 完全一致。
 - `requested_url` 與 `resolved_input_url` 可追溯本次輸入與實際貼文。
 - `resolved_input_url`／`input_shortcode` 指向的實際輸入貼文必須在已接受的 `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接貼文請求不得解析成另一個 shortcode。
 - `thread.complete: true` 且 `thread.verification: structural`。
-- 串文狀態 只能是 `SINGLE_POST` 或 `COMPLETE_THREAD`。
+- 串文狀態只能是 `SINGLE_POST` 或 `COMPLETE_THREAD`。
 - `thread.total`、`detected_parts` 與 `parts.length` 一致。
 - 每個 part 都有可驗證的 shortcode、標準網址、作者與固定順序。
 - 所有 part 與根貼文為同一作者。
 - `combined_text` 必須等於有序 parts 的文字串接。
 - 來源至少包含文字或媒體等可分析內容。
-- `evidence_digest` 必須符合 已接受串文 的內容指紋。
+- `evidence_digest` 必須符合已接受串文的內容指紋。
 
-若根貼文明示仍有 回覆，但目前只擷取到單篇且 串文涵蓋範圍 未被證明完整，不能直接把「只看到根貼文」當成「已證明只有根貼文」。
+若根貼文明示仍有回覆，但目前只擷取到單篇，且串文涵蓋範圍尚未證明完整，不能直接把「只看到根貼文」當成「已證明只有根貼文」。
 
 ### 受控語意續篇復原
 
-只有 strict reconstruction 已失敗，而且失敗屬於可判定的 續篇不確定性 時，Engine 才建立候選集合。預設候選規則包含：同作者、在根貼文之後、時間差不超過 24 小時、明確排除非回覆，最多 8 個候選；候選另計算 確定性中繼資料分數。
+只有嚴格結構重建失敗，而且失敗屬於可判定的續篇不確定性時，Knowledge Card Engine 才建立候選集合。預設候選規則包含：同作者、在根貼文之後、時間差不超過 24 小時、明確排除非回覆，最多 8 個候選；候選另計算確定性中繼資料分數。
 
 語意判定是固定資料契約，不直接決定已接受證據。Remote Ingest 的判定必須由 `knowledge_card_agent` 產生，並包含：
 
@@ -271,7 +271,7 @@ Threads input URL
 - `complete`
 - `rationale`
 
-一般續篇重建 以有序 `selected_shortcodes` 作為唯一具有權威性的選取結果；`candidate_labels` 可省略，也不參與正文組裝或 續篇接受判定。只有判定 `root_only: true` 時，才必須提供完整 `candidate_labels`，逐一把每個候選高信心標成 `followup` 或 `unrelated`。
+一般續篇重建以有序 `selected_shortcodes` 作為唯一具有權威性的選取結果；`candidate_labels` 可省略，也不參與正文組裝或續篇接受判定。只有判定 `root_only: true` 時，才必須提供完整 `candidate_labels`，逐一把每個候選高信心標成 `followup` 或 `unrelated`。
 
 Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；選擇續篇時，選定 shortcode 必須來自目前證據、不得重複，且必須維持時間順序；第一個選定候選項目的中繼資料分數必須達最低門檻。判定 `root_only` 時，每個候選都必須明確排除，不能存在續篇或不確定候選項目。
 
@@ -280,17 +280,17 @@ Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；�
 - `thread.verification: llm_assisted`
 - `INFERRED_THREAD_HIGH_CONFIDENCE` 或 `INFERRED_SINGLE_POST_HIGH_CONFIDENCE`
 - `extraction.inferred: true`
-- `thread.recovery` 保存 confidence、選取 shortcode、`candidate_labels` 與排序器追溯資訊
+- `thread.recovery` 保存 `confidence`、選取 shortcode、`candidate_labels` 與排序器追溯資訊。
 
-這個能力只能處理結構資料「不足以辨識 continuation」的缺口，不能覆蓋更強且互相衝突的結構證據，也不能把已知缺篇或 有歧義的關係圖 推定成完整。
+這個能力只能處理結構資料「不足以辨識續篇」的缺口，不能覆蓋更強且互相衝突的結構證據，也不能把已知缺篇或有歧義的關係圖推定成完整。
 
 ### 與摘要值綁定的語意交接
 
 Remote Ingest 需要語意判定時，Knowledge Card Engine 先輸出 `semantic-handoff.json`，其中包含公開根貼文／候選證據及其 SHA-256 摘要值。Agent 回填的 `semantic-judgement.json` 必須帶相同摘要值。
 
-第二次執行不直接信任先前快照；Engine 會重新取得來源、重新建立候選並重新計算摘要值。若來源或候選證據已改變，回報 `THREADS_CONTINUATION_HANDOFF_EVIDENCE_MISMATCH` 並停止，不得把舊判定套到新來源。
+第二次執行不直接信任先前快照；Knowledge Card Engine 會重新取得來源、重新建立候選並重新計算摘要值。若來源或候選證據已改變，回報 `THREADS_CONTINUATION_HANDOFF_EVIDENCE_MISMATCH` 並停止，不得把舊判定套到新來源。
 
-Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與各 part 的雜湊值／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 的易變 query／fragment 不參與證據摘要值的穩定內容識別。
+Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與各 part 的雜湊值／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 中易變的查詢參數／片段不參與證據摘要值的穩定內容識別。
 
 ## 驗證失敗即拒絕的錯誤
 
@@ -299,39 +299,39 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 | Code | 意義 |
 | --- | --- |
 | `SOURCE_URL_INVALID` | URL 不是合法支援格式。 |
-| `SOURCE_PROVIDER_UNSUPPORTED` | 請求／證據的來源供應者 尚未支援。 |
+| `SOURCE_PROVIDER_UNSUPPORTED` | 請求／證據的來源供應者尚未支援。 |
 | `INGESTION_EXECUTION_FAILED` | 網路、速率限制、外部服務或執行環境使驗證無法完成。 |
 | `SOURCE_NOT_FOUND` | 來源供應者明確證明來源不存在；目前主要由 GitHub 404 使用。 |
-| `SOURCE_ACCESS_DENIED` | Provider 明確拒絕授權。 |
+| `SOURCE_ACCESS_DENIED` | 來源供應者明確拒絕授權。 |
 | `SOURCE_FETCH_FAILED` | 其他可辨識的來源 HTTP 失敗。 |
-| `SOURCE_INCOMPLETE` | 必要證據、來源完整性或 digest 驗證未通過。 |
-| `SOURCE_IDENTITY_MISMATCH` | 請求、解析、標準 或來源內容 identity 不一致。 |
-| `SOURCE_CAPTURE_TIME_INVALID` | 擷取時間 無效。 |
+| `SOURCE_INCOMPLETE` | 必要證據、來源完整性或摘要值驗證未通過。 |
+| `SOURCE_IDENTITY_MISMATCH` | 請求、解析、標準或來源內容的來源識別不一致。 |
+| `SOURCE_CAPTURE_TIME_INVALID` | 擷取時間無效。 |
 | `SOURCE_RESEARCH_STALE` | GitHub 已接受 README 與固定研究版本的 README blob 已不一致。 |
-| `GITHUB_RESEARCH_LIMIT_INVALID` | 呼叫端提供的 研究上限 無效或試圖使用未定義 budget。 |
-| `GITHUB_RESEARCH_DISCOVERY_INVALID` | GitHub 研究探索 結構、候選項目或受限中繼資料 無效。 |
+| `GITHUB_RESEARCH_LIMIT_INVALID` | 呼叫端提供的研究上限無效，或試圖使用未定義的上限。 |
+| `GITHUB_RESEARCH_DISCOVERY_INVALID` | GitHub 研究探索結構、候選項目或受限中繼資料無效。 |
 | `GITHUB_RESEARCH_PATH_INVALID` | 研究路徑不是安全的倉庫相對路徑。 |
 | `GITHUB_RESEARCH_PATH_NOT_CANDIDATE` | 要求擷取的路徑不在受控探索候選集合。 |
 | `GITHUB_RESEARCH_SELECTION_INVALID` | 選定路徑集合為空、重複或形狀無效。 |
-| `GITHUB_RESEARCH_SELECTION_REPEATED` | 多輪研究 再次要求已取得的路徑。 |
-| `GITHUB_RESEARCH_SELECTION_NOT_REQUESTED` | 選定候選項目 不符合任何目前 `needs_evidence` 問題。 |
-| `GITHUB_RESEARCH_PLAN_STALE` | 重試研究計畫綁定的先前分析證據摘要值 已過期或缺失。 |
-| `GITHUB_RESEARCH_PROGRESS_INVALID` | 研究進度 與 已接受來源、倉庫版本、證據包、項目／位元組累計值 不一致。 |
+| `GITHUB_RESEARCH_SELECTION_REPEATED` | 多輪研究再次要求已取得的路徑。 |
+| `GITHUB_RESEARCH_SELECTION_NOT_REQUESTED` | 選定候選項目不符合任何目前的 `needs_evidence` 問題。 |
+| `GITHUB_RESEARCH_PLAN_STALE` | 重試研究計畫綁定的先前分析證據摘要值已過期或缺失。 |
+| `GITHUB_RESEARCH_PROGRESS_INVALID` | 研究進度與已接受來源、倉庫版本、證據包、項目／位元組累計值不一致。 |
 | `GITHUB_RESEARCH_EXPANSION_STOPPED` | 續行已依研究計畫／上限判定必須停止，仍嘗試擷取下一輪證據。 |
-| `GITHUB_RESEARCH_BUDGET_EXCEEDED` | 選定研究證據 超過單輪可用或累計 項目數／位元組上限。 |
+| `GITHUB_RESEARCH_BUDGET_EXCEEDED` | 選定研究證據超過單輪可用或累計的項目數／位元組上限。 |
 | `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | 選定 blob 不是可接受的 UTF-8 文字內容。 |
-| `INGESTION_IDENTITY_CONFLICT` | Workspace 內來源識別／標準網址 對應互相衝突或已有重複資料。 |
+| `INGESTION_IDENTITY_CONFLICT` | Workspace 內來源識別／標準網址對應互相衝突或已有重複資料。 |
 
 ## 分析結果契約
 
-分析供應者不屬於來源收錄層。Engine 不固定特定 LLM 供應商。
+分析供應者不屬於來源收錄層。Knowledge Card Engine 不固定特定 LLM 供應商。
 
 正式分析結果必須符合 [分析與研究契約](./analysis.md)：
 
 - 版本 1 綁定 `source_identity + evidence_digest`；來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用版本 1；準備階段必須先建立非空、固定倉庫版本且已驗證的分析證據包，之後才能提交版本 2。
-- GitHub 版本 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供 已驗證分析證據包與結構化研究報告。
+- GitHub 版本 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供已驗證分析證據包與結構化研究報告。
 - 兩種版本都提供 Card 契約要求的 AI 管理中繼資料與 10 個正文段落；`summary` 不超過 600 字元，相關性分數為 1–5 整數。
-- Threads 目前沒有 研究證據包契約，因此不得使用 版本 2。
+- Threads 目前沒有研究證據包契約，因此不得使用版本 2。
 
 由舊來源證據或舊研究證據包產生的分析不能套用到新的摘要值；綁定不一致時一律拒絕，且不得寫入 Card、已接受來源狀態或研究狀態。
 
