@@ -1,49 +1,49 @@
 # Knowledge Card Engine
 
-Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供 Workspace、Knowledge Card、來源收錄、分析資料契約、驗證與共用自動化；真實私人知識資料保存在私人 Workspace，不得進入本公開倉庫、PR、測試、日誌或建置產物。
+Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供 Knowledge Card Workspace 所需的共用程式、來源收錄、分析資料契約、驗證與自動化；真實私人知識資料保存在私人 Knowledge Card Workspace，不得進入本公開倉庫、PR、測試、日誌或建置產物。
 
 ## 目前可用能力
 
 目前已實作：
 
-- Node.js 24 / npm workspaces 工具鏈。
-- Workspace 契約、目錄安全檢查與固定 engine commit 驗證。
-- Knowledge Card 結構、Taxonomy、AI/user ownership、正文、集合唯一性與穩定路徑驗證。
-- GitHub Repository canonicalization、repository metadata + README accepted evidence，以及固定 default-branch commit 的 bounded research discovery、Agent-selected safe repository path resolution、最多兩輪 digest-bound evidence expansion 與 cumulative primary-source evidence bundle。
-- Threads post/share URL resolution、公開 browser fallback、根貼文 identity，以及結構完整或受控高信心語意復原的 accepted evidence。
-- 與 accepted source evidence 綁定的 analysis version 1，以及 GitHub revision-pinned research evidence、structured findings / coverage quality gate 可使用的 analysis version 2；Workspace writer 可一致寫入 GitHub `analysis_version: 2` Card、accepted source state 與 compact research provenance。
-- 依 source identity / canonical URL 判斷 create 或 update。
-- 保護 user/stable-owned state 的 Workspace writer。
-- GitHub / Threads accepted source state 與 Card 對應驗證；Threads state 只保存來源指紋，不保存原文。
-- reusable Workspace CI，可驗 Workspace pin、Taxonomy、Cards、accepted source state 與 research provenance state。
-- Provider-aware Remote Ingest handoff，可在 `chore/ingest-*` Workspace 分支以 pinned Engine、Node.js 24 執行 GitHub / Threads accepted evidence。GitHub 會固定 repository revision、建立 bounded discovery 與 round-0 research state，先等待 Agent 提交 digest-bound `research-plan.json` 與 selected paths；runner 只在同一 revision 擷取經驗證的安全文字 primary source，形成第一輪 bundle 後 Agent 可提交 `analysis_version: 2`，或在剩餘 budget 內再做一次 Agent-directed expansion，最後交給正式 writer 寫入 Card/source-state/research-state；Threads 保留 digest-bound semantic continuation handoff 與 version 1 writer 流程。
-- GitHub App state + PKCE 登入、server-side session、每 request Workspace 資格重查。
-- GitHub App installation token 私人 Card list/detail API 與唯讀 web shell。
-- Deterministic search、lexical vector、typed relation、Concept 與 graph generated artifacts。
-- E／S／P + manifest 一致發布、stale guard、release-pinned private reader 與 rollback pointer model。
-- Authenticated `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
-- Portable Node HTTP adapter，以及 Vercel Node Function adapter；Vercel 需 shared REST session store。
+- Node.js 24 與 npm workspaces 工具鏈。
+- Knowledge Card Workspace 契約、目錄安全檢查與固定 Knowledge Card Engine 提交版本驗證。
+- Knowledge Card 結構、分類體系（Taxonomy）、AI／使用者所有權、正文、集合唯一性與穩定路徑驗證。
+- GitHub 倉庫網址正規化、倉庫中繼資料與 README 已接受證據，以及固定預設分支提交的受限研究探索、Agent 選定安全倉庫路徑、最多兩輪與摘要值綁定的證據擴充，以及累積第一手來源證據包。
+- Threads 貼文／分享網址解析、公開瀏覽器備援、根貼文來源識別，以及結構完整或受控高信心語意復原的已接受證據。
+- 與已接受來源證據綁定的 `analysis_version: 1`，以及固定 GitHub 倉庫版本的研究證據、結構化研究結果與覆蓋品質門檻所使用的 `analysis_version: 2`；Workspace 寫入器可一致寫入 GitHub `analysis_version: 2` Card、已接受來源狀態與精簡研究追溯資訊。
+- 依來源識別與標準網址判定新建或更新。
+- 保護使用者所有狀態與穩定狀態的 Workspace 寫入器。
+- GitHub／Threads 已接受來源狀態與 Card 對應驗證；Threads 狀態只保存來源指紋，不保存原文。
+- 可重用的 Workspace CI，可驗證 Workspace 版本鎖定、分類體系、Cards、已接受來源狀態與研究追溯狀態。
+- 依來源供應者分流的 Remote Ingest 交接，可在 `chore/ingest-*` Workspace 分支以固定 Engine、Node.js 24 執行 GitHub／Threads 已接受證據流程。GitHub 會固定倉庫版本、建立受限探索與第 0 輪研究狀態，先等待 Agent 提交與摘要值綁定的 `research-plan.json` 及選定路徑；執行器只在同一版本擷取經驗證的安全第一手文字來源。第一輪證據包形成後，Agent 可提交 `analysis_version: 2`，或在剩餘額度內再做一次由 Agent 指定的擴充，最後交給正式寫入器寫入 Card、來源狀態與研究狀態；Threads 保留與摘要值綁定的語意續篇交接及版本 1 寫入流程。
+- GitHub App `state` 與 PKCE 登入、伺服器端工作階段（session），以及每次請求重新驗證 Workspace 資格。
+- GitHub App installation token、私人 Card 列表／詳細資料 API 與唯讀網頁外殼。
+- 確定性搜尋、詞彙向量、具型別關聯、Concept 與圖譜生成產物。
+- E／S／P + manifest 一致發布、過期防護、固定於發布版本的私人讀取器，以及回復指標模型。
+- 需授權的 `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
+- 可移植的 Node HTTP 轉接器，以及 Vercel Node Function 轉接器；Vercel 需要共用 REST 工作階段儲存區。
 
-目前尚未實作 GitHub / Threads 之外的來源 provider、外部 embedding / model provider、非 Redis REST 的 shared durable session backend，以及 Vercel 之外的 hosting-specific adapter；這些邊界不能視為可用功能。
+目前尚未實作 GitHub／Threads 以外的來源供應者、外部嵌入模型／模型供應者、非 Redis REST 的共用持久工作階段後端，以及 Vercel 以外的託管平台專用轉接器；這些邊界不能視為可用功能。
 
 ## 模組責任
 
-- `apps/web`：私人 Card list/detail、搜尋、關聯／Concept 與 graph UI shell。
-- `apps/server`：GitHub App 登入、session、authorization、release-pinned Workspace reader 與 Card/search/graph/release API。
-- `packages/core`：Card / Taxonomy parsing、結構與受控值驗證、ownership、正文契約、collection uniqueness 與 stable path。
-- `packages/ingestion`：來源 canonicalization、GitHub / Threads accepted evidence、GitHub revision-pinned research discovery、Agent-selected safe-path evidence capture / bounded expansion、create/update resolution 與 provider-specific source-state contract。
-- `packages/analysis`：provider-neutral analysis result、research plan、analysis evidence bundle 與 structured research report contract。
-- `packages/graph`：deterministic search、lexical vector、typed relation、Concept 與 graph generated-data builder / validator。
-- `packages/workspace`：Workspace loader、engine pin 與經驗證的 Card / source-state / research-state transactional 寫入。
-- `packages/release`：E／S／P、manifest、release pointer / description 與 published lineage 驗證。
+- `apps/web`：私人 Card 列表／詳細資料、搜尋、關聯／Concept 與圖譜 UI 外殼。
+- `apps/server`：GitHub App 登入、工作階段、授權、固定於發布版本的 Workspace 讀取器，以及 Card／搜尋／圖譜／發布 API。
+- `packages/core`：Card／分類體系解析、結構與受控值驗證、所有權、正文契約、集合唯一性與穩定路徑。
+- `packages/ingestion`：來源網址正規化、GitHub／Threads 已接受證據、固定 GitHub 倉庫版本的研究探索、Agent 選定安全路徑後的證據擷取與受限擴充、新建／更新解析，以及來源供應者專屬的來源狀態契約。
+- `packages/analysis`：與來源供應者無關的分析結果、研究計畫、分析證據包與結構化研究報告契約。
+- `packages/graph`：確定性搜尋、詞彙向量、具型別關聯、Concept，以及圖譜生成資料的建立器與驗證器。
+- `packages/workspace`：Workspace 載入器、Engine 版本鎖定，以及經驗證的 Card／來源狀態／研究狀態交易式寫入。
+- `packages/release`：E／S／P、manifest、發布指標／描述與已發布版本鏈結驗證。
 
 架構與責任邊界詳見 [docs/architecture.md](./docs/architecture.md)。
 
-## Workspace 與資料契約
+## Knowledge Card Workspace 與資料契約
 
-Workspace root 必須明確指定，並包含 `workspace.yaml`、`engine.lock.json` 與契約要求的標準目錄。Workspace 不自動追隨 engine `main`；核准 engine 由完整 40 位 commit SHA 固定。
+工作區根目錄必須明確指定，並包含 `workspace.yaml`、`engine.lock.json` 與契約要求的標準目錄。Knowledge Card Workspace 不會自動追隨 Knowledge Card Engine 的 `main`；核准的 Engine 由完整 40 位 commit SHA 固定。
 
-Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `config/taxonomy.yaml` 定義受控詞彙。一般重新分析可以更新 AI-owned 內容，但不得修改穩定 `id`、`created_at`、任何 user override 或完整 `## 使用者備註`。
+Knowledge Card 的前置中繼資料（frontmatter）結構由公開 Schema 定義；Knowledge Card Workspace 的 `config/taxonomy.yaml` 定義受控詞彙。一般重新分析可以更新 AI 管理內容，但不得修改穩定 `id`、`created_at`、任何使用者覆寫或完整 `## 使用者備註`。
 
 完整契約：
 
@@ -53,11 +53,11 @@ Knowledge Card 的 frontmatter 結構由公開 Schema 定義；Workspace 的 `co
 - [Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [來源收錄契約](./docs/ingestion.md)
-- [Analysis 與 Research 契約](./docs/analysis.md)
+- [分析與研究契約](./docs/analysis.md)
 - [生成資料、搜尋與圖譜契約](./docs/generated-data.md)
 - [一致發布契約](./docs/release.md)
 - [私人網站與授權契約](./docs/private-site.md)
-- [Web UI 與 Layout](./docs/web-ui.md)
+- [Web UI 與版面配置](./docs/web-ui.md)
 
 ## 開發與驗證
 
@@ -68,9 +68,9 @@ npm ci
 npm run validate
 ```
 
-`npm run validate` 會執行 repository policy check 與 Node tests。Web UI layout contract 可另外用 `npm run ui:verify` 單獨執行。Generated data / release CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace automation 使用 reusable `release-workspace.yml`。
+`npm run validate` 會執行倉庫政策檢查與 Node 測試。Web UI 版面契約可另外用 `npm run ui:verify` 單獨執行。生成資料／發布 CLI 另提供 `npm run generated:build`、`npm run release:finalize` 與 `npm run release:validate`；Workspace 自動化使用可重用的 `release-workspace.yml`。
 
-驗證指定 Workspace：
+驗證指定 Knowledge Card Workspace：
 
 ```bash
 npm run workspace:validate -- /path/to/workspace
@@ -79,25 +79,25 @@ npm run source-state:validate -- /path/to/workspace
 npm run research-state:validate -- /path/to/workspace
 ```
 
-來源 ingestion CLI：
+來源收錄 CLI：
 
 ```bash
 npm run ingest:github -- /path/to/workspace https://github.com/owner/repo --analysis-file=analysis.json
 npm run ingest:threads -- /path/to/workspace https://threads.com/share/token --analysis-file=analysis.json
 ```
 
-CLI 可即時取得 provider-specific evidence，或用 `--evidence-file` 注入已取得、仍會再次驗證的 accepted evidence。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 必須通過 strict structural verification，或在限定 continuation uncertainty 下通過受控語意 judgement 與 deterministic acceptance gates。密鑰不得寫入 repository。
+CLI 可即時取得來源類型專屬證據，或用 `--evidence-file` 注入已取得、仍會再次驗證的已接受證據。GitHub 需要授權時使用環境變數 `GITHUB_TOKEN`；Threads 必須通過嚴格結構驗證，或在限定的續篇不確定性下通過受控語意判定與確定性接受門檻。密鑰不得寫入倉庫。
 
-啟動私人 Node HTTP adapter：
+啟動私人 Node HTTP 轉接器：
 
 ```bash
 npm run site:serve
 ```
 
-正式部署需要設定 GitHub App / Workspace environment；多 instance 或 serverless 平台必須使用 shared server-side session store。Vercel adapter 使用 `KC_SESSION_STORE_REST_URL` / `KC_SESSION_STORE_REST_TOKEN`。完整契約見 [docs/private-site.md](./docs/private-site.md)。
+正式部署需要設定 GitHub App／Workspace 環境變數；多執行個體或 serverless 平台必須使用共用伺服器端工作階段儲存區。Vercel 轉接器使用 `KC_SESSION_STORE_REST_URL`／`KC_SESSION_STORE_REST_TOKEN`。完整契約見 [docs/private-site.md](./docs/private-site.md)。
 
 完整開發說明見 [docs/development.md](./docs/development.md)，正式文件入口見 [docs/index.md](./docs/index.md)。
 
 ## 公私資料邊界
 
-公開測試與 fixture 只能使用明確標示的合成資料。`tests/fixtures/synthetic-workspace/` 是共用 Workspace 契約測試 fixture，不是使用者範例或 Workspace 範本；用來驗證 Workspace、Taxonomy、Card、source-state 與 research-state 契約，不得放入真實私人 Card、profile、project、來源快照、向量或其他衍生私人資料。
+公開測試與合成測試資料（fixture）只能使用明確標示的合成內容。`tests/fixtures/synthetic-workspace/` 是共用 Workspace 契約測試 fixture，不是使用者範例或 Knowledge Card Workspace 範本；用來驗證 Workspace、分類體系、Card、來源狀態與研究狀態契約，不得放入真實私人 Card、`profile/`、`projects/`、來源快照、向量或其他衍生私人資料。
