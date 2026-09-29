@@ -33,9 +33,9 @@
 
 以下形式都解析到 GitHub 倉庫根網址：
 
-- `github.com/owner／repo`
-- `www.github.com/owner／repo/`
-- `github.com/owner／repo.git`
+- `github.com/owner/repo`
+- `www.github.com/owner/repo/`
+- `github.com/owner/repo.git`
 - 帶查詢參數／片段的 GitHub 倉庫 URL
 - `/tree/...`、`/blob/...` 等 GitHub 倉庫子路徑
 
@@ -47,7 +47,7 @@
 - 來源識別：`github:{owner-lower}/{repo-lower}`
 - 建議 ID：`github-{owner-lower}-{repo-lower}`
 
-已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫 owner／repo。
+已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫 owner/repo。
 
 ### Threads
 
@@ -73,7 +73,7 @@ https://threads.com/@user/post/{root_shortcode}
 
 ### 通用 HTTP(S)
 
-通用網址正規化會移除 fragment、移除 `www.`、刪除已知追蹤 query、保留其他具有語意的 query，並產生 `url:{canonical-url}` 來源識別。這不代表該來源已有可建立已接受證據的來源供應者。
+通用網址正規化會移除 URL 片段、移除 `www.`、刪除已知追蹤查詢參數、保留其他具有語意的查詢參數，並產生 `url:{canonical-url}` 來源識別。這不代表該來源已有可建立已接受證據的來源供應者。
 
 ## GitHub 已接受證據
 
@@ -125,7 +125,7 @@ Knowledge Card Engine 提供固定倉庫版本的探索／擷取基礎操作，�
 
 ### 候選探索
 
-GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Engine 產生可能具有研究價值、可視為第一手文字來源的候選提示，例如：
+GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Knowledge Card Engine 產生可能具有研究價值、可視為第一手文字來源的候選提示，例如：
 
 - README、架構／設計文件。
 - 相依套件／建置 manifest。
@@ -152,7 +152,7 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Engine 產生可�
 | 單一項目 | 163840 bytes |
 | 選定證據包總量（累計） | 786432 bytes |
 
-呼叫端只能把上限調低，不能透過選項提高 Engine 的硬性上限。
+呼叫端只能把上限調低，不能透過選項提高 Knowledge Card Engine 的硬性上限。
 
 探索程序若因上限或 GitHub 回應被截斷而未完整走完，會把 `exhaustive` 設為 `false`，並保存確定性的 `stop_reasons`；目前可能值：
 
@@ -164,7 +164,7 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Engine 產生可�
 
 ### 選定證據
 
-`fetchGitHubResearchEvidence(...)` 接受非空、不得重複的安全倉庫相對選定路徑。若路徑已存在於探索候選集合，Engine 可直接使用探索結果的 blob 中繼資料；若不在候選目錄，Engine 會以固定的 `repository_revision` 重新解析該精確路徑，確認它是存在於同一倉庫版本的一般文字檔，再取得其 blob。選定路徑不能指定任意 URL、任意分支、其他倉庫、被排除的生成／vendor／相依套件／建置／快取目錄、非文字內容或 shell 指令。
+`fetchGitHubResearchEvidence(...)` 接受非空、不得重複的安全倉庫相對選定路徑。若路徑已存在於探索候選集合，Knowledge Card Engine 可直接使用探索結果的 blob 中繼資料；若不在候選目錄，Knowledge Card Engine 會以固定的 `repository_revision` 重新解析該精確路徑，確認它是存在於同一倉庫版本的一般文字檔，再取得其 blob。選定路徑不能指定任意 URL、任意分支、其他倉庫、被排除的生成／vendor／相依套件／建置／快取目錄、非文字內容或 shell 指令。
 
 因此探索候選之外的核心第一手來源仍可由 Agent 主動選取，但內容仍固定於同一倉庫版本，且受完全相同的路徑、二進位、UTF-8、項目數與位元組上限守門。每個選定項目會保存：
 
@@ -206,20 +206,20 @@ prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
 
 `fetchGitHubResearchExpansion(...)` 另外限制：
 
-- 每輪選定路徑必須是安全的倉庫相對路徑；候選集合之外的路徑由 Engine 在同一固定版本重新解析與驗證。
-- 選定路徑不得落在 Engine 排除目錄，且必須是受支援的第一手文字來源。
+- 每輪選定路徑必須是安全的倉庫相對路徑；候選集合之外的路徑由 Knowledge Card Engine 在同一固定版本重新解析與驗證。
+- 選定路徑不得落在 Knowledge Card Engine 排除目錄，且必須是受支援的第一手文字來源。
 - 已在先前輪次使用的路徑不可重複擷取。
 - 選定證據必須符合至少一個 `needs_evidence` 問題的證據類型或精確路徑提示。
 - 項目數與位元組上限以累計證據包計算，不會因拆成多輪而重置。
 - 每次成功擴充都重新計算累積的 `analysis_evidence_digest`。
 
-目前研究進度最多記錄兩輪。Remote Ingest 從空的第 0 輪開始；第一輪與可能的第二輪都由 Agent 根據關鍵研究問題選取證據路徑，再交給 Engine 驗證與擷取。第二輪後必須停止研究擴充；後續結構化研究報告應以 `unavailable`／`budget_exhausted` 表達缺口，而不是繼續無界限讀取倉庫。
+目前研究進度最多記錄兩輪。Remote Ingest 從空的第 0 輪開始；第一輪與可能的第二輪都由 Agent 根據關鍵研究問題選取證據路徑，再交給 Knowledge Card Engine 驗證與擷取。第二輪後必須停止研究擴充；後續結構化研究報告應以 `unavailable`／`budget_exhausted` 表達缺口，而不是繼續無界限讀取倉庫。
 
 最後形成的分析證據包由 [分析與研究契約](./analysis.md) 驗證，並產生獨立的 `analysis_evidence_digest`。這份全文證據包是分析輸入，不是已接受來源狀態。GitHub `analysis_version: 2` 會把已驗證證據包一併交給正式 Workspace 寫入器；寫入器只永久保存精簡研究追溯資訊。GitHub Remote Ingest 的準備階段只寫入已接受證據、固定倉庫版本的探索結果，以及 `completed_rounds: 0`／`bundle: null` 的 `research-evidence.json`；Agent 必須先用 `research-plan.json` 指定第一輪關鍵證據。第一輪證據包形成後可直接提交最終版本 2 分析，或在剩餘額度內再要求一次與摘要值綁定的擴充。直接 `ingest:github` CLI 不接收研究證據包，因此仍使用版本 1 的已接受來源分析。
 
 ## Threads 已接受證據
 
-正式 Threads 證據必須通過 `validateThreadsEvidence`。來源供應者先以原生結構證據重建串文；只有在結構資料不足但仍屬於可受控判定的 續篇不確定性 時，才允許進入語意復原。任何已知缺篇、結構歧義、來源身分衝突或執行環境失敗都不能由語意判定覆蓋。
+正式 Threads 證據必須通過 `validateThreadsEvidence`。來源供應者先以原生結構證據重建串文；只有在結構資料不足但仍屬於可受控判定的續篇不確定性時，才允許進入語意復原。任何已知缺篇、結構歧義、來源身分衝突或執行環境失敗都不能由語意判定覆蓋。
 
 來源供應者的處理順序是：
 
