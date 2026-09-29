@@ -70,7 +70,7 @@ test('Runtime and formal contracts defer Card Style until after synthesis', asyn
   assert.ok(cardContract.includes('完成理解後才讀 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)'));
   assert.ok(cardContract.includes('「核心概念」選 2～3 個真正重要的主題'));
   assert.ok(cardContract.includes('「技術亮點」選 2～3 個有辨識度、值得記住的設計或機制'));
-  assert.ok(cardContract.includes('現有 Core 驗證器仍負責 H1、頂層 section 順序'));
+  assert.ok(cardContract.includes('現有 `packages/core` 驗證器仍負責 H1、頂層段落順序'));
 });
 
 test('Deferred card style does not change analysis schema or require persistent synthesis state', async () => {
@@ -80,5 +80,5 @@ test('Deferred card style does not change analysis schema or require persistent 
   ]);
 
   assert.ok(analysisDoc.includes('不新增 `analysis_version`、不新增持久化欄位'));
-  assert.ok(cardContract.includes('不改變前置中繼資料 Schema，也不新增正文 section'));
+  assert.ok(cardContract.includes('不改變前置中繼資料 Schema，也不新增正文段落'));
 });
