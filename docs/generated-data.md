@@ -32,7 +32,7 @@ data/graph.json
 
 向量輸入由 Card 的有效內容建立；指紋會納入方法、設定與 Card 輸入。增量建置可以沿用指紋未變的既有紀錄；完整建置會重建全部生成紀錄。
 
-搜尋索引涵蓋 Card title、summary、有效 classification categories／tags、resource kind、actions 與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
+搜尋索引涵蓋 Card title、summary、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
 `GET /api/search?q=<query>&limit=<n>`：
 
@@ -46,7 +46,7 @@ data/graph.json
 
 導覽分類體系與語意關聯是不同維度。導覽分類調整不直接作為語意距離，也不因 UI 導覽重分類就重寫 Concept 或關聯。
 
-生成關聯使用可驗證訊號，例如有效 classification categories／tags 與詞彙向量相似度。關聯保存：
+生成關聯使用可驗證訊號，例如有效分類類別／標籤與詞彙向量相似度。關聯保存：
 
 - 具型別關聯
 - 來源／目標
@@ -71,9 +71,9 @@ Knowledge Card Workspace 可在 `config/` 保存人工關聯設定。人工規�
 
 Concept 目前由確定性規則建立，包括：
 
-- classification category
-- shared tag
-- 明確 promoted concept config
+- 分類類別
+- 共用標籤
+- 明確提升為 Concept 的設定
 
 Card↔Concept 成員關係必須帶證據、來源與強度。Concept↔Concept 只使用 `co_occurs_with` 類型表達共現／支撐，不推導因果、階層或本體關係。
 
