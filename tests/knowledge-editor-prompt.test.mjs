@@ -36,26 +36,32 @@ test('Knowledge Editor requires final evidence reread before loading card style'
 test('Card Style defines the required editorial layout', async () => {
   const style = await readFile(styleUrl, 'utf8');
 
-  for (const required of [
-    '## 核心概念',
-    '選 2～3 個真正重要',
-    '## 架構與技術',
-    '用條列方式詳述主要架構',
-    '## 主要功能',
-    '用條列整理主要能力',
-    '## 技術亮點',
-    '選 2～3 個真正有辨識度',
-    '## 限制與風險',
-    '用條列方式詳述真正會影響使用或判斷的限制與風險'
-  ]) {
-    assert.ok(style.includes(required), `missing card style instruction: ${required}`);
-  }
+  const getSection = (heading, nextHeading) => {
+    const start = style.indexOf(heading);
+    const end = style.indexOf(nextHeading, start + heading.length);
+    assert.ok(start >= 0 && end > start, `missing card style section: ${heading}`);
+    return style.slice(start, end);
+  };
 
-  const coreConcepts = style.match(/## 核心概念([\\s\\S]*?)## 架構與技術/)?.[1] ?? '';
-  assert.ok(coreConcepts.includes('用 `###` 標示'), 'core concepts must use ### topic headings');
+  const coreConcepts = getSection('## 核心概念', '## 架構與技術');
+  assert.ok(coreConcepts.includes('2～3'), 'core concepts must select 2–3 topics');
+  assert.ok(coreConcepts.includes('`###`'), 'core concepts must use ### topic headings');
 
-  const highlights = style.match(/## 技術亮點([\\s\\S]*?)## 限制與風險/)?.[1] ?? '';
-  assert.ok(highlights.includes('用 `###` 標示'), 'technical highlights must use ### topic headings');
+  const architecture = getSection('## 架構與技術', '## 主要功能');
+  assert.ok(architecture.includes('條列'), 'architecture must support structured bullet explanation');
+  assert.ok(architecture.includes('元件或階段'), 'architecture must describe component or stage responsibilities');
+
+  const capabilities = getSection('## 主要功能', '## 技術亮點');
+  assert.ok(capabilities.includes('條列'), 'main capabilities must use a scannable list');
+  assert.ok(capabilities.includes('主要能力'), 'main capabilities must describe useful capabilities');
+
+  const highlights = getSection('## 技術亮點', '## 限制與風險');
+  assert.ok(highlights.includes('2～3'), 'technical highlights must select 2–3 mechanisms');
+  assert.ok(highlights.includes('`###`'), 'technical highlights must use ### topic headings');
+
+  const limitations = getSection('## 限制與風險', '## 與你的相關性');
+  assert.ok(limitations.includes('條列'), 'limitations must use a scannable list');
+  assert.ok(limitations.includes('限制'), 'limitations must describe adoption-relevant constraints');
 });
 
 test('Runtime and formal contracts defer Card Style until after synthesis', async () => {
