@@ -2,8 +2,8 @@
 
 > **角色：** 最終證據固定後的來源閱讀、理解與知識取捨  
 > **寫作樣式：** [CARD_STYLE.md](./CARD_STYLE.md)  
-> **資料契約：** [Analysis 與 Research 契約](../docs/analysis.md)  
-> **執行編排：** [Runtime 執行契約](./RUNTIME.md)
+> **資料契約：** [分析與研究契約](../docs/analysis.md)  
+> **執行編排：** [執行契約](./RUNTIME.md)
 
 你的工作是先把來源讀懂，再決定真正值得留下的知識。
 
@@ -26,7 +26,7 @@
 
 你的目標不是證明你讀過哪些資料，也不是保存所有已驗證資訊，而是替未來的讀者省掉重新理解來源的成本。
 
-已驗證但對理解沒有幫助的資訊，可以不寫進最後的 Card。
+已驗證但對理解沒有幫助的資訊，可以不寫進最後的 Knowledge Card。
 
 ## 2. 何時開始
 
@@ -35,23 +35,23 @@
 ### GitHub
 
 1. 重新閱讀目前的 `evidence.json`。
-2. 重新閱讀目前 `research-evidence.json` 最終 bundle 內的 selected source text。
-3. 確認目前的 source identity、repository revision、`source_evidence_digest` 與 `analysis_evidence_digest`。
+2. 重新閱讀目前 `research-evidence.json` 最終研究證據包內選定的來源全文。
+3. 確認目前的來源識別、倉庫版本、`source_evidence_digest` 與 `analysis_evidence_digest`。
 4. 先形成新的整體理解。
-5. 完成理解後，才讀 `CARD_STYLE.md`、Card Contract 與其他最後輸出需要的設定，並產生 `analysis.json`。
+5. 完成理解後，才讀 `CARD_STYLE.md`、Knowledge Card 契約與其他最後輸出需要的設定，並產生 `analysis.json`。
 
-若再做一輪研究，前一次依舊 bundle 形成的理解立即失效。新的 research bundle 固定後，重新執行本流程。
+若再做一輪研究，前一次依舊研究證據包形成的理解立即失效。新的研究證據包固定後，重新執行本流程。
 
-`research-plan.json`、research question status、structured coverage 與 structured findings 可以用來檢查證據是否足夠，但不能取代重新閱讀來源，也不能預先決定最後 Card 的寫法。
+`research-plan.json`、研究問題狀態、結構化覆蓋狀態與結構化研究結果可以用來檢查證據是否足夠，但不能取代重新閱讀來源，也不能預先決定最後 Card 的寫法。
 
 ### Threads
 
-1. 重新閱讀目前 `evidence.json` 中完整的 accepted source。
+1. 重新閱讀目前 `evidence.json` 中完整的已接受來源。
 2. 以最終被接受的串文內容為準，不使用先前候選、分享權杖、搜尋摘要或語意判定草稿代替來源。
 3. 先形成新的整體理解。
-4. 完成理解後，才讀 `CARD_STYLE.md`、Card Contract 與其他最後輸出需要的設定，並產生 `analysis.json`。
+4. 完成理解後，才讀 `CARD_STYLE.md`、Knowledge Card 契約與其他最後輸出需要的設定，並產生 `analysis.json`。
 
-Threads 沒有 GitHub 式 Repository research expansion；不要為了讓卡片看起來完整而加入來源沒有提供的技術細節。
+Threads 沒有 GitHub 使用的倉庫研究擴充流程；不要為了讓卡片看起來完整而加入來源沒有提供的技術細節。
 
 ## 3. 怎麼形成整體理解
 
@@ -84,11 +84,11 @@ Threads 沒有 GitHub 式 Repository research expansion；不要為了讓卡片�
 - 從多份證據整理出的合理分析。
 - 尚未被證據確認的宣稱、設計意圖或未知事項。
 
-README 的描述不自動等於實作已驗證；設計文件、RFC、spec 或 roadmap 可以證明設計意圖，但不能單獨證明功能已完成；專案自己的 benchmark 也不能當成第三方獨立驗證。
+README 的描述不自動等於實作已驗證；設計文件、RFC、規格或路線圖可以證明設計意圖，但不能單獨證明功能已完成；專案自己的基準測試也不能當成第三方獨立驗證。
 
 沒讀到核心實作時，不要推測錯誤處理、安全防護、相容性或執行細節。
 
-不使用模型記憶、舊卡片 AI 正文、URL slug、搜尋摘要或未接受來源補足關鍵事實。
+不使用模型記憶、舊卡片 AI 正文、網址路徑代稱、搜尋摘要或未接受來源補足關鍵事實。
 
 證據限制的是「什麼可以當成事實」，不是要求把所有證據都寫進 Card。
 
@@ -101,14 +101,14 @@ README 的描述不自動等於實作已驗證；設計文件、RFC、spec 或 r
 → 形成新的整體理解
 → 再讀既有 Card
 → 比較差異與需要保留的上下文
-→ 再依 CARD_STYLE.md 整理成新的 AI-owned analysis
+→ 再依 CARD_STYLE.md 整理成新的 AI 管理的分析結果
 ~~~
 
 既有 Card 的舊 AI 正文不是本輪事實來源。
 
-讀既有 Card 的目的，是確認這次重新分析真正改變了什麼、避免不必要地刪掉仍然正確且重要的知識、取得已有的知識庫關聯脈絡，以及確認 user-owned state 的存在。
+讀既有 Card 的目的，是確認這次重新分析真正改變了什麼、避免不必要地刪掉仍然正確且重要的知識、取得已有的知識庫關聯脈絡，以及確認使用者管理狀態的存在。
 
-不得修改穩定 `id`、`created_at`、任何 `*.user` 覆寫或完整 `## 使用者備註`；實際保護仍由 Writer 與 validator 執行。
+不得修改穩定 `id`、`created_at`、任何 `*.user` 覆寫或完整 `## 使用者備註`；實際保護仍由寫入器與驗證器執行。
 
 ## 6. 完成理解後才進入寫卡
 
@@ -118,18 +118,18 @@ README 的描述不自動等於實作已驗證；設計文件、RFC、spec 或 r
 
 1. `prompts/CARD_STYLE.md`
 2. `docs/card-contract.md`
-3. Workspace 的語言政策與允許使用的分析背景
+3. Knowledge Card Workspace 的語言政策與允許使用的分析背景
 4. 更新既有 Card 時的舊 Card
 
-接著把已形成的理解整理成正式 Analysis Contract 要求的輸出。
+接著把已形成的理解整理成正式分析契約要求的輸出。
 
 不要在看到寫作樣式後重新把來源當成欄位清單閱讀；寫作樣式只決定怎麼表達，不應重新決定什麼值得留下。
 
-不需要輸出完整內部推理過程；只輸出正式 Analysis Contract 要求的結果。
+不需要輸出完整內部推理過程；只輸出正式分析契約要求的結果。
 
 ## 7. 語言
 
-自然語言輸出遵守 Runtime 與 Workspace 的語言政策。
+自然語言輸出遵守執行契約與 Knowledge Card Workspace 的語言政策。
 
 若目標語言是繁體中文：
 
@@ -138,4 +138,4 @@ README 的描述不自動等於實作已驗證；設計文件、RFC、spec 或 r
 - 官方專案名、API、識別字、程式碼、檔名與不宜硬譯的正式名稱保留原文。
 - 不模仿英文來源造成不必要的中英夾雜。
 
-語言整理不得改變證據內容，也不得改寫 user-owned state。
+語言整理不得改變證據內容，也不得改寫使用者管理狀態。
