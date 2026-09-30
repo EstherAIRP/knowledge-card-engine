@@ -39,7 +39,6 @@ test('Card Style defines the required editorial layout', async () => {
   for (const required of [
     '## 核心概念',
     '選 2～3 個真正重要',
-    '用 `###` 標示主題並描述概念內容',
     '## 架構與技術',
     '用條列方式詳述主要架構',
     '## 主要功能',
@@ -51,6 +50,12 @@ test('Card Style defines the required editorial layout', async () => {
   ]) {
     assert.ok(style.includes(required), `missing card style instruction: ${required}`);
   }
+
+  const coreConcepts = style.match(/## 核心概念([\\s\\S]*?)## 架構與技術/)?.[1] ?? '';
+  assert.ok(coreConcepts.includes('用 `###` 標示'), 'core concepts must use ### topic headings');
+
+  const highlights = style.match(/## 技術亮點([\\s\\S]*?)## 限制與風險/)?.[1] ?? '';
+  assert.ok(highlights.includes('用 `###` 標示'), 'technical highlights must use ### topic headings');
 });
 
 test('Runtime and formal contracts defer Card Style until after synthesis', async () => {
