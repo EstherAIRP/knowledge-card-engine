@@ -8,7 +8,7 @@ Knowledge Card 的私人閱覽、搜尋與圖譜使用同一個已驗證發布�
 - **S**：建置開始時固定的 Knowledge Card Workspace 來源提交 SHA。
 - **P**：保存本次生成產物的 Knowledge Card Workspace 提交 SHA。
 - **release_id**：一次發布的穩定識別。
-- **manifest**：五個生成產物的資訊清單，記錄 SHA-256、位元組數與 Schema 版本。
+- **manifest**：五個生成產物的資訊清單，記錄 SHA-256、位元組數與 結構版本。
 
 P 只有兩種合法形態：
 
@@ -49,7 +49,7 @@ data/graph.json
 
 - SHA-256
 - UTF-8 位元組數
-- 產物 Schema 版本
+- 產物 結構版本
 
 發布描述同時保存 `engine_sha`、`source_sha`、`published_sha`、建置模式、建立時間與 `manifest`。
 
