@@ -1,6 +1,6 @@
 # 分析與研究契約
 
-`packages/analysis` 定義與來源類型無關的分析結果欄位，以及研究型分析使用的研究計畫、分析證據與研究覆蓋契約。此模組只驗證資料契約；不自行擷取來源、不操作 Workspace 檔案系統，也不指定特定模型供應商。
+`packages/analysis` 定義與來源類型無關的分析結果欄位，以及研究型分析使用的研究計畫、分析證據與研究覆蓋契約。此模組只驗證資料契約；不自行擷取來源、不操作 Knowledge Card Workspace 檔案系統，也不指定特定模型供應商。
 
 ## 分析版本
 
@@ -26,7 +26,7 @@
 - 因來源為英文，就讓卡片敘述大量沿用可自然翻成中文的一般概念。
 - 修改使用者覆寫、使用者備註或其他受所有權契約保護的狀態。
 
-目前分析驗證器會驗證版本、欄位、摘要值綁定、研究覆蓋、研究結果與品質門檻，但不使用自然語言分類器判斷中英夾雜程度。因此輸出語言仍由執行契約、Workspace 政策與執行 Agent 共同約束；通過結構與資料驗證，不代表已自動通過語言品質檢測。
+目前分析驗證器會驗證版本、欄位、摘要值綁定、研究覆蓋、研究結果與品質門檻，但不使用自然語言分類器判斷中英夾雜程度。因此輸出語言仍由執行契約、Knowledge Card Workspace 政策與執行 Agent 共同約束；通過結構與資料驗證，不代表已自動通過語言品質檢測。
 
 ## 分析產生前的重新閱讀與整合
 
@@ -65,7 +65,7 @@
 
 目前分析證據包只定義 GitHub 倉庫形式；其他來源類型若沒有正式研究證據包契約，驗證器會拒絕繼續處理。
 
-GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分支提交並建立受限探索，再由 Agent 提交關鍵研究問題計畫與選定的倉庫相對路徑；執行器會在同一版本重新驗證選定路徑，再讀取對應 blob。探索候選項目可以提供導覽與已知 blob 快取，但不是選定證據的允許清單。完整的版本鎖定、目錄樹上限、路徑防護，以及二進位／UTF-8 規則見 [來源收錄契約](./ingestion.md)。
+GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分支提交並建立受限探索，再由 Agent 提交關鍵研究問題計畫與選定的倉庫相對路徑；執行器會在同一版本重新驗證選定路徑，再讀取對應的 Git blob。探索候選項目只用於提供導覽與重用已知 Git blob 中繼資料，不代表只有候選集合中的檔案才能被選為證據。完整的版本鎖定、目錄樹上限、路徑防護，以及二進位／UTF-8 規則見 [來源收錄契約](./ingestion.md)。
 
 ## 研究計畫
 
@@ -90,7 +90,7 @@ GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分�
 - `already_supported`
 - `needs_evidence`
 
-只有 `needs_evidence` 可要求 `evidence_kinds` 或 `path_hints`。路徑提示必須是安全的倉庫相對路徑；它只是研究提示，不是可直接執行的外部 URL、shell 指令或擷取權限。
+只有 `needs_evidence` 可要求 `evidence_kinds` 或 `path_hints`。路徑提示必須是安全的倉庫相對路徑；它只是研究提示，不是可直接執行的外部 URL、命令列指令或擷取權限。
 
 GitHub 多輪擴充在收錄層另有重試綁定：Remote Ingest 從第 0 輪開始，第一份 Agent 研究計畫不帶 `prior_analysis_evidence_digest`；第一輪已驗證證據包形成後，若 Agent 還需要第二輪證據，新計畫必須把 `prior_analysis_evidence_digest` 設為目前證據包的 `analysis_evidence_digest`。這個欄位用來證明新的關鍵研究問題判定是基於目前研究證據，而不是較舊的證據包。
 
@@ -214,7 +214,7 @@ GitHub 研究的下列覆蓋維度不能用 `not_applicable` 直接略過：
 
 `bindResearchAnalysisToEvidence(...)` 可建立上述綁定；`validateAnalysisResult(...)` 在版本 2 時必須同時取得相容且已驗證的分析證據包。
 
-## Workspace 寫入器邊界
+## Knowledge Card Workspace 寫入器邊界
 
 `packages/workspace` 的 `applyAcceptedSourceAnalysis(...)` 可接受選用的 `analysisEvidenceBundle`：
 
@@ -230,7 +230,7 @@ Remote Ingest 的 GitHub 交接會先建立固定版本的探索與空的第 0 �
 
 研究契約沿用既有分析的「驗證失敗即拒絕」原則，主要錯誤包含：
 
-| Code | 意義 |
+| 錯誤碼 | 意義 |
 | --- | --- |
 | `ANALYSIS_INVALID` | 分析版本、中繼資料或正文欄位無效。 |
 | `ANALYSIS_SOURCE_MISMATCH` | 分析／研究的來源識別與已接受證據不一致。 |
