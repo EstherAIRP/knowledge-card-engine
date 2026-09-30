@@ -1,4 +1,4 @@
-# Workspace 契約
+# Knowledge Card Workspace 契約
 
 Knowledge Card Workspace 是 Knowledge Card 的私人資料根目錄。Knowledge Card Engine 只接受呼叫端明確提供的工作區根目錄，不會從目前工作目錄、倉庫名稱或其他環境資訊推測私人資料位置。
 
@@ -6,8 +6,8 @@ Knowledge Card Workspace 是 Knowledge Card 的私人資料根目錄。Knowledge
 
 工作區根目錄必須包含：
 
-- `workspace.yaml`：Workspace 識別與標準目錄映射。
-- `engine.lock.json`：核准的 Knowledge Card Engine 倉庫、完整提交 SHA 與 Workspace 結構相容資訊。
+- `workspace.yaml`：Knowledge Card Workspace 識別與標準目錄映射。
+- `engine.lock.json`：核准的 Knowledge Card Engine 倉庫、完整提交 SHA 與 Knowledge Card Workspace 結構相容資訊。
 - `profile/`：經使用者授權的私人背景與分析政策。
 - `projects/`：私人專案背景與需求。
 - `content/knowledge/`：Knowledge Card。
@@ -20,7 +20,7 @@ Knowledge Card Workspace 是 Knowledge Card 的私人資料根目錄。Knowledge
 
 ## 使用者背景與分析政策
 
-`profile/` 保存使用者明確授權的私人背景與分析政策。這些政策不是 Knowledge Card 正文來源，也不會因為位於 Knowledge Card Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入卡片，仍依各 Workspace 的明確授權處理。
+`profile/` 保存使用者明確授權的私人背景與分析政策。這些政策不是 Knowledge Card 正文來源，也不會因為位於 Knowledge Card Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入卡片，仍依各 Knowledge Card Workspace 的明確授權處理。
 
 Knowledge Card Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，建立、重新分析 Knowledge Card 或執行 Remote Ingest 分析時，在產生 AI 自然語言內容前必須先讀取；若不存在，使用執行契約中的預設語言規則。
 
@@ -35,7 +35,7 @@ Knowledge Card Workspace 可以用 `profile/language-policy.md` 定義 Knowledge
 
 ## workspace.yaml
 
-目前支援的 Workspace 結構版本為 `1`。
+目前支援的 Knowledge Card Workspace 結構版本為 `1`。
 
 ```yaml
 schema_version: 1
@@ -71,7 +71,7 @@ paths:
 
 ## engine.lock.json
 
-目前支援的 Engine 鎖定檔結構版本為 `1`。
+目前支援的 Knowledge Card Engine 鎖定檔結構版本為 `1`。
 
 ```json
 {
@@ -87,9 +87,9 @@ paths:
 - `schema_version`：目前只接受整數 `1`。
 - `engine_repository`：`owner/repository` 格式。
 - `engine_commit`：完整 40 位小寫十六進位 Git SHA。
-- `workspace_schema_version`：正整數，必須與 `workspace.yaml.schema_version` 相同，且必須由目前 Engine 支援。
+- `workspace_schema_version`：正整數，必須與 `workspace.yaml.schema_version` 相同，且必須由目前 Knowledge Card Engine 支援。
 
-Knowledge Card Workspace 不追隨 Knowledge Card Engine 的 `main`。升級 Engine 時必須以新的不可變提交 SHA 更新鎖定檔，不能只修改分支或標籤名稱。
+Knowledge Card Workspace 不追隨 Knowledge Card Engine 的 `main`。升級 Knowledge Card Engine 時必須以新的不可變提交 SHA 更新鎖定檔，不能只修改分支或標籤名稱。
 
 結構定義：[`schema/engine-lock.schema.json`](../schema/engine-lock.schema.json)。
 
@@ -102,15 +102,15 @@ Knowledge Card Workspace 不追隨 Knowledge Card Engine 的 `main`。升級 Eng
 3. 兩份檔案只包含契約允許的欄位。
 4. 兩種結構版本都受支援。
 5. `workspace_id` 與所有路徑合法。
-6. `engine.lock.json.workspace_schema_version` 與 Workspace 結構版本一致。
-7. 呼叫端若提供預期的 Engine 倉庫與提交 SHA，鎖定檔必須完全相符。
+6. `engine.lock.json.workspace_schema_version` 與 Knowledge Card Workspace 結構版本一致。
+7. 呼叫端若提供預期的 Knowledge Card Engine 倉庫與提交 SHA，鎖定檔必須完全相符。
 8. 七個解析後的路徑都位於工作區根目錄內；預設還會要求目錄實際存在。
 
-任何一項不成立都會拒絕載入，不回傳部分載入的 Workspace。
+任何一項不成立都會拒絕載入，不回傳部分載入的 Knowledge Card Workspace。
 
-## GitHub Actions 的 Engine 版本鎖定
+## GitHub Actions 的 Knowledge Card Engine 版本鎖定
 
-Knowledge Card Engine 提供三個可重用的 Workspace 工作流程：
+Knowledge Card Engine 提供三個可重用的 Knowledge Card Workspace 工作流程：
 
 - `.github/workflows/validate-workspace.yml`
 - `.github/workflows/release-workspace.yml`
@@ -122,7 +122,7 @@ Knowledge Card Workspace 對應的驗證、發布與收錄薄層工作流程都�
 uses: EstherAIRP/knowledge-card-engine/.github/workflows/ingest-workspace.yml@<40-sha>
 ```
 
-工作流程版本鎖定驗證會同時核對可重用工作流程名稱、倉庫與提交 SHA。驗證執行器會檢查三個 Workspace 呼叫端；發布與收錄執行器也會再次核對自己的呼叫端版本鎖定與實際簽出的 Engine SHA。任何倉庫、工作流程名稱或 SHA 不一致都會拒絕繼續執行。
+工作流程版本鎖定驗證會同時核對可重用工作流程名稱、倉庫與提交 SHA。驗證執行器會檢查三個 Knowledge Card Workspace 呼叫端；發布與收錄執行器也會再次核對自己的呼叫端版本鎖定與實際簽出的 Knowledge Card Engine SHA。任何倉庫、工作流程名稱或 SHA 不一致都會拒絕繼續執行。
 
 ## 驗證命令
 
@@ -136,4 +136,4 @@ npm run workspace:validate -- /path/to/workspace \
   --reusable-workflow=ingest-workspace.yml
 ```
 
-完整的 Workspace CI 還會驗證卡片與分類體系、已接受來源狀態，以及研究追溯狀態；詳見 [development.md](./development.md)。
+完整的 Knowledge Card Workspace CI 還會驗證卡片與分類體系、已接受來源狀態，以及研究追溯狀態；詳見 [development.md](./development.md)。
