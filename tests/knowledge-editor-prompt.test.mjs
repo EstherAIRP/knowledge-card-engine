@@ -13,7 +13,7 @@ test('Knowledge Editor requires final evidence reread before loading card style'
 
   for (const required of [
     '重新閱讀目前的 `evidence.json`',
-    '重新閱讀目前 `research-evidence.json` 最終 bundle',
+    '重新閱讀目前 `research-evidence.json` 最終研究證據包',
     '先形成新的整體理解',
     '完成理解後，才讀 `CARD_STYLE.md`',
     '既有 Card 的舊 AI 正文不是本輪事實來源',
