@@ -47,7 +47,7 @@
 - 來源識別：`github:{owner-lower}/{repo-lower}`
 - 建議 ID：`github-{owner-lower}-{repo-lower}`
 
-已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫 owner/repo。
+已接受證據的最終標準網址使用 GitHub 中繼資料的 `full_name` 組成；來源識別一律使用小寫的 `owner/repo`。
 
 ### Threads
 
@@ -57,7 +57,7 @@
 - `/share/<token>`
 - `/t/<token>`
 
-直接貼文 URL 可立即取得該貼文的 shortcode 識別；`share`／`t` token 只是暫時導向識別，**不得**作為正式 `source.identity`。來源供應者必須先解析到具體 Threads 貼文，再依結構證據重建其根貼文；正式來源識別只使用：
+直接貼文 URL 可立即取得該貼文的短碼（shortcode）；`share`／`t` 路徑代碼只是暫時導向識別，**不得**作為正式 `source.identity`。來源供應者必須先解析到具體 Threads 貼文，再依結構證據重建其根貼文；正式來源識別只使用：
 
 ```text
 threads:{root_shortcode}
@@ -121,14 +121,14 @@ Knowledge Card Engine 提供固定倉庫版本的探索／擷取基礎操作，�
 - `repository_revision`：40 字元提交 SHA。
 - `root_tree_sha`：該提交的根目錄樹 SHA。
 
-接著以同一 `repository_revision` 重新查 README。若其 blob SHA 已與已接受證據的 README SHA 不同，回報 `SOURCE_RESEARCH_STALE`，不得把較舊的來源接受結果與較新的倉庫目錄樹混成同一份研究證據包。
+接著以同一 `repository_revision` 重新查 README。若其 Git blob SHA 已與已接受證據的 README SHA 不同，回報 `SOURCE_RESEARCH_STALE`，不得把較舊的來源接受結果與較新的倉庫目錄樹混成同一份研究證據包。
 
 ### 候選探索
 
-GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Knowledge Card Engine 產生可能具有研究價值、可視為第一手文字來源的候選提示，例如：
+GitHub 倉庫目錄樹透過 Git tree API 逐層、受限展開。Knowledge Card Engine 產生可能具有研究價值、可視為第一手文字來源的候選提示，例如：
 
 - README、架構／設計文件。
-- 相依套件／建置 manifest。
+- 相依套件／建置清單檔（manifest）。
 - 設定、進入點、API／路由。
 - 資料模型／Schema／遷移。
 - 授權／安全。
@@ -137,7 +137,7 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Knowledge Card En
 - LICENSE。
 - 具代表性的原始碼／測試。
 
-常見生成、vendor、相依套件、建置／快取目錄，以及 lockfile、壓縮後檔案、非文字副檔名不進候選集合。候選探索用來提供受限的倉庫導覽與已知 blob 中繼資料；它不是選定證據的允許清單。
+常見生成目錄、第三方套件目錄、相依套件目錄、建置／快取目錄，以及套件鎖定檔、壓縮後檔案、非文字副檔名不進候選集合。候選探索只提供受限的倉庫導覽與已知 Git blob 中繼資料，不代表只有候選集合中的檔案才可被選為證據。
 
 探索程序有硬性上限；目前預設：
 
@@ -149,8 +149,8 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Knowledge Card En
 | 目錄深度 | 5 |
 | 擴充輪次 | 2 |
 | 選定證據項目（累計） | 20 |
-| 單一項目 | 163840 bytes |
-| 選定證據包總量（累計） | 786432 bytes |
+| 單一項目 | 163840 位元組 |
+| 選定證據包總量（累計） | 786432 位元組 |
 
 呼叫端只能把上限調低，不能透過選項提高 Knowledge Card Engine 的硬性上限。
 
@@ -164,16 +164,16 @@ GitHub 倉庫目錄樹以非遞迴 Git tree API 受限展開。Knowledge Card En
 
 ### 選定證據
 
-`fetchGitHubResearchEvidence(...)` 接受非空、不得重複的安全倉庫相對選定路徑。若路徑已存在於探索候選集合，Knowledge Card Engine 可直接使用探索結果的 blob 中繼資料；若不在候選目錄，Knowledge Card Engine 會以固定的 `repository_revision` 重新解析該精確路徑，確認它是存在於同一倉庫版本的一般文字檔，再取得其 blob。選定路徑不能指定任意 URL、任意分支、其他倉庫、被排除的生成／vendor／相依套件／建置／快取目錄、非文字內容或 shell 指令。
+`fetchGitHubResearchEvidence(...)` 接受非空、不得重複的安全倉庫相對路徑。若路徑已存在於探索候選集合，Knowledge Card Engine 可直接使用探索結果的 Git blob 中繼資料；若不在候選集合，Knowledge Card Engine 會以固定的 `repository_revision` 重新解析該精確路徑，確認它是存在於同一倉庫版本的一般文字檔，再取得對應的 Git blob。選定路徑不能指定任意 URL、任意分支、其他倉庫、被排除的生成／第三方套件／相依套件／建置／快取目錄、非文字內容或命令列指令。
 
-因此探索候選之外的核心第一手來源仍可由 Agent 主動選取，但內容仍固定於同一倉庫版本，且受完全相同的路徑、二進位、UTF-8、項目數與位元組上限守門。每個選定項目會保存：
+因此探索候選之外的核心第一手來源仍可由 Agent 主動選取，但內容仍固定於同一倉庫版本，且仍須通過相同的路徑、二進位內容、UTF-8、項目數與位元組上限檢查。每個選定項目會保存：
 
 - 確定性的 `evidence_id`
 - 倉庫相對 `path`
 - 證據 `kind`
-- Git `blob_sha`
+- Git blob SHA：`blob_sha`
 - `content_sha256`
-- UTF-8 `bytes`
+- UTF-8 位元組數：`bytes`
 - `text`
 
 二進位、非 UTF-8、超過單檔或總證據包上限的內容一律拒絕。
@@ -247,13 +247,13 @@ Threads 輸入 URL
 - `provider: threads`、`accepted: true`、`source_type: article`。
 - 根貼文標準網址與 `threads:{root_shortcode}` 完全一致。
 - `requested_url` 與 `resolved_input_url` 可追溯本次輸入與實際貼文。
-- `resolved_input_url`／`input_shortcode` 指向的實際輸入貼文必須在已接受的 `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接貼文請求不得解析成另一個 shortcode。
+- `resolved_input_url`／`input_shortcode` 指向的實際輸入貼文必須在已接受的 `parts[]` 中恰好出現一次，且 `thread.input_index` 必須指向同一位置；直接貼文請求不得解析成另一個短碼。
 - `thread.complete: true` 且 `thread.verification: structural`。
 - 串文狀態只能是 `SINGLE_POST` 或 `COMPLETE_THREAD`。
 - `thread.total`、`detected_parts` 與 `parts.length` 一致。
-- 每個 part 都有可驗證的 shortcode、標準網址、作者與固定順序。
-- 所有 part 與根貼文為同一作者。
-- `combined_text` 必須等於有序 parts 的文字串接。
+- 每個 `parts[]` 項目都有可驗證的短碼、標準網址、作者與固定順序。
+- 所有 `parts[]` 項目與根貼文為同一作者。
+- `combined_text` 必須等於依 `parts[]` 順序串接的文字。
 - 來源至少包含文字或媒體等可分析內容。
 - `evidence_digest` 必須符合已接受串文的內容指紋。
 
@@ -273,14 +273,14 @@ Threads 輸入 URL
 
 一般續篇重建以有序 `selected_shortcodes` 作為唯一具有權威性的選取結果；`candidate_labels` 可省略，也不參與正文組裝或續篇接受判定。只有判定 `root_only: true` 時，才必須提供完整 `candidate_labels`，逐一把每個候選高信心標成 `followup` 或 `unrelated`。
 
-Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；選擇續篇時，選定 shortcode 必須來自目前證據、不得重複，且必須維持時間順序；第一個選定候選項目的中繼資料分數必須達最低門檻。判定 `root_only` 時，每個候選都必須明確排除，不能存在續篇或不確定候選項目。
+Knowledge Card Engine 重新套用確定性門檻。至少要求整體 `confidence >= 0.90`；選擇續篇時，選定短碼必須來自目前證據、不得重複，且必須維持時間順序；第一個選定候選項目的中繼資料分數必須達最低門檻。判定 `root_only` 時，每個候選都必須明確排除，不能存在續篇或不確定候選項目。
 
 語意復原成功後，已接受證據使用：
 
 - `thread.verification: llm_assisted`
 - `INFERRED_THREAD_HIGH_CONFIDENCE` 或 `INFERRED_SINGLE_POST_HIGH_CONFIDENCE`
 - `extraction.inferred: true`
-- `thread.recovery` 保存 `confidence`、選取 shortcode、`candidate_labels` 與排序器追溯資訊。
+- `thread.recovery` 保存 `confidence`、選定短碼、`candidate_labels` 與排序器追溯資訊。
 
 這個能力只能處理結構資料「不足以辨識續篇」的缺口，不能覆蓋更強且互相衝突的結構證據，也不能把已知缺篇或有歧義的關係圖推定成完整。
 
@@ -290,13 +290,13 @@ Remote Ingest 需要語意判定時，Knowledge Card Engine 先輸出 `semantic-
 
 第二次執行不直接信任先前快照；Knowledge Card Engine 會重新取得來源、重新建立候選並重新計算摘要值。若來源或候選證據已改變，回報 `THREADS_CONTINUATION_HANDOFF_EVIDENCE_MISMATCH` 並停止，不得把舊判定套到新來源。
 
-Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與各 part 的雜湊值／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 中易變的查詢參數／片段不參與證據摘要值的穩定內容識別。
+Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接受來源狀態只保存來源與 `parts[]` 各項目的雜湊值／結構指紋，以及語意復原追溯資訊，不保存 Threads 原文。媒體 URL 中易變的查詢參數／片段不參與證據摘要值的穩定內容識別。
 
 ## 驗證失敗即拒絕的錯誤
 
 常見錯誤：
 
-| Code | 意義 |
+| 錯誤碼 | 意義 |
 | --- | --- |
 | `SOURCE_URL_INVALID` | URL 不是合法支援格式。 |
 | `SOURCE_PROVIDER_UNSUPPORTED` | 請求／證據的來源供應者尚未支援。 |
@@ -307,7 +307,7 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 | `SOURCE_INCOMPLETE` | 必要證據、來源完整性或摘要值驗證未通過。 |
 | `SOURCE_IDENTITY_MISMATCH` | 請求、解析、標準或來源內容的來源識別不一致。 |
 | `SOURCE_CAPTURE_TIME_INVALID` | 擷取時間無效。 |
-| `SOURCE_RESEARCH_STALE` | GitHub 已接受 README 與固定研究版本的 README blob 已不一致。 |
+| `SOURCE_RESEARCH_STALE` | GitHub 已接受 README 與固定研究版本的 README Git blob 已不一致。 |
 | `GITHUB_RESEARCH_LIMIT_INVALID` | 呼叫端提供的研究上限無效，或試圖使用未定義的上限。 |
 | `GITHUB_RESEARCH_DISCOVERY_INVALID` | GitHub 研究探索結構、候選項目或受限中繼資料無效。 |
 | `GITHUB_RESEARCH_PATH_INVALID` | 研究路徑不是安全的倉庫相對路徑。 |
@@ -319,8 +319,8 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 | `GITHUB_RESEARCH_PROGRESS_INVALID` | 研究進度與已接受來源、倉庫版本、證據包、項目／位元組累計值不一致。 |
 | `GITHUB_RESEARCH_EXPANSION_STOPPED` | 續行已依研究計畫／上限判定必須停止，仍嘗試擷取下一輪證據。 |
 | `GITHUB_RESEARCH_BUDGET_EXCEEDED` | 選定研究證據超過單輪可用或累計的項目數／位元組上限。 |
-| `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | 選定 blob 不是可接受的 UTF-8 文字內容。 |
-| `INGESTION_IDENTITY_CONFLICT` | Workspace 內來源識別／標準網址對應互相衝突或已有重複資料。 |
+| `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | 選定的 Git blob 不是可接受的 UTF-8 文字內容。 |
+| `INGESTION_IDENTITY_CONFLICT` | Knowledge Card Workspace 內的來源識別／標準網址對應互相衝突或已有重複資料。 |
 
 ## 分析結果契約
 
@@ -341,7 +341,7 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 
 ## 新建／更新解析
 
-Workspace 寫入器載入完整 Card 集合後依序解析：
+Knowledge Card Workspace 寫入器載入完整 Card 集合後依序解析：
 
 1. `source.identity`
 2. 標準網址
@@ -357,16 +357,16 @@ Workspace 寫入器載入完整 Card 集合後依序解析：
 
 ## 寫入器驗證與持久化
 
-`applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, options)` 是與來源供應者無關的正式寫入器；GitHub 版本 2 透過 `options.analysisEvidenceBundle` 傳入研究證據包。`applyAcceptedGitHubAnalysis` 與 `applyAcceptedThreadsAnalysis` 是來源供應者專屬守門／相容入口。
+`applyAcceptedSourceAnalysis(workspaceRoot, evidence, analysis, options)` 是與來源供應者無關的正式寫入器；GitHub 版本 2 透過 `options.analysisEvidenceBundle` 傳入研究證據包。`applyAcceptedGitHubAnalysis` 與 `applyAcceptedThreadsAnalysis` 是來源供應者專屬的驗證／相容入口。
 
 任何正式寫入前會：
 
 1. 驗證來源供應者專屬已接受證據。
 2. 驗證分析與來源證據綁定；GitHub 版本 2 另外驗證分析證據包、研究摘要值與結構化品質門檻。
-3. 載入 Workspace、分類體系與完整 Card 集合。
+3. 載入 Knowledge Card Workspace、分類體系與完整 Card 集合。
 4. 解析新建／更新目標。
 5. 建立合併後 Card 候選。
-6. 更新時比較使用者／穩定所有狀態。
+6. 更新時比較所有使用者管理狀態與穩定狀態。
 7. 對候選的完整集合執行 Card／分類體系／唯一性驗證。
 8. 建立並驗證對應來源供應者的已接受來源狀態。
 9. GitHub 版本 2 建立並驗證精簡研究追溯狀態。
@@ -389,7 +389,7 @@ Threads：
 state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 ```
 
-保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 part 的 shortcode／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
+保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 `parts[]` 項目的短碼／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
 
 `npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id／來源識別／標準網址與實際 Card 相同。
 
@@ -401,7 +401,7 @@ GitHub 版本 2 成功寫入後，另保存：
 state/research/github/{owner-lower}--{repo-lower}.json
 ```
 
-此狀態只保存來源／研究摘要值、倉庫版本、證據項目的 path／kind／blob SHA／內容雜湊／位元組數、覆蓋狀態、分析時間與 Card 對應；不保存證據 `text`、結構化研究結果、`unknowns` 或憑證。
+此狀態只保存來源／研究摘要值、倉庫版本、證據項目的 `path`／`kind`／Git blob SHA／內容雜湊／位元組數、覆蓋狀態、分析時間與 Card 對應；不保存證據 `text`、結構化研究結果、`unknowns` 或憑證。
 
 `npm run research-state:validate` 會驗證研究狀態本身的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id／來源識別／標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。
 
@@ -556,8 +556,8 @@ Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究�
 
 - 只允許結果回報的精確 `allowed_changed_paths`。
 - 推送前確認遠端來源收錄分支 SHA 仍等於執行開始時的來源 SHA。
-- 拒絕任何未列入交接契約的檔案、任意輸出路徑 或 shell 指令。
-- 套用後重新驗證 Cards、已接受來源狀態與研究追溯狀態。
+- 拒絕任何未列入交接契約的檔案、任意輸出路徑 或命令列指令。
+- 套用後重新驗證 Knowledge Card 集合、已接受來源狀態與研究追溯狀態。
 
 `state/ingestion/**` 不得合併到 Workspace `main`。
 
