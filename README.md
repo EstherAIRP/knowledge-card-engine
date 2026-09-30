@@ -50,7 +50,7 @@ Knowledge Card 的前置中繼資料（frontmatter）結構由公開結構規格
 - [執行契約](./prompts/RUNTIME.md)
 - [Knowledge Card 知識編輯提示](./prompts/KNOWLEDGE_EDITOR.md)
 - [Knowledge Card 寫作樣式](./prompts/CARD_STYLE.md)
-- [Workspace 契約](./docs/workspace.md)
+- [Knowledge Card Workspace 契約](./docs/workspace.md)
 - [Knowledge Card 契約](./docs/card-contract.md)
 - [來源收錄契約](./docs/ingestion.md)
 - [分析與研究契約](./docs/analysis.md)
@@ -94,7 +94,7 @@ npm run ingest:threads -- /path/to/workspace https://threads.com/share/token --a
 npm run site:serve
 ```
 
-正式部署需要設定 GitHub App／Knowledge Card Workspace 環境變數；多執行個體或 無伺服器平台必須使用共用伺服器端工作階段儲存區。Vercel 轉接器使用 `KC_SESSION_STORE_REST_URL`／`KC_SESSION_STORE_REST_TOKEN`。完整契約見 [docs/private-site.md](./docs/private-site.md)。
+正式部署需要設定 GitHub App／Knowledge Card Workspace 環境變數；多執行個體或無伺服器平台必須使用共用伺服器端工作階段儲存區。Vercel 轉接器使用 `KC_SESSION_STORE_REST_URL`／`KC_SESSION_STORE_REST_TOKEN`。完整契約見 [docs/private-site.md](./docs/private-site.md)。
 
 完整開發說明見 [docs/development.md](./docs/development.md)，正式文件入口見 [docs/index.md](./docs/index.md)。
 
