@@ -82,7 +82,7 @@ __Host-kc_session=<opaque-random-id>
 
 `createPrivateSiteApp({ sessionStore })` 可注入工作階段儲存區；介面必須提供非同步 `create/get/delete`。內建 `createMemorySessionStore` 是單一處理程序內的參考實作：處理程序重新啟動會讓所有工作階段安全失效，但不適合需要跨執行個體或無伺服器請求共享工作階段的部署。
 
-Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis 的 REST 指令端點 保存具存活期限的伺服器端工作階段。它需要 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN`，工作階段鍵使用 `kc:session:` 命名空間。REST 後端無法讀寫或回傳格式錯誤的值時，工作階段操作採驗證失敗即拒絕。
+Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis 的 REST 指令端點保存具存活期限的伺服器端工作階段。它需要 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN`，工作階段鍵使用 `kc:session:` 命名空間。REST 後端無法讀寫或回傳格式錯誤的值時，工作階段操作採驗證失敗即拒絕。
 
 ## 每次請求重新驗資格
 
@@ -153,7 +153,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 只回傳 Knowledge Card 摘要，不回正文。摘要目前包含穩定 ID、`title`、`summary`、標準網址、`source type`、`effective resource kind`／`navigation`／`tags`／`relevance`／`actions`／`status`，以及建立、更新與最近檢查日期。這些欄位供已授權的 Knowledge Radar 首頁呈現、排序與瀏覽器端篩選；正文仍只由 Knowledge Card 詳細資料 API 提供。
 
-分頁游標綁定 Knowledge Card Workspace 提交 SHA；如果下一頁請求時設定的版本參照（ref） 已移到另一個版本，回 409 `DATA_VERSION_CHANGED`，要求從第一頁重新讀取，避免跨版本混頁。
+分頁游標綁定 Knowledge Card Workspace 提交 SHA；如果下一頁請求時設定的版本參照（ref）已移到另一個版本，回 409 `DATA_VERSION_CHANGED`，要求從第一頁重新讀取，避免跨版本混頁。
 
 ### GET /api/cards/:id
 
@@ -170,7 +170,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 ### GET /api/search
 
-需要授權。使用 `q` 與可選的 `limit` 執行伺服器端確定性搜尋。只有目前已驗證的發布版本存在時可用；只有 Card 的啟動模式回 `503 RELEASE_REQUIRED`。
+需要授權。使用 `q` 與可選的 `limit` 執行伺服器端確定性搜尋。只有目前已驗證的發布版本存在時可用；只有 Knowledge Card 的啟動模式回 `503 RELEASE_REQUIRED`。
 
 ### GET /api/graph
 
@@ -220,16 +220,16 @@ GitHub REST 請求使用 API 版本 `2026-03-10`。
 - 未登入：以 Knowledge Radar 品牌頁提供 GitHub 登入。
 - `cancelled`／`invalid`／`forbidden`／`unavailable`：顯示同一視覺系統的登入錯誤狀態。
 - 已登入首頁：使用寬版 Radar 頁面框架、主視覺、統計資訊、搜尋／篩選控制項與響應式 Knowledge Card 網格。
-- 初始啟動、Knowledge Card 集合、Knowledge Card 詳細資料與圖譜非同步讀取期間，介面 先顯示 Knowledge Radar 載入狀態：品牌化 Radar 動畫、狀態文案與骨架內容面板；載入畫面只含公開介面外殼，不預載私人 Knowledge Card。`prefers-reduced-motion: reduce` 會停用載入動畫。
+- 初始啟動、Knowledge Card 集合、Knowledge Card 詳細資料與圖譜非同步讀取期間，介面先顯示 Knowledge Radar 載入狀態：品牌化 Radar 動畫、狀態文案與骨架內容面板；載入畫面只含公開介面外殼，不預載私人 Knowledge Card。`prefers-reduced-motion: reduce` 會停用載入動畫。
 - Knowledge Card 列表摘要只使用 `/api/cards` 已授權回傳的 title、summary、source／resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些中繼資料篩選與排序，但不額外下載私人正文。
 - Knowledge Card 詳細資料瀏覽器路由使用 `/knowledge/<stable-id>`。點開 Knowledge Card 後以 History API 寫入永久連結；重新整理或直接開啟該網址時，伺服器只回公開介面外殼，瀏覽器完成工作階段與 Knowledge Card Workspace 授權後，才由 `/api/cards/:id` 取得正文並恢復同一張 Knowledge Card。瀏覽器上一頁／下一頁由 `popstate` 依目前 URL 在 Knowledge Card 詳細資料與首頁之間切換；路由本身不繞過私人 API 授權。
 - Knowledge Card 詳細資料：先以寬版中繼資料內容面板顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期；Markdown 正文維持較窄閱讀寬度。桌機右側提供固定文章目錄；較窄可視區域則把「文章目錄」整合進主固定頁首，與 Cards／Search／Graph 共用同一列，點擊後在頁首下方展開同一份章節清單，不再額外保留第二條固定區域導覽。目錄依序納入正文 H2／H3，以及實際存在的 Concept Neighborhood、Related Knowledge 頂層區段；點擊可捲動定位，並隨閱讀位置標示目前章節。Concept Neighborhood 與 Related Knowledge 在正文後維持寬版內容區，以卡片網格呈現。Concept 卡會切換至 Graph 並以該 Concept 作為查詢；Related Knowledge 顯示鄰近 Card 摘要，以及目前關聯產物可提供的 score／evidence／manual note。
 - 搜尋沿用同一套頁面框架、內容面板、品牌色與控制項；資料只由已授權的 `/api/search` 取得。
-- 圖譜介面使用與 Cards 首頁一致的 Radar 頁面語言：主視覺內容面板、四格統計與圓角探索／篩選面板；其下維持語意可視區域調整、依節點感知的 pointer capture、滑鼠／觸控平移加雙指／滾輪縮放、Knowledge Card 選取、焦點／全域模式、響應式檢視器抽屜、語意鄰近清單、節點標籤優先序、關聯顯示與圖譜篩選。資料只由已授權的 `/api/graph` 提供。
+- 圖譜介面使用與 Cards 首頁一致的 Radar 頁面語言：主視覺內容面板、四格統計與圓角探索／篩選面板；其下維持語意可視區域調整、依節點感知的指標擷取（pointer capture）、滑鼠／觸控平移加雙指／滾輪縮放、Knowledge Card 選取、焦點／全域模式、響應式檢視器抽屜、語意鄰近清單、節點標籤優先序、關聯顯示與圖譜篩選。資料只由已授權的 `/api/graph` 提供。
 - `/api/graph` 在目前發布快照上投影圖譜檢視模型：Knowledge Card 中繼資料、Concept 中繼資料、具型別邊、版面／統計，以及由目前發布版本向量即時計算的 `semantic.neighborsByCard`／`semantic.distancesByCard`。這個投影不寫回生成產物，也不跨發布版本讀資料。
-- 圖譜指標規則：`pointerdown` 發生在 `.graph-node` 上時不得建立拖曳狀態或 pointer capture；Knowledge Card 節點的 `click`／`Enter`／`Space` 必須可進入已選檢視器。
+- 圖譜指標規則：`pointerdown` 發生在 `.graph-node` 上時不得建立拖曳狀態或指標擷取；Knowledge Card 節點的 `click`／`Enter`／`Space` 必須可進入已選檢視器。
 - 頁首只保留 Knowledge Radar 品牌與 Cards／Search／Graph 導覽，不顯示 `release_id`、GitHub `avatar`／`login` 或登出按鈕；工作階段與發布 API 契約仍保留。401／403 會立即清除前端目前私人狀態，回到授權介面。
-- Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Knowledge Card 原文；支援 H1–H3、段落、無序／有序列表、blockquote、horizontal rule、fenced code、table、粗體／斜體、inline code、HTTP(S) link 與相對 Card `.md` link。圍欄程式碼區塊提供本機 Clipboard API 複製操作；相對 Knowledge Card 連結會以穩定 ID 開啟私人 Knowledge Card；原始 HTML 不執行，Markdown 圖片不自動載入外部資源。
+- Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Knowledge Card 原文；支援 H1–H3、段落、無序／有序列表、區塊引用、水平分隔線、圍欄程式碼區塊、表格、粗體／斜體、行內程式碼、HTTP(S) 連結與相對 Knowledge Card `.md` 連結。圍欄程式碼區塊提供本機 Clipboard API 複製操作；相對 Knowledge Card 連結會以穩定 ID 開啟私人 Knowledge Card；原始 HTML 不執行，Markdown 圖片不自動載入外部資源。
 - UI 支援淺色／深色配色；桌機版 Radar 網格為三欄，較窄可視區域依序收斂為兩欄與單欄。
 
 介面外殼本身不包含任何私人 Knowledge Card、生成索引或憑證；外觀與版面調整不能改變伺服器端授權與固定於發布版本的讀取邊界。樣式模組、頁面框架、閱讀寬度、響應式斷點與 UI 回歸契約見 [web-ui.md](./web-ui.md)。
