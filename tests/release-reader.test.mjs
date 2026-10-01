@@ -27,9 +27,9 @@ const AT = '2026-09-19T00:00:00.000Z';
 const RELEASE_ID = 'release-reader-fixture';
 
 async function fixtureEmbeddings(texts, { dimensions = 384 } = {}) {
-  return texts.map((_, index) => {
+  return texts.map(() => {
     const vector = Array.from({ length: dimensions }, () => 0);
-    vector[index % dimensions] = 1;
+    vector[0] = 1;
     return vector;
   });
 }
