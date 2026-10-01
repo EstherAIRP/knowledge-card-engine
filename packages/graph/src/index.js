@@ -416,6 +416,12 @@ function actualClassifierMode(classifications) {
   return 'semantic-fallback';
 }
 
+function invertDirection(direction) {
+  if (direction === 'source_to_target') return 'target_to_source';
+  if (direction === 'target_to_source') return 'source_to_target';
+  return direction;
+}
+
 function assertRelationSpec(entry, cardIds, label) {
   if (!entry || typeof entry !== 'object') throw new TypeError(label + ' relation entry must be an object.');
   if (!cardIds.has(entry.source) || !cardIds.has(entry.target) || entry.source === entry.target) {
@@ -433,6 +439,37 @@ function assertRelationSpec(entry, cardIds, label) {
   }
 }
 
+function normalizeManualEdge(entry, fallback = {}) {
+  const rawSource = String(entry?.source ?? '');
+  const rawTarget = String(entry?.target ?? '');
+  const swapped = rawSource.localeCompare(rawTarget) > 0;
+  const source = swapped ? rawTarget : rawSource;
+  const target = swapped ? rawSource : rawTarget;
+  const explicitDirection = entry?.direction;
+  const direction = explicitDirection !== undefined
+    ? (swapped ? invertDirection(explicitDirection) : explicitDirection)
+    : fallback.direction ?? 'undirected';
+  const pairId = relationPairKey(source, target);
+  const type = entry?.type ?? fallback.type ?? 'similar_to';
+  const score = Number(entry?.score ?? fallback.score ?? 1);
+  const signals = Array.isArray(entry?.signals)
+    ? entry.signals
+    : fallback.signals ?? ['manual:override'];
+
+  return {
+    ...fallback,
+    pair_id: pairId,
+    source,
+    target,
+    type,
+    direction,
+    score,
+    signals,
+    ...(entry?.reason ? { reason: String(entry.reason) } : {}),
+    ...(entry?.confidence !== undefined ? { confidence: Number(entry.confidence) } : {})
+  };
+}
+
 function applyRelationOverrides(generated, overrides, cardIds) {
   const blocked = Array.isArray(overrides?.blocked) ? overrides.blocked : [];
   const pinned = Array.isArray(overrides?.pinned) ? overrides.pinned : [];
@@ -443,58 +480,54 @@ function applyRelationOverrides(generated, overrides, cardIds) {
     if (!entry || typeof entry !== 'object' || !cardIds.has(entry.source) || !cardIds.has(entry.target) || entry.source === entry.target) {
       throw new TypeError('blocked relation references invalid Card ids.');
     }
-    blockedPairs.add(canonicalPair(entry.source, entry.target));
-  }
-
-  const replacementByPair = new Map();
-  for (const entry of replacements) {
-    assertRelationSpec(entry, cardIds, 'override');
-    replacementByPair.set(canonicalPair(entry.source, entry.target), entry);
+    blockedPairs.add(relationPairKey(entry.source, entry.target));
   }
 
   const byPair = new Map();
   for (const edge of generated) {
-    if (blockedPairs.has(edge.pair_id)) continue;
-    const replacement = replacementByPair.get(edge.pair_id);
-    if (replacement) {
-      byPair.set(edge.pair_id, {
-        ...edge,
-        source: replacement.source,
-        target: replacement.target,
-        type: replacement.type,
-        direction: replacement.direction || 'undirected',
-        score: Number.isFinite(replacement.score) ? replacement.score : edge.score,
-        method: 'manual_override',
-        classifier: 'human',
-        manual: true,
-        note: typeof replacement.note === 'string' ? replacement.note : null
-      });
-    } else {
-      byPair.set(edge.pair_id, edge);
-    }
+    const pairId = relationPairKey(edge.source, edge.target);
+    if (!blockedPairs.has(pairId)) byPair.set(pairId, { ...edge, pair_id: pairId });
+  }
+
+  for (const entry of replacements) {
+    assertRelationSpec(entry, cardIds, 'override');
+    const pairId = relationPairKey(entry.source, entry.target);
+    if (blockedPairs.has(pairId)) continue;
+    const existing = byPair.get(pairId) ?? {};
+    byPair.set(pairId, {
+      ...normalizeManualEdge(entry, existing),
+      method: 'manual_override',
+      classifier: 'human',
+      manual: true,
+      overridden: true,
+      note: typeof entry.note === 'string' ? entry.note : null
+    });
   }
 
   for (const entry of pinned) {
     assertRelationSpec(entry, cardIds, 'pinned');
-    const pairId = canonicalPair(entry.source, entry.target);
+    const pairId = relationPairKey(entry.source, entry.target);
     if (blockedPairs.has(pairId)) continue;
+    const existing = byPair.get(pairId) ?? {};
     byPair.set(pairId, {
-      pair_id: pairId,
-      source: entry.source,
-      target: entry.target,
-      type: entry.type || 'similar_to',
-      direction: entry.direction || 'undirected',
-      score: Number.isFinite(entry.score) ? Math.max(0, Math.min(1, entry.score)) : 1,
+      ...normalizeManualEdge(entry, {
+        ...existing,
+        type: existing.type ?? 'similar_to',
+        score: Number.isFinite(existing.score) ? existing.score : 1,
+        signals: existing.signals ?? ['manual:pinned']
+      }),
       method: 'manual_pinned',
-      classifier: 'human',
+      classifier: existing.classifier ?? 'human',
       manual: true,
+      pinned: true,
       note: typeof entry.note === 'string' ? entry.note : null,
-      evidence: { manual: true },
-      signals: ['manual:pinned']
+      evidence: existing.evidence ?? { manual: true }
     });
   }
 
-  return [...byPair.values()].sort((a, b) => a.pair_id.localeCompare(b.pair_id));
+  return [...byPair.values()].sort((a, b) =>
+    a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
+  );
 }
 
 export async function buildRelationIndex(cards, vectorIndex, {
