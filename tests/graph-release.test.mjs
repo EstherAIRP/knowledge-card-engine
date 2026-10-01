@@ -20,6 +20,18 @@ const SOURCE_SHA = 'b'.repeat(40);
 const PUBLISHED_SHA = 'c'.repeat(40);
 const GENERATED_AT = '2026-09-19T00:00:00.000Z';
 
+async function fakeEmbeddings(texts, { dimensions = 384 } = {}) {
+  return texts.map((text) => {
+    const vector = Array.from({ length: dimensions }, () => 0);
+    let seed = 0;
+    for (const char of String(text)) seed = (seed * 33 + char.codePointAt(0)) >>> 0;
+    vector[seed % dimensions] = 1;
+    vector[(seed + 17) % dimensions] = 0.5;
+    const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
+    return vector.map((value) => value / norm);
+  });
+}
+
 function card(id, {
   title = id,
   summary = '',
@@ -107,11 +119,32 @@ function build(cards, options = {}) {
     sourceSha: SOURCE_SHA,
     generatedAt: GENERATED_AT,
     relationConfig: {
-      min_score: 0.1,
-      top_k: 8,
-      taxonomy_weight: 0.4,
-      vector_weight: 0.6
+      candidate: {
+        min_taxonomy_score: 0.08,
+        top_k: 12,
+        fallback_top_k: 3
+      },
+      semantic: {
+        enabled: true,
+        provider: 'local-transformers',
+        model: 'Xenova/multilingual-e5-small',
+        dimensions: 384,
+        normalization_floor: 0.70,
+        normalization_ceiling: 0.95,
+        min_score: 0.20
+      },
+      classifier: {
+        enabled: false
+      },
+      scoring: {
+        taxonomy_weight: 0.40,
+        semantic_weight: 0.60,
+        llm_weight: 0.35,
+        min_combined_score: 0.30,
+        fallback_min_combined_score: 0.48
+      }
     },
+    embedTexts: fakeEmbeddings,
     conceptConfig: {
       extraction: {
         minimum_tag_support: 2,
@@ -133,25 +166,28 @@ function build(cards, options = {}) {
   });
 }
 
-test('full rebuild is deterministic for fixed E S config and source timestamp', () => {
+test('full rebuild is deterministic for fixed E S config and source timestamp', async () => {
   const cards = [
     card('alpha', { title: 'Alpha Agent', categories: ['Agent'], tags: ['memory', 'agent-memory'] }),
     card('beta', { title: 'Beta Memory', categories: ['Agent', 'RAG / Memory / Knowledge'], tags: ['memory', 'agent-memory'] })
   ];
-  assert.deepEqual(build(cards, { fullRebuild: true }), build(cards, { fullRebuild: true }));
+  assert.deepEqual(
+    await build(cards, { fullRebuild: true }),
+    await build(cards, { fullRebuild: true })
+  );
 });
 
-test('incremental vector/search builders reuse unchanged Card records', () => {
+test('incremental vector/search builders reuse unchanged Card records', async () => {
   const firstCards = [
     card('alpha', { summary: 'first alpha', categories: ['Agent'], tags: ['memory'] }),
     card('beta', { summary: 'first beta', categories: ['Agent'], tags: ['memory'] })
   ];
-  const first = build(firstCards);
+  const first = await build(firstCards);
   const secondCards = [
     firstCards[0],
     card('beta', { summary: 'changed beta', categories: ['Agent'], tags: ['memory'], bodyText: 'changed semantic body' })
   ];
-  const second = build(secondCards, { previous: first });
+  const second = await build(secondCards, { previous: first });
 
   assert.equal(second.vectors.stats.reused, 1);
   assert.equal(second.vectors.stats.rebuilt, 1);
@@ -159,7 +195,7 @@ test('incremental vector/search builders reuse unchanged Card records', () => {
   assert.equal(second.search.stats.rebuilt, 1);
 });
 
-test('navigation-only changes do not alter semantic relation or Concept payloads', () => {
+test('navigation-only changes do not alter semantic relation or Concept payloads', async () => {
   const base = [
     card('alpha', { categories: ['Agent'], tags: ['memory'] }),
     card('beta', { categories: ['Agent'], tags: ['memory'] })
@@ -168,8 +204,8 @@ test('navigation-only changes do not alter semantic relation or Concept payloads
     card('alpha', { categories: ['Agent'], tags: ['memory'], navigation: ['Research / Science'] }),
     base[1]
   ];
-  const before = build(base);
-  const after = build(changed, { previous: before });
+  const before = await build(base);
+  const after = await build(changed, { previous: before });
 
   assert.deepEqual(after.relations.edges, before.relations.edges);
   assert.deepEqual(after.concepts.concepts, before.concepts.concepts);
@@ -178,13 +214,13 @@ test('navigation-only changes do not alter semantic relation or Concept payloads
   assert.equal(after.vectors.stats.reused, 2);
 });
 
-test('manual blocked relation wins and pinned directional relation preserves direction', () => {
+test('manual blocked relation wins and pinned directional relation preserves direction', async () => {
   const cards = [
     card('alpha', { categories: ['Agent'], tags: ['memory'] }),
     card('beta', { categories: ['Agent'], tags: ['memory'] }),
     card('gamma', { categories: ['Agent'], tags: ['memory'] })
   ];
-  const artifacts = build(cards, {
+  const artifacts = await build(cards, {
     relationOverrides: {
       blocked: [{ source: 'alpha', target: 'beta' }],
       pinned: [{
@@ -206,36 +242,36 @@ test('manual blocked relation wins and pinned directional relation preserves dir
   assert.equal(pinned.method, 'manual_pinned');
 });
 
-test('Concept membership carries evidence and Concept relations never imply hierarchy or causality', () => {
+test('Concept membership carries evidence and Concept relations never imply hierarchy or causality', async () => {
   const cards = [
     card('alpha', { categories: ['RAG / Memory / Knowledge'], tags: ['agent-memory', 'memory'] }),
     card('beta', { categories: ['RAG / Memory / Knowledge'], tags: ['agent-memory', 'memory'] })
   ];
-  const artifacts = build(cards);
+  const artifacts = await build(cards);
   const promoted = artifacts.concepts.card_concepts.find((edge) => edge.concept_id === 'agent-memory');
   assert.ok(promoted);
   assert.ok(promoted.evidence.length > 0);
   assert.ok(artifacts.concepts.concept_relations.every((edge) => edge.type === 'co_occurs_with'));
 });
 
-test('private search index returns weighted matches without requiring public static assets', () => {
+test('private search index returns weighted matches without requiring public static assets', async () => {
   const cards = [
     card('alpha', { title: 'Memory Agent', summary: 'long term memory', categories: ['Agent'], tags: ['memory'] }),
     card('beta', { title: 'Image Tool', summary: 'diffusion image workflow', categories: ['Image Generation'], tags: ['diffusion'] })
   ];
-  const artifacts = build(cards);
+  const artifacts = await build(cards);
   const results = searchGeneratedIndex(artifacts.search, 'memory agent', { limit: 10 });
   assert.equal(results[0].id, 'alpha');
   assert.ok(results[0].score > 0);
   assert.ok(results[0].matched_fields.includes('title'));
 });
 
-test('generated artifact validation enforces shared provenance and references', () => {
+test('generated artifact validation enforces shared provenance and references', async () => {
   const cards = [
     card('alpha', { categories: ['Agent'], tags: ['memory'] }),
     card('beta', { categories: ['Agent'], tags: ['memory'] })
   ];
-  const artifacts = build(cards);
+  const artifacts = await build(cards);
   assert.deepEqual(validateGeneratedArtifacts(artifacts, cards), []);
 
   const broken = structuredClone(artifacts);
@@ -248,12 +284,12 @@ test('generated artifact validation enforces shared provenance and references', 
   assert.ok(validateGeneratedArtifacts(broken, cards).some((issue) => issue.includes('unknown node')));
 });
 
-test('release manifest freezes five artifacts and fails closed after byte mutation', () => {
+test('release manifest freezes five artifacts and fails closed after byte mutation', async () => {
   const cards = [
     card('alpha', { categories: ['Agent'], tags: ['memory'] }),
     card('beta', { categories: ['Agent'], tags: ['memory'] })
   ];
-  const artifacts = build(cards);
+  const artifacts = await build(cards);
   const artifactTexts = Object.fromEntries([
     ['data/search.json', serializeJson(artifacts.search)],
     ['data/vectors.json', serializeJson(artifacts.vectors)],
