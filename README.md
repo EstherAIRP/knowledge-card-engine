@@ -19,7 +19,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - 依來源供應者分流的 Remote Ingest 交接，可在 `chore/ingest-*` Knowledge Card Workspace 分支以固定 Knowledge Card Engine、Node.js 24 執行 GitHub／Threads 已接受證據流程。GitHub 會固定倉庫版本、建立受限探索與第 0 輪研究狀態，先等待 Agent 提交與摘要值綁定的 `research-plan.json` 及選定路徑；執行器只在同一版本擷取經驗證的安全第一手文字來源。第一輪證據包形成後，Agent 可提交 `analysis_version: 2`，或在剩餘額度內再做一次由 Agent 指定的擴充，最後交給正式寫入器寫入 Knowledge Card、來源狀態與研究狀態；Threads 保留與摘要值綁定的語意續篇交接及版本 1 寫入流程。
 - GitHub App `state` 與 PKCE 登入、伺服器端工作階段，以及每次請求重新驗證 Knowledge Card Workspace 資格。
 - GitHub App 安裝存取權杖、私人 Knowledge Card 列表／詳細資料 API 與唯讀網頁外殼。
-- 搜尋、向量、具型別關聯、Concept 與圖譜生成產物；實際向量／關聯方法由生成產物的 provenance 與正式 generated-data 契約辨識，不把特定 fallback 實作當成永久能力定義。
+- 搜尋、向量、具型別關聯、Concept 與圖譜生成產物；Card↔Card semantic relation 預設使用本機多語 embedding，並保留可追溯的 taxonomy／semantic evidence、候選／發布門檻與 classifier provenance。
 - E／S／P 與資訊清單的一致發布、過期防護、固定於發布版本的私人讀取器，以及回復指標模型。
 - 需授權的 `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
 - 可移植的 Node HTTP 轉接器，以及 Vercel Node Function 轉接器；Vercel 需要共用 REST 工作階段儲存區。
