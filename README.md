@@ -19,12 +19,12 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - 依來源供應者分流的 Remote Ingest 交接，可在 `chore/ingest-*` Knowledge Card Workspace 分支以固定 Knowledge Card Engine、Node.js 24 執行 GitHub／Threads 已接受證據流程。GitHub 會固定倉庫版本、建立受限探索與第 0 輪研究狀態，先等待 Agent 提交與摘要值綁定的 `research-plan.json` 及選定路徑；執行器只在同一版本擷取經驗證的安全第一手文字來源。第一輪證據包形成後，Agent 可提交 `analysis_version: 2`，或在剩餘額度內再做一次由 Agent 指定的擴充，最後交給正式寫入器寫入 Knowledge Card、來源狀態與研究狀態；Threads 保留與摘要值綁定的語意續篇交接及版本 1 寫入流程。
 - GitHub App `state` 與 PKCE 登入、伺服器端工作階段，以及每次請求重新驗證 Knowledge Card Workspace 資格。
 - GitHub App 安裝存取權杖、私人 Knowledge Card 列表／詳細資料 API 與唯讀網頁外殼。
-- 確定性搜尋、詞彙向量、具型別關聯、Concept 與圖譜生成產物。
+- 搜尋、向量、具型別關聯、Concept 與圖譜生成產物；實際向量／關聯方法由生成產物的 provenance 與正式 generated-data 契約辨識，不把特定 fallback 實作當成永久能力定義。
 - E／S／P 與資訊清單的一致發布、過期防護、固定於發布版本的私人讀取器，以及回復指標模型。
 - 需授權的 `/api/search`、`/api/graph`、`/api/release` 與對應 UI。
 - 可移植的 Node HTTP 轉接器，以及 Vercel Node Function 轉接器；Vercel 需要共用 REST 工作階段儲存區。
 
-目前尚未實作 GitHub／Threads 以外的來源供應者、外部嵌入模型／模型供應者、非 Redis REST 的共用持久工作階段後端，以及 Vercel 以外的託管平台專用轉接器；這些邊界不能視為可用功能。
+目前尚未實作 GitHub／Threads 以外的來源供應者、非 Redis REST 的共用持久工作階段後端，以及 Vercel 以外的託管平台專用轉接器；這些邊界不能視為可用功能。向量／關聯的實際 provider、method 與能力邊界以生成產物 provenance 與正式 generated-data 契約為準。
 
 ## 模組責任
 
@@ -33,7 +33,7 @@ Knowledge Card Engine 是 Knowledge Card 的公開核心程式倉庫。它提供
 - `packages/core`：Knowledge Card／分類體系解析、結構與受控值驗證、所有權、正文契約、集合唯一性與穩定路徑。
 - `packages/ingestion`：來源網址正規化、GitHub／Threads 已接受證據、固定 GitHub 倉庫版本的研究探索、Agent 選定安全路徑後的證據擷取與受限擴充、新建／更新解析，以及來源供應者專屬的來源狀態契約。
 - `packages/analysis`：與來源供應者無關的分析結果、研究計畫、分析證據包與結構化研究報告契約。
-- `packages/graph`：確定性搜尋、詞彙向量、具型別關聯、Concept，以及圖譜生成資料的建立器與驗證器。
+- `packages/graph`：搜尋、向量、具型別關聯、Concept，以及圖譜生成資料的建立器與驗證器；具體 relation／vector 方法不是 README 的永久契約。
 - `packages/workspace`：Knowledge Card Workspace 載入器、Knowledge Card Engine 版本鎖定，以及經驗證的 Knowledge Card／來源狀態／研究狀態交易式寫入。
 - `packages/release`：E／S／P、資訊清單、發布指標／描述與已發布版本鏈結驗證。
 
