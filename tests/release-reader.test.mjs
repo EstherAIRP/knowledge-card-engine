@@ -26,6 +26,14 @@ const Q_TREE = 'f'.repeat(40);
 const AT = '2026-09-19T00:00:00.000Z';
 const RELEASE_ID = 'release-reader-fixture';
 
+async function fixtureEmbeddings(texts, { dimensions = 384 } = {}) {
+  return texts.map((_, index) => {
+    const vector = Array.from({ length: dimensions }, () => 0);
+    vector[index % dimensions] = 1;
+    return vector;
+  });
+}
+
 function response(status, payload) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -55,11 +63,30 @@ async function fixture() {
   const second = parseCardDocument(secondText, 'content/knowledge/2026/synthetic-second-project.md');
   parseTaxonomyDocument(taxonomyText);
 
-  const artifacts = buildGeneratedArtifacts([first, second], {
+  const artifacts = await buildGeneratedArtifacts([first, second], {
     engineSha: E,
     sourceSha: S,
     generatedAt: AT,
-    relationConfig: { min_score: 0.01, top_k: 8 },
+    relationConfig: {
+      candidate: { min_taxonomy_score: 0.08, top_k: 12, fallback_top_k: 3 },
+      semantic: {
+        provider: 'local-transformers',
+        model: 'Xenova/multilingual-e5-small',
+        dimensions: 384,
+        normalization_floor: 0.70,
+        normalization_ceiling: 0.95,
+        min_score: 0.20
+      },
+      classifier: { enabled: false },
+      scoring: {
+        taxonomy_weight: 0.40,
+        semantic_weight: 0.60,
+        llm_weight: 0.35,
+        min_combined_score: 0.30,
+        fallback_min_combined_score: 0.48
+      }
+    },
+    embedTexts: fixtureEmbeddings,
     conceptConfig: {
       extraction: {
         minimum_tag_support: 2,
