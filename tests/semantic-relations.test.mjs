@@ -273,6 +273,20 @@ test('local vector cache reuses unchanged semantic inputs and invalidates on mod
   assert.equal(modelRebuilds, 2);
 });
 
+test('embedding provider output fails closed on wrong dimensions', async () => {
+  await assert.rejects(
+    () => buildVectorIndex([card('alpha')], {
+      engineSha: ENGINE_SHA,
+      sourceSha: SOURCE_SHA,
+      generatedAt: GENERATED_AT,
+      config: localConfig(),
+      fullRebuild: true,
+      embedTexts: async () => [[1, 0, 0]]
+    }),
+    /Invalid 384-dimension embedding/u
+  );
+});
+
 test('token hash remains available only as an explicit vector provider', async () => {
   const index = await buildVectorIndex([card('alpha')], {
     engineSha: ENGINE_SHA,
