@@ -173,7 +173,7 @@ test('V1 embedding text ignores navigation and only includes selected semantic s
   const text = buildEmbeddingText(first);
   assert.match(text, /Title: Alpha/u);
   assert.match(text, /Categories: Agent/u);
-  assert.match(text, /Relevance: ai_rd=5/u);
+  assert.match(text, /Relevance: ai rd=5/u);
   assert.match(text, /核心概念: core/u);
   assert.doesNotMatch(text, /Agent \/ Harness/u);
   assert.doesNotMatch(text, /must-not-be-in-embedding/u);
