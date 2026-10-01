@@ -28,9 +28,9 @@ data/graph.json
 
 ## 向量與搜尋
 
-正式 relation／graph 向量預設使用本機 `Xenova/multilingual-e5-small`，由 `@huggingface/transformers` 執行 `feature-extraction`，使用 mean pooling、normalize 與 q8 模型。向量維度為 384，推論發生在 generated-data build，不在網站 request path 執行，也不需要外部模型憑證。
+正式關聯與圖譜向量預設使用本機 `Xenova/multilingual-e5-small`，由 `@huggingface/transformers` 執行 `feature-extraction`，採 mean pooling、normalize 與 q8 模型。向量維度為 384；推論只在生成資料建置期間執行，不會在網站請求路徑執行，也不需要外部模型憑證。
 
-每張 Knowledge Card 的 embedding 輸入固定由下列有效資料組成：
+每張 Knowledge Card 的嵌入向量輸入固定由下列有效資料組成：
 
 - `title`
 - `summary`
@@ -43,9 +43,9 @@ data/graph.json
 - `架構與技術`
 - `技術亮點`
 
-`navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與 embedding input。向量產物保存 provider、model、method、dimensions、每張 Card 的 input hash 與向量；只有 provider／model／dimensions／input hash 均相容時才能增量 reuse。
+`navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與嵌入向量輸入。向量產物保存 `provider`、`model`、`method`、`dimensions`、每張 Card 的輸入雜湊與向量；只有供應器、模型、維度與輸入雜湊都相容時，才可沿用既有向量。
 
-`deterministic-token-hash` 仍可作為明確指定的 fallback provider，但不是 production 預設，也不得標示為 neural／model embedding。正式 local embedding 失敗時 generated build 應失敗，不會靜默切換成 token hash。
+`deterministic-token-hash` 仍可作為明確指定的備援供應器，但不是正式環境預設，也不得標示為神經網路或模型嵌入向量。正式的本機嵌入向量建置失敗時，生成資料建置必須失敗，不得靜默切換成 token hash。
 
 搜尋索引涵蓋 Knowledge Card 的 `title`、`summary`、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
@@ -61,14 +61,14 @@ data/graph.json
 
 導覽分類體系與 Card↔Card 關聯是不同維度。導覽分類調整不得直接改寫關聯距離／分數，也不因介面導覽重分類就重寫 Concept 或關聯。
 
-自動 Card↔Card relation 使用兩組可追溯訊號：
+自動 Card↔Card 關聯使用兩組可追溯訊號：
 
 - taxonomy：effective categories × 0.45、tags × 0.30、高相關度維度 × 0.20、actions × 0.05。
-- semantic：E5 raw cosine 經 `0.70..0.95 → 0..1` 正規化。
+- 語意：E5 原始餘弦相似度經 `0.70..0.95 → 0..1` 正規化。
 
-taxonomy 與 semantic 以 0.40／0.60 組合。候選發現與正式發布分成兩階段：預設 candidate signal gate 為 taxonomy ≥ 0.08 或 semantic ≥ 0.20，combined ≥ 0.30；無外部分類器時只有 combined ≥ 0.48 且通過 `fallback_top_k` 的候選會成為正式 relation。
+分類訊號與語意訊號以 0.40／0.60 組合。候選發現與正式發布分成兩階段：預設候選訊號門檻為分類分數 ≥ 0.08 或語意分數 ≥ 0.20，且組合分數 ≥ 0.30；未使用外部分類器時，只有組合分數 ≥ 0.48 且通過 `fallback_top_k` 的候選會成為正式關聯。
 
-relation classifier 是選用能力。若私人 Workspace 沒有明確啟用並提供核准的外部 provider／credential，新的候選使用 deterministic semantic fallback；fallback 不會冒充 LLM 判定，也不會自行產生方向性的 `depends_on`／`extends`。
+關聯分類器是選用能力。若私人 Workspace 沒有明確啟用並提供核准的外部模型供應器與憑證，新候選會使用確定性的語意備援判定；備援結果不會冒充 LLM 判定，也不會自行產生方向性的 `depends_on`／`extends`。
 
 關聯保存：
 
@@ -77,8 +77,8 @@ relation classifier 是選用能力。若私人 Workspace 沒有明確啟用並�
 - 方向
 - 分數／權重
 - 方法
-- taxonomy／semantic／raw semantic／可選 LLM 分數
-- confidence、reason、classifier
+- 分類／語意／原始語意／可選 LLM 分數
+- 信心分數、理由與分類器
 - shared signals／證據與追溯資訊
 
 有方向性的關聯在標準配對處理後仍保留主體／客體語意。
