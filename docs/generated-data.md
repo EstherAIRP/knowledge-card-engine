@@ -28,9 +28,9 @@ data/graph.json
 
 ## 向量與搜尋
 
-目前內建向量方法是確定性詞彙備援，不使用外部嵌入模型憑證，也不能標示為神經網路、LLM 或模型判定。
+向量產物必須以自身 provenance 說明實際使用的方法、維度與設定；若使用模型 provider，還必須記錄足以辨識 provider／model 的資訊。任何 lexical、deterministic、local model 或外部 model 方法都不得被標成另一種判定來源。
 
-向量輸入由 Knowledge Card 的有效內容建立；指紋會納入方法、設定與 Knowledge Card 輸入。增量建置可以沿用指紋未變的既有紀錄；完整建置會重建全部生成紀錄。
+向量輸入由 Knowledge Card 的有效內容建立；指紋必須納入會影響結果的方法、模型／設定與 Knowledge Card 輸入。只有 provenance 與輸入均相容時才可增量沿用既有紀錄；完整建置會依目前方法重建生成紀錄。
 
 搜尋索引涵蓋 Knowledge Card 的 `title`、`summary`、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
@@ -42,11 +42,11 @@ data/graph.json
 - 只回傳顯示所需的 Knowledge Card 投影、比對證據與分數。
 - 只有存在已驗證發布版本時可用；只有 Knowledge Card 的啟動模式回 `503 RELEASE_REQUIRED`。
 
-## 語意關聯
+## Card↔Card 關聯
 
-導覽分類體系與語意關聯是不同維度。導覽分類調整不直接作為語意距離，也不因介面導覽重分類就重寫 Concept 或關聯。
+導覽分類體系與 Card↔Card 關聯是不同維度。導覽分類調整不得直接改寫關聯距離／分數，也不因介面導覽重分類就重寫 Concept 或關聯。
 
-生成關聯使用可驗證訊號，例如有效分類類別／標籤與詞彙向量相似度。關聯保存：
+生成關聯只能使用目前 relation pipeline 定義且可追溯的訊號；具體 scoring、vector 或 classifier 方法不在本文件寫死，而由產物的 method／evidence／provenance 說明。關聯保存：
 
 - 具型別關聯
 - 來源／目標
@@ -83,7 +83,7 @@ Knowledge Card ↔ Concept 成員關係必須帶證據、來源與強度。Conce
 
 - Knowledge Card／Concept 節點
 - 具型別邊
-- 語意鄰近項目
+- 向量鄰近項目
 - 可重建的 2D 版面
 - 版面方法／追溯資訊
 
