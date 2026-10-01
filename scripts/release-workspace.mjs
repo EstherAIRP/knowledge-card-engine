@@ -121,7 +121,7 @@ async function commandBuild(workspaceRoot, flags) {
     previous[key] = await readJsonOptional(path.join(workspace.root, artifactPath));
   }
 
-  const artifacts = buildGeneratedArtifacts(cards, {
+  const artifacts = await buildGeneratedArtifacts(cards, {
     engineSha,
     sourceSha,
     generatedAt,
