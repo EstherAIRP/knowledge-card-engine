@@ -91,7 +91,7 @@ npm run release:validate -- /path/to/workspace
 
 可重用工作流程 `.github/workflows/release-workspace.yml` 固定 E 與 S，執行建置、僅含生成資料的提交、版本鏈結／過期防護、發布定案與發布指標推進。工作流程使用倉庫層級並行控制，避免較舊與較新的執行同時更新目前發布版本。
 
-generated build 使用本機 semantic embedding 時，工作流程會快取 Transformers 模型檔；模型下載或推論失敗視為建置失敗，不得用較弱方法靜默替代。只要發布指標尚未前進，網站繼續讀上一個完整發布版本。
+生成資料建置使用本機語意嵌入向量時，工作流程會快取 Transformers 模型檔；模型下載或推論失敗視為建置失敗，不得用較弱方法靜默替代。只要發布指標尚未前進，網站就繼續讀取上一個完整發布版本。
 
 來源在建置期間已前進時，較舊的執行不得更新發布指標。僅含生成資料／僅含發布指標的機器提交必須由 Knowledge Card Workspace 的觸發條件排除，避免形成發布循環。
 
