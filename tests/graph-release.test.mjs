@@ -242,6 +242,35 @@ test('manual blocked relation wins and pinned directional relation preserves dir
   assert.equal(pinned.method, 'manual_pinned');
 });
 
+test('manual override can create a relation absent from automatic candidates and preserves canonical direction', async () => {
+  const cards = [
+    card('alpha', { categories: ['Agent'], tags: ['memory'] }),
+    card('omega', { categories: ['Image Generation'], tags: ['diffusion'], bodyText: 'unrelated image workflow' })
+  ];
+  const artifacts = await build(cards, {
+    relationOverrides: {
+      overrides: [{
+        source: 'omega',
+        target: 'alpha',
+        type: 'depends_on',
+        direction: 'source_to_target',
+        score: 0.9,
+        note: 'fixture override'
+      }]
+    }
+  });
+
+  const edge = artifacts.relations.edges.find((item) => item.pair_id === 'alpha::omega');
+  assert.ok(edge);
+  assert.equal(edge.source, 'alpha');
+  assert.equal(edge.target, 'omega');
+  assert.equal(edge.type, 'depends_on');
+  assert.equal(edge.direction, 'target_to_source');
+  assert.equal(edge.method, 'manual_override');
+  assert.equal(edge.classifier, 'human');
+  assert.equal(edge.manual, true);
+});
+
 test('Concept membership carries evidence and Concept relations never imply hierarchy or causality', async () => {
   const cards = [
     card('alpha', { categories: ['RAG / Memory / Knowledge'], tags: ['agent-memory', 'memory'] }),
