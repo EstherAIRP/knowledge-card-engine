@@ -842,9 +842,15 @@ export function renderPrivateSiteShell() {
         }
 
         const evidence = relation.evidence || {};
+        const relationScores = relation.scores || {};
         const scoreParts = [
-          ['Taxonomy', Number(evidence.taxonomy)],
-          ['Semantic', Number(evidence.vector_similarity)]
+          ['Taxonomy', Number.isFinite(Number(relationScores.taxonomy))
+            ? Number(relationScores.taxonomy)
+            : Number(evidence.taxonomy)],
+          ['Semantic', Number.isFinite(Number(relationScores.semantic))
+            ? Number(relationScores.semantic)
+            : Number(evidence.vector_similarity)],
+          ['LLM', Number(relationScores.llm)]
         ].filter(([, value]) => Number.isFinite(value));
         if (scoreParts.length) {
           const scores = document.createElement('div');
@@ -859,8 +865,11 @@ export function renderPrivateSiteShell() {
 
         const signals = [
           ...(Array.isArray(evidence.shared_categories) ? evidence.shared_categories : []),
-          ...(Array.isArray(evidence.shared_tags) ? evidence.shared_tags : [])
-        ].slice(0, 4);
+          ...(Array.isArray(evidence.shared_tags) ? evidence.shared_tags : []),
+          ...(Array.isArray(relation.signals)
+            ? relation.signals.map((signal) => String(signal).replace(/^[^:]+:/u, ''))
+            : [])
+        ].filter((value, index, values) => value && values.indexOf(value) === index).slice(0, 4);
         if (signals.length) {
           const signalRow = document.createElement('div');
           signalRow.className = 'knowledge-relation-signals';
@@ -872,12 +881,24 @@ export function renderPrivateSiteShell() {
           card.append(signalRow);
         }
 
+        if (relation.reason && !relation.note) {
+          const reason = document.createElement('p');
+          reason.className = 'knowledge-relation-note';
+          reason.textContent = relation.reason;
+          card.append(reason);
+        }
+
         const classifier = document.createElement('small');
         classifier.className = 'knowledge-relation-classifier';
-        classifier.textContent = relation.manual || String(relation.method || '').startsWith('manual_')
+        const isManual = relation.manual || String(relation.method || '').startsWith('manual_');
+        classifier.textContent = isManual
           ? 'Human override'
-          : 'Automatic relation';
-        classifier.title = [relation.method, relation.direction].filter(Boolean).join(' · ');
+          : relation.classifier === 'llm'
+            ? 'LLM relation'
+            : relation.classifier === 'heuristic-fallback'
+              ? 'Semantic fallback'
+              : 'Automatic relation';
+        classifier.title = [relation.method, relation.classifier, relation.direction].filter(Boolean).join(' · ');
         card.append(classifier);
         grid.append(card);
       }

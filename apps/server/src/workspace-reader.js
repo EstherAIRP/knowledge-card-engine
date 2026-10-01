@@ -148,6 +148,11 @@ function relationProjection(cardId, snapshot) {
         source: edge.source,
         target: edge.target,
         evidence: edge.evidence || null,
+        scores: edge.scores || null,
+        signals: Array.isArray(edge.signals) ? edge.signals : [],
+        reason: typeof edge.reason === 'string' ? edge.reason : null,
+        confidence: Number.isFinite(Number(edge.confidence)) ? Number(edge.confidence) : null,
+        classifier: typeof edge.classifier === 'string' ? edge.classifier : null,
         manual: edge.manual === true,
         note: typeof edge.note === 'string' ? edge.note : null
       };
@@ -325,8 +330,8 @@ function legacyGraphProjection(snapshot) {
     generatedAt: graph.generated_at || concepts.generated_at || null,
     semantic: {
       metric: 'cosine-distance',
-      embeddingProvider: null,
-      embeddingModel: vectors.method || null,
+      embeddingProvider: vectors.provider || null,
+      embeddingModel: vectors.model || vectors.method || null,
       neighborLimit,
       neighborsByCard,
       distancesByCard
@@ -336,7 +341,7 @@ function legacyGraphProjection(snapshot) {
       method: graph.layout_method || null,
       metric: 'cosine-distance',
       stress: null,
-      embeddingModel: vectors.method || null,
+      embeddingModel: vectors.model || vectors.method || null,
       embeddingInputHash: vectors.input_hash || null
     },
     stats: {

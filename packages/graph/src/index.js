@@ -1,44 +1,41 @@
 import { createHash } from 'node:crypto';
 import {
   effectiveOwnershipValue,
-  effectiveRelevance,
-  extractSection
+  effectiveRelevance
 } from '../../core/src/index.js';
+import {
+  classifyRelationWithOpenAICompatible,
+  createLocalTransformerEmbeddings
+} from './model-clients.js';
+import {
+  DIRECTIONAL_TYPES,
+  RELATION_TYPES
+} from './relation-types.js';
+import {
+  buildEmbeddingText,
+  buildSemanticCandidates,
+  degreeLimitedPairs,
+  embeddingContentHash,
+  fallbackClassifyCandidate,
+  materializeClassifiedRelation,
+  relationPairKey,
+  validateClassifierOutput
+} from './semantic-relations.js';
 
 export const moduleId = 'graph';
 export const moduleKind = 'package';
 
 export const GENERATED_SCHEMA_VERSION = 1;
-export const VECTOR_METHOD = 'deterministic-token-hash-v1';
+export const VECTOR_METHOD = 'local-transformers-embedding-v1';
+export const TOKEN_HASH_VECTOR_METHOD = 'deterministic-token-hash-v1';
 export const LAYOUT_METHOD = 'deterministic-vector-projection-v1';
-export const RELATION_METHOD = 'taxonomy-vector-fallback-v1';
+export const RELATION_METHOD = 'taxonomy-semantic-classifier-v1';
 export const CONCEPT_METHOD = 'deterministic-taxonomy-tag-v1';
 export const SEARCH_METHOD = 'weighted-token-search-v1';
-export const VECTOR_DIMENSIONS = 64;
-
-const SEMANTIC_SECTIONS = Object.freeze([
-  '一句話介紹',
-  '它解決什麼問題',
-  '核心概念',
-  '架構與技術',
-  '主要功能',
-  '技術亮點',
-  '限制與風險',
-  '與你的相關性',
-  '建議怎麼使用',
-  '與其他收藏的關聯'
-]);
-
-const RELATION_TYPES = new Set([
-  'similar_to',
-  'alternative_to',
-  'complements',
-  'integrates_with',
-  'depends_on',
-  'extends',
-  'contrasts_with'
-]);
-const DIRECTIONAL_TYPES = new Set(['depends_on', 'extends']);
+export const VECTOR_DIMENSIONS = 384;
+export const TOKEN_HASH_VECTOR_DIMENSIONS = 64;
+export const DEFAULT_VECTOR_PROVIDER = 'local-transformers';
+export const DEFAULT_VECTOR_MODEL = 'Xenova/multilingual-e5-small';
 
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
@@ -88,22 +85,6 @@ function countTerms(tokens) {
   const counts = {};
   for (const token of tokens) counts[token] = (counts[token] || 0) + 1;
   return counts;
-}
-
-function semanticText(card) {
-  const categories = effectiveList(card.data?.classification?.categories);
-  const tags = effectiveList(card.data?.classification?.tags);
-  const sections = SEMANTIC_SECTIONS
-    .map((heading) => extractSection(card.body, heading))
-    .filter(Boolean)
-    .map((value) => String(value).trim());
-  return [
-    card.data?.title,
-    card.data?.summary,
-    ...categories,
-    ...tags,
-    ...sections
-  ].filter(Boolean).join('\n');
 }
 
 function searchDocument(card) {
@@ -221,7 +202,7 @@ export function buildSearchIndex(cards, {
   };
 }
 
-function vectorForTokens(tokens, dimensions = VECTOR_DIMENSIONS) {
+function vectorForTokens(tokens, dimensions = TOKEN_HASH_VECTOR_DIMENSIONS) {
   const vector = Array.from({ length: dimensions }, () => 0);
   const counts = countTerms(tokens);
   for (const [token, count] of Object.entries(counts)) {
@@ -236,56 +217,157 @@ function vectorForTokens(tokens, dimensions = VECTOR_DIMENSIONS) {
   return vector.map((value) => Number((value / norm).toFixed(8)));
 }
 
-export function buildVectorIndex(cards, {
+function vectorDefaults(config = {}) {
+  const semantic = config.semantic || {};
+  const provider = String(semantic.provider || DEFAULT_VECTOR_PROVIDER);
+  if (provider === DEFAULT_VECTOR_PROVIDER) {
+    return {
+      provider,
+      model: String(semantic.model || DEFAULT_VECTOR_MODEL),
+      method: VECTOR_METHOD,
+      dimensions: Number.isInteger(semantic.dimensions) ? semantic.dimensions : VECTOR_DIMENSIONS,
+      batchSize: Math.max(1, Number(semantic.batch_size ?? 16))
+    };
+  }
+  if (provider === 'deterministic-token-hash') {
+    return {
+      provider,
+      model: null,
+      method: TOKEN_HASH_VECTOR_METHOD,
+      dimensions: Number.isInteger(semantic.dimensions) ? semantic.dimensions : TOKEN_HASH_VECTOR_DIMENSIONS,
+      batchSize: Math.max(1, Number(semantic.batch_size ?? 64))
+    };
+  }
+  throw new TypeError('Unsupported semantic provider: ' + provider);
+}
+
+async function embedVectorBatch(texts, defaults, embedTexts = null) {
+  if (typeof embedTexts === 'function') {
+    return embedTexts(texts, {
+      provider: defaults.provider,
+      model: defaults.model,
+      dimensions: defaults.dimensions
+    });
+  }
+  if (defaults.provider === DEFAULT_VECTOR_PROVIDER) {
+    return createLocalTransformerEmbeddings(texts, { model: defaults.model });
+  }
+  if (defaults.provider === 'deterministic-token-hash') {
+    return texts.map((text) => vectorForTokens(tokenize(text), defaults.dimensions));
+  }
+  throw new TypeError('Unsupported semantic provider: ' + defaults.provider);
+}
+
+export async function buildVectorIndex(cards, {
   engineSha,
   sourceSha,
   generatedAt,
+  config = {},
   previous = null,
-  fullRebuild = false
+  fullRebuild = false,
+  embedTexts = null
 }) {
   validateSha(engineSha, 'engineSha');
   validateSha(sourceSha, 'sourceSha');
   validateGeneratedAt(generatedAt);
 
+  const defaults = vectorDefaults(config);
   const previousById = new Map((previous?.entries || []).map((entry) => [entry.card_id, entry]));
-  let reused = 0;
-  let rebuilt = 0;
-  const entries = cards.map((card) => {
-    const text = normalizeSearchText(semanticText(card));
-    const inputHash = sha256Text(text);
-    const prior = previousById.get(card.data.id);
-    if (
-      !fullRebuild
-      && previous?.method === VECTOR_METHOD
-      && previous?.dimensions === VECTOR_DIMENSIONS
-      && prior?.input_hash === inputHash
-      && Array.isArray(prior.vector)
-      && prior.vector.length === VECTOR_DIMENSIONS
-    ) {
-      reused += 1;
-      return prior;
-    }
-    rebuilt += 1;
+  const inputs = cards.map((card) => {
+    const text = buildEmbeddingText(card);
     return {
       card_id: card.data.id,
-      input_hash: inputHash,
-      vector: vectorForTokens(tokenize(text))
+      text,
+      input_hash: embeddingContentHash(text, {
+        provider: defaults.provider,
+        model: defaults.model,
+        method: defaults.method
+      })
     };
-  }).sort((a, b) => a.card_id.localeCompare(b.card_id));
+  });
 
-  const configHash = hashValue({ method: VECTOR_METHOD, dimensions: VECTOR_DIMENSIONS });
+  const entries = [];
+  const stale = [];
+  let reused = 0;
+  for (const input of inputs) {
+    const prior = previousById.get(input.card_id);
+    const reusable = !fullRebuild
+      && previous?.method === defaults.method
+      && previous?.provider === defaults.provider
+      && (previous?.model ?? null) === defaults.model
+      && previous?.dimensions === defaults.dimensions
+      && prior?.input_hash === input.input_hash
+      && Array.isArray(prior.vector)
+      && prior.vector.length === defaults.dimensions;
+    if (reusable) {
+      reused += 1;
+      entries.push(prior);
+    } else {
+      stale.push(input);
+    }
+  }
+
+  for (let start = 0; start < stale.length; start += defaults.batchSize) {
+    const batch = stale.slice(start, start + defaults.batchSize);
+    const vectors = await embedVectorBatch(batch.map((item) => item.text), defaults, embedTexts);
+    if (!Array.isArray(vectors) || vectors.length !== batch.length) {
+      throw new Error('Embedding provider returned ' + (vectors?.length ?? 0) + ' vectors for ' + batch.length + ' inputs.');
+    }
+    for (let index = 0; index < batch.length; index += 1) {
+      const vector = vectors[index];
+      if (
+        !Array.isArray(vector)
+        || vector.length !== defaults.dimensions
+        || vector.some((value) => !Number.isFinite(Number(value)))
+      ) {
+        throw new Error('Invalid ' + defaults.dimensions + '-dimension embedding returned for ' + batch[index].card_id + '.');
+      }
+      entries.push({
+        card_id: batch[index].card_id,
+        input_hash: batch[index].input_hash,
+        provider: defaults.provider,
+        model: defaults.model,
+        dimensions: defaults.dimensions,
+        vector: vector.map((value) => Number(value))
+      });
+    }
+  }
+
+  entries.sort((a, b) => a.card_id.localeCompare(b.card_id));
+  const configHash = hashValue({
+    method: defaults.method,
+    provider: defaults.provider,
+    model: defaults.model,
+    dimensions: defaults.dimensions,
+    batch_size: defaults.batchSize,
+    input_contract: 'v1-selected-card-fields'
+  });
+  const inputHash = hashValue({
+    method: defaults.method,
+    provider: defaults.provider,
+    model: defaults.model,
+    entries: entries.map((entry) => [entry.card_id, entry.input_hash])
+  });
+
   return {
     ...commonMeta({
       engineSha,
       sourceSha,
       generatedAt,
-      generator: 'knowledge-card-vector-builder-v1',
-      inputHash: cardsFingerprint(cards),
+      generator: 'knowledge-card-vector-builder-v2',
+      inputHash,
       configHash
     }),
-    method: VECTOR_METHOD,
-    dimensions: VECTOR_DIMENSIONS,
-    stats: { entries: entries.length, reused, rebuilt, full_rebuild: Boolean(fullRebuild) },
+    method: defaults.method,
+    provider: defaults.provider,
+    model: defaults.model,
+    dimensions: defaults.dimensions,
+    stats: {
+      entries: entries.length,
+      reused,
+      rebuilt: stale.length,
+      full_rebuild: Boolean(fullRebuild)
+    },
     entries
   };
 }
@@ -304,86 +386,40 @@ export function cosineSimilarity(left, right) {
   return Math.max(-1, Math.min(1, dot / Math.sqrt(leftNorm * rightNorm)));
 }
 
-function jaccard(left, right) {
-  const a = new Set(left);
-  const b = new Set(right);
-  const union = new Set([...a, ...b]);
-  if (!union.size) return 0;
-  let shared = 0;
-  for (const item of a) if (b.has(item)) shared += 1;
-  return shared / union.size;
-}
-
 function canonicalPair(source, target) {
-  return source < target ? source + '::' + target : target + '::' + source;
+  return relationPairKey(source, target);
 }
 
-function cardSignals(card) {
-  return {
-    categories: effectiveList(card.data?.classification?.categories),
-    tags: effectiveList(card.data?.classification?.tags)
-  };
+function classificationCandidateHash(candidate, vectorIndex, config) {
+  const vectorEntries = new Map((vectorIndex?.entries || []).map((entry) => [entry.card_id, entry]));
+  return hashValue({
+    source: candidate.source,
+    target: candidate.target,
+    source_hash: vectorEntries.get(candidate.source)?.input_hash ?? null,
+    target_hash: vectorEntries.get(candidate.target)?.input_hash ?? null,
+    taxonomy_score: candidate.taxonomy_score,
+    semantic_score: candidate.semantic_score,
+    semantic_raw_score: candidate.semantic_raw_score,
+    combined_score: candidate.combined_score,
+    fallback_publishable: candidate.fallback_publishable,
+    classifier_model: config.classifier?.model ?? null,
+    relation_types: config.relations?.allowed_types ?? []
+  });
 }
 
-function relationDefaults(config = {}) {
-  return {
-    min_score: Number.isFinite(config.min_score) ? config.min_score : 0.35,
-    top_k: Number.isInteger(config.top_k) ? config.top_k : 6,
-    taxonomy_weight: Number.isFinite(config.taxonomy_weight) ? config.taxonomy_weight : 0.4,
-    vector_weight: Number.isFinite(config.vector_weight) ? config.vector_weight : 0.6
-  };
+function actualClassifierMode(classifications) {
+  const values = Object.values(classifications || {});
+  const llmCount = values.filter((item) => item?.classifier === 'llm').length;
+  const fallbackCount = values.filter((item) => item?.classifier !== 'llm').length;
+  if (llmCount && fallbackCount) return 'llm-with-fallback';
+  if (llmCount) return 'llm';
+  return 'semantic-fallback';
 }
 
-function generatedRelationCandidates(cards, vectorIndex, config) {
-  const defaults = relationDefaults(config);
-  const vectorById = new Map((vectorIndex.entries || []).map((entry) => [entry.card_id, entry.vector]));
-  const candidates = [];
-  for (let leftIndex = 0; leftIndex < cards.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < cards.length; rightIndex += 1) {
-      const left = cards[leftIndex];
-      const right = cards[rightIndex];
-      const leftSignals = cardSignals(left);
-      const rightSignals = cardSignals(right);
-      const category = jaccard(leftSignals.categories, rightSignals.categories);
-      const tag = jaccard(leftSignals.tags, rightSignals.tags);
-      const taxonomy = (category * 0.65) + (tag * 0.35);
-      const rawCosine = cosineSimilarity(vectorById.get(left.data.id), vectorById.get(right.data.id));
-      const semantic = Math.max(0, rawCosine);
-      const score = (taxonomy * defaults.taxonomy_weight) + (semantic * defaults.vector_weight);
-      if (score < defaults.min_score) continue;
-      const sharedCategories = leftSignals.categories.filter((value) => rightSignals.categories.includes(value));
-      const sharedTags = leftSignals.tags.filter((value) => rightSignals.tags.includes(value));
-      candidates.push({
-        pair_id: canonicalPair(left.data.id, right.data.id),
-        source: left.data.id,
-        target: right.data.id,
-        type: 'similar_to',
-        direction: 'undirected',
-        score: Number(score.toFixed(6)),
-        method: RELATION_METHOD,
-        evidence: {
-          taxonomy: Number(taxonomy.toFixed(6)),
-          vector_similarity: Number(semantic.toFixed(6)),
-          vector_similarity_raw: Number(rawCosine.toFixed(6)),
-          shared_categories: sharedCategories,
-          shared_tags: sharedTags
-        }
-      });
-    }
-  }
-  candidates.sort((a, b) => b.score - a.score || a.pair_id.localeCompare(b.pair_id));
-
-  const degree = new Map();
-  const selected = [];
-  for (const candidate of candidates) {
-    const sourceDegree = degree.get(candidate.source) || 0;
-    const targetDegree = degree.get(candidate.target) || 0;
-    if (sourceDegree >= defaults.top_k || targetDegree >= defaults.top_k) continue;
-    selected.push(candidate);
-    degree.set(candidate.source, sourceDegree + 1);
-    degree.set(candidate.target, targetDegree + 1);
-  }
-  return selected;
+function invertDirection(direction) {
+  if (direction === 'source_to_target') return 'target_to_source';
+  if (direction === 'target_to_source') return 'source_to_target';
+  return direction;
 }
 
 function assertRelationSpec(entry, cardIds, label) {
@@ -403,6 +439,37 @@ function assertRelationSpec(entry, cardIds, label) {
   }
 }
 
+function normalizeManualEdge(entry, fallback = {}) {
+  const rawSource = String(entry?.source ?? '');
+  const rawTarget = String(entry?.target ?? '');
+  const swapped = rawSource.localeCompare(rawTarget) > 0;
+  const source = swapped ? rawTarget : rawSource;
+  const target = swapped ? rawSource : rawTarget;
+  const explicitDirection = entry?.direction;
+  const direction = explicitDirection !== undefined
+    ? (swapped ? invertDirection(explicitDirection) : explicitDirection)
+    : fallback.direction ?? 'undirected';
+  const pairId = relationPairKey(source, target);
+  const type = entry?.type ?? fallback.type ?? 'similar_to';
+  const score = Number(entry?.score ?? fallback.score ?? 1);
+  const signals = Array.isArray(entry?.signals)
+    ? entry.signals
+    : fallback.signals ?? ['manual:override'];
+
+  return {
+    ...fallback,
+    pair_id: pairId,
+    source,
+    target,
+    type,
+    direction,
+    score,
+    signals,
+    ...(entry?.reason ? { reason: String(entry.reason) } : {}),
+    ...(entry?.confidence !== undefined ? { confidence: Number(entry.confidence) } : {})
+  };
+}
+
 function applyRelationOverrides(generated, overrides, cardIds) {
   const blocked = Array.isArray(overrides?.blocked) ? overrides.blocked : [];
   const pinned = Array.isArray(overrides?.pinned) ? overrides.pinned : [];
@@ -413,82 +480,191 @@ function applyRelationOverrides(generated, overrides, cardIds) {
     if (!entry || typeof entry !== 'object' || !cardIds.has(entry.source) || !cardIds.has(entry.target) || entry.source === entry.target) {
       throw new TypeError('blocked relation references invalid Card ids.');
     }
-    blockedPairs.add(canonicalPair(entry.source, entry.target));
-  }
-
-  const replacementByPair = new Map();
-  for (const entry of replacements) {
-    assertRelationSpec(entry, cardIds, 'override');
-    replacementByPair.set(canonicalPair(entry.source, entry.target), entry);
+    blockedPairs.add(relationPairKey(entry.source, entry.target));
   }
 
   const byPair = new Map();
   for (const edge of generated) {
-    if (blockedPairs.has(edge.pair_id)) continue;
-    const replacement = replacementByPair.get(edge.pair_id);
-    if (replacement) {
-      byPair.set(edge.pair_id, {
-        ...edge,
-        source: replacement.source,
-        target: replacement.target,
-        type: replacement.type,
-        direction: replacement.direction || 'undirected',
-        score: Number.isFinite(replacement.score) ? replacement.score : edge.score,
-        method: 'manual_override',
-        manual: true,
-        note: typeof replacement.note === 'string' ? replacement.note : null
-      });
-    } else {
-      byPair.set(edge.pair_id, edge);
-    }
+    const pairId = relationPairKey(edge.source, edge.target);
+    if (!blockedPairs.has(pairId)) byPair.set(pairId, { ...edge, pair_id: pairId });
+  }
+
+  for (const entry of replacements) {
+    assertRelationSpec(entry, cardIds, 'override');
+    const pairId = relationPairKey(entry.source, entry.target);
+    if (blockedPairs.has(pairId)) continue;
+    const existing = byPair.get(pairId) ?? {};
+    byPair.set(pairId, {
+      ...normalizeManualEdge(entry, existing),
+      method: 'manual_override',
+      classifier: 'human',
+      manual: true,
+      overridden: true,
+      note: typeof entry.note === 'string' ? entry.note : null
+    });
   }
 
   for (const entry of pinned) {
     assertRelationSpec(entry, cardIds, 'pinned');
-    const pairId = canonicalPair(entry.source, entry.target);
+    const pairId = relationPairKey(entry.source, entry.target);
     if (blockedPairs.has(pairId)) continue;
+    const existing = byPair.get(pairId) ?? {};
     byPair.set(pairId, {
-      pair_id: pairId,
-      source: entry.source,
-      target: entry.target,
-      type: entry.type || 'similar_to',
-      direction: entry.direction || 'undirected',
-      score: Number.isFinite(entry.score) ? Math.max(0, Math.min(1, entry.score)) : 1,
+      ...normalizeManualEdge(entry, {
+        ...existing,
+        type: existing.type ?? 'similar_to',
+        score: Number.isFinite(existing.score) ? existing.score : 1,
+        signals: existing.signals ?? ['manual:pinned']
+      }),
       method: 'manual_pinned',
+      classifier: existing.classifier ?? 'human',
       manual: true,
+      pinned: true,
       note: typeof entry.note === 'string' ? entry.note : null,
-      evidence: { manual: true }
+      evidence: existing.evidence ?? { manual: true }
     });
   }
 
-  return [...byPair.values()].sort((a, b) => a.pair_id.localeCompare(b.pair_id));
+  return [...byPair.values()].sort((a, b) =>
+    a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
+  );
 }
 
-export function buildRelationIndex(cards, vectorIndex, {
+export async function buildRelationIndex(cards, vectorIndex, {
   engineSha,
   sourceSha,
   generatedAt,
   config = {},
-  overrides = {}
+  overrides = {},
+  previous = null,
+  fullRebuild = false,
+  classifyRelation = null
 }) {
   const cardIds = new Set(cards.map((card) => card.data.id));
-  const generated = generatedRelationCandidates(cards, vectorIndex, config);
+  const cardMap = new Map(cards.map((card) => [card.data.id, card]));
+  const candidates = buildSemanticCandidates(cards, vectorIndex, config, cosineSimilarity);
+  const candidateConfig = config.candidate || {};
+  const classifierConfig = config.classifier || {};
+  const fallbackTopK = Math.max(1, Number(candidateConfig.fallback_top_k ?? 3));
+  const llmTopK = Math.max(1, Number(classifierConfig.max_candidates_per_card ?? 6));
+  const eligibleForFallback = degreeLimitedPairs(candidates, fallbackTopK);
+  const eligibleForLlm = degreeLimitedPairs(candidates, llmTopK);
+  const existingClassifications = previous?.classifications || {};
+  const classifications = {};
+  const generated = [];
+
+  const classifierKeyEnv = classifierConfig.api_key_env || 'OPENAI_API_KEY';
+  const classifierApiKey = process.env[classifierKeyEnv] || '';
+  const canUseLlm = classifierConfig.enabled === true
+    && classifierConfig.provider === 'openai-compatible'
+    && Boolean(classifierConfig.base_url)
+    && Boolean(classifierConfig.model)
+    && (typeof classifyRelation === 'function' || Boolean(classifierApiKey));
+  const classify = typeof classifyRelation === 'function'
+    ? classifyRelation
+    : classifyRelationWithOpenAICompatible;
+
+  for (const candidate of candidates) {
+    const pairId = relationPairKey(candidate.source, candidate.target);
+    const effectiveCandidate = {
+      ...candidate,
+      fallback_publishable: candidate.fallback_publishable && eligibleForFallback.has(pairId)
+    };
+    const wantsLlm = canUseLlm && eligibleForLlm.has(pairId);
+    const candidateHash = classificationCandidateHash(effectiveCandidate, vectorIndex, config);
+    const cached = existingClassifications[pairId];
+    const cachedValid = cached?.candidate_hash === candidateHash
+      && validateClassifierOutput(cached).length === 0;
+    const preserveLlmWithoutApi = fullRebuild
+      && !canUseLlm
+      && cachedValid
+      && cached.classifier === 'llm';
+    const cacheMatches = cachedValid
+      && ((!fullRebuild || preserveLlmWithoutApi) && (!wantsLlm || cached.classifier === 'llm'));
+
+    let decision;
+    if (cacheMatches) {
+      decision = cached;
+    } else if (wantsLlm) {
+      try {
+        decision = await classify({
+          left: buildEmbeddingText(cardMap.get(candidate.source)),
+          right: buildEmbeddingText(cardMap.get(candidate.target)),
+          candidate: effectiveCandidate,
+          baseUrl: classifierConfig.base_url,
+          model: classifierConfig.model,
+          apiKey: classifierApiKey,
+          timeoutMs: Number(classifierConfig.timeout_ms ?? 45000),
+          retries: Number(classifierConfig.retries ?? 2)
+        });
+        const errors = validateClassifierOutput(decision);
+        if (errors.length) throw new Error(errors.join(' '));
+      } catch (error) {
+        if (cachedValid && cached.classifier === 'llm') decision = cached;
+        else decision = fallbackClassifyCandidate(effectiveCandidate);
+      }
+    } else {
+      decision = fallbackClassifyCandidate(effectiveCandidate);
+    }
+
+    classifications[pairId] = {
+      candidate_hash: candidateHash,
+      related: decision.related,
+      type: decision.type,
+      direction: decision.direction,
+      confidence: Number(decision.confidence),
+      reason: decision.reason,
+      classifier: decision.classifier ?? 'heuristic-fallback'
+    };
+
+    const edge = materializeClassifiedRelation(effectiveCandidate, classifications[pairId], config);
+    if (edge) generated.push({ ...edge, candidate_hash: candidateHash });
+  }
+
   const edges = applyRelationOverrides(generated, overrides, cardIds);
-  const configHash = hashValue({ config: relationDefaults(config), overrides });
+  const classifierMode = actualClassifierMode(classifications);
+  const hasLlmClassifications = Object.values(classifications).some((item) => item?.classifier === 'llm');
+  const configHash = hashValue({ config, overrides });
+
   return {
     ...commonMeta({
       engineSha,
       sourceSha,
       generatedAt,
-      generator: 'knowledge-card-relation-builder-v1',
+      generator: 'knowledge-card-relation-builder-v2',
       inputHash: hashValue({
-        cards: cards.map((card) => ({ id: card.data.id, categories: cardSignals(card).categories, tags: cardSignals(card).tags })),
-        vectors: vectorIndex.input_hash
+        vectors: vectorIndex.input_hash,
+        config,
+        overrides,
+        candidates: Object.entries(classifications)
+          .map(([key, value]) => [key, value.candidate_hash])
+          .sort((a, b) => a[0].localeCompare(b[0]))
       }),
       configHash
     }),
     method: RELATION_METHOD,
-    precedence: ['blocked', 'manual_override_or_pinned', 'deterministic_fallback'],
+    precedence: ['blocked', 'manual_override_or_pinned', 'llm', 'semantic_fallback'],
+    pipeline: {
+      semantic: true,
+      semantic_provider: vectorIndex.provider ?? null,
+      semantic_model: vectorIndex.model ?? null,
+      classifier_mode: classifierMode,
+      classifier_model: hasLlmClassifications ? classifierConfig.model ?? null : null,
+      candidate_count: candidates.length
+    },
+    config: {
+      candidate: config.candidate ?? null,
+      semantic: {
+        provider: vectorIndex.provider ?? null,
+        model: vectorIndex.model ?? null,
+        normalization_floor: config.semantic?.normalization_floor ?? 0.70,
+        normalization_ceiling: config.semantic?.normalization_ceiling ?? 0.95,
+        min_score: config.semantic?.min_score ?? 0.20
+      },
+      scoring: config.scoring ?? null,
+      relation_types: config.relations?.allowed_types ?? []
+    },
+    classifications,
     edges
   };
 }
@@ -828,7 +1004,7 @@ export function buildGraphProjection(cards, vectorIndex, relationIndex, conceptI
   };
 }
 
-export function buildGeneratedArtifacts(cards, {
+export async function buildGeneratedArtifacts(cards, {
   engineSha,
   sourceSha,
   generatedAt,
@@ -836,7 +1012,9 @@ export function buildGeneratedArtifacts(cards, {
   relationOverrides = {},
   conceptConfig = {},
   previous = {},
-  fullRebuild = false
+  fullRebuild = false,
+  embedTexts = null,
+  classifyRelation = null
 }) {
   const search = buildSearchIndex(cards, {
     engineSha,
@@ -844,19 +1022,24 @@ export function buildGeneratedArtifacts(cards, {
     generatedAt,
     previous: fullRebuild ? null : previous.search
   });
-  const vectors = buildVectorIndex(cards, {
-    engineSha,
-    sourceSha,
-    generatedAt,
-    previous: fullRebuild ? null : previous.vectors,
-    fullRebuild
-  });
-  const relations = buildRelationIndex(cards, vectors, {
+  const vectors = await buildVectorIndex(cards, {
     engineSha,
     sourceSha,
     generatedAt,
     config: relationConfig,
-    overrides: relationOverrides
+    previous: fullRebuild ? null : previous.vectors,
+    fullRebuild,
+    embedTexts
+  });
+  const relations = await buildRelationIndex(cards, vectors, {
+    engineSha,
+    sourceSha,
+    generatedAt,
+    config: relationConfig,
+    overrides: relationOverrides,
+    previous: fullRebuild ? previous.relations : previous.relations,
+    fullRebuild,
+    classifyRelation
   });
   const concepts = buildConceptIndex(cards, {
     engineSha,
@@ -899,10 +1082,19 @@ export function validateGeneratedArtifacts(artifacts, cards) {
   if (searchIds.size !== cardIds.size) errors.push('search must contain exactly one document per Card.');
 
   const vectorIds = new Set();
+  const vectorDimensions = Number(artifacts?.vectors?.dimensions);
+  if (!Number.isInteger(vectorDimensions) || vectorDimensions < 1) {
+    errors.push('vectors dimensions must be a positive integer.');
+  }
+  if (typeof artifacts?.vectors?.provider !== 'string' || !artifacts.vectors.provider) {
+    errors.push('vectors provider is required.');
+  }
   for (const entry of artifacts?.vectors?.entries || []) {
     if (!cardIds.has(entry.card_id)) errors.push('vectors reference unknown Card: ' + entry.card_id);
     if (vectorIds.has(entry.card_id)) errors.push('vectors duplicate Card: ' + entry.card_id);
-    if (!Array.isArray(entry.vector) || entry.vector.length !== VECTOR_DIMENSIONS) errors.push('vector dimensions invalid for Card: ' + entry.card_id);
+    if (!Array.isArray(entry.vector) || entry.vector.length !== vectorDimensions) {
+      errors.push('vector dimensions invalid for Card: ' + entry.card_id);
+    }
     vectorIds.add(entry.card_id);
   }
   if (vectorIds.size !== cardIds.size) errors.push('vectors must contain exactly one entry per Card.');
@@ -916,6 +1108,13 @@ export function validateGeneratedArtifacts(artifacts, cards) {
     relationPairs.add(edge.pair_id);
     if (DIRECTIONAL_TYPES.has(edge.type) && !['source_to_target', 'target_to_source'].includes(edge.direction)) {
       errors.push('directional relation has invalid direction: ' + edge.pair_id);
+    }
+    if (!DIRECTIONAL_TYPES.has(edge.type) && edge.direction !== 'undirected') {
+      errors.push('undirected relation has invalid direction: ' + edge.pair_id);
+    }
+    if (typeof edge.method !== 'string' || !edge.method) errors.push('relation method is required: ' + edge.pair_id);
+    if (edge.classifier !== undefined && typeof edge.classifier !== 'string') {
+      errors.push('relation classifier is invalid: ' + edge.pair_id);
     }
   }
 

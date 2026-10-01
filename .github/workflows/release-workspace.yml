@@ -28,6 +28,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      TRANSFORMERS_CACHE_DIR: ${{ github.workspace }}/.cache/transformers
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v5
@@ -49,6 +51,12 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: engine/package-lock.json
+
+      - name: Cache local embedding model
+        uses: actions/cache@v4
+        with:
+          path: .cache/transformers
+          key: knowledge-card-transformers-${{ runner.os }}-${{ inputs.engine_sha }}-${{ hashFiles('engine/package-lock.json') }}
 
       - name: Install engine dependencies
         working-directory: engine

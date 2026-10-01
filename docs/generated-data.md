@@ -28,9 +28,24 @@ data/graph.json
 
 ## 向量與搜尋
 
-向量產物必須以自身 provenance 說明實際使用的方法、維度與設定；若使用模型 provider，還必須記錄足以辨識 provider／model 的資訊。任何 lexical、deterministic、local model 或外部 model 方法都不得被標成另一種判定來源。
+正式 relation／graph 向量預設使用本機 `Xenova/multilingual-e5-small`，由 `@huggingface/transformers` 執行 `feature-extraction`，使用 mean pooling、normalize 與 q8 模型。向量維度為 384，推論發生在 generated-data build，不在網站 request path 執行，也不需要外部模型憑證。
 
-向量輸入由 Knowledge Card 的有效內容建立；指紋必須納入會影響結果的方法、模型／設定與 Knowledge Card 輸入。只有 provenance 與輸入均相容時才可增量沿用既有紀錄；完整建置會依目前方法重建生成紀錄。
+每張 Knowledge Card 的 embedding 輸入固定由下列有效資料組成：
+
+- `title`
+- `summary`
+- effective `classification.categories`
+- effective `classification.tags`
+- effective `actions`
+- effective relevance
+- `一句話介紹`
+- `核心概念`
+- `架構與技術`
+- `技術亮點`
+
+`navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與 embedding input。向量產物保存 provider、model、method、dimensions、每張 Card 的 input hash 與向量；只有 provider／model／dimensions／input hash 均相容時才能增量 reuse。
+
+`deterministic-token-hash` 仍可作為明確指定的 fallback provider，但不是 production 預設，也不得標示為 neural／model embedding。正式 local embedding 失敗時 generated build 應失敗，不會靜默切換成 token hash。
 
 搜尋索引涵蓋 Knowledge Card 的 `title`、`summary`、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
@@ -46,14 +61,25 @@ data/graph.json
 
 導覽分類體系與 Card↔Card 關聯是不同維度。導覽分類調整不得直接改寫關聯距離／分數，也不因介面導覽重分類就重寫 Concept 或關聯。
 
-生成關聯只能使用目前 relation pipeline 定義且可追溯的訊號；具體 scoring、vector 或 classifier 方法不在本文件寫死，而由產物的 method／evidence／provenance 說明。關聯保存：
+自動 Card↔Card relation 使用兩組可追溯訊號：
+
+- taxonomy：effective categories × 0.45、tags × 0.30、高相關度維度 × 0.20、actions × 0.05。
+- semantic：E5 raw cosine 經 `0.70..0.95 → 0..1` 正規化。
+
+taxonomy 與 semantic 以 0.40／0.60 組合。候選發現與正式發布分成兩階段：預設 candidate signal gate 為 taxonomy ≥ 0.08 或 semantic ≥ 0.20，combined ≥ 0.30；無外部分類器時只有 combined ≥ 0.48 且通過 `fallback_top_k` 的候選會成為正式 relation。
+
+relation classifier 是選用能力。若私人 Workspace 沒有明確啟用並提供核准的外部 provider／credential，新的候選使用 deterministic semantic fallback；fallback 不會冒充 LLM 判定，也不會自行產生方向性的 `depends_on`／`extends`。
+
+關聯保存：
 
 - 具型別關聯
 - 來源／目標
 - 方向
 - 分數／權重
 - 方法
-- 證據／追溯資訊
+- taxonomy／semantic／raw semantic／可選 LLM 分數
+- confidence、reason、classifier
+- shared signals／證據與追溯資訊
 
 有方向性的關聯在標準配對處理後仍保留主體／客體語意。
 
