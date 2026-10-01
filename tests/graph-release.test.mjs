@@ -235,10 +235,10 @@ test('manual blocked relation wins and pinned directional relation preserves dir
 
   assert.equal(artifacts.relations.edges.some((edge) => edge.pair_id === 'alpha::beta'), false);
   const pinned = artifacts.relations.edges.find((edge) => edge.pair_id === 'alpha::gamma');
-  assert.equal(pinned.source, 'gamma');
-  assert.equal(pinned.target, 'alpha');
+  assert.equal(pinned.source, 'alpha');
+  assert.equal(pinned.target, 'gamma');
   assert.equal(pinned.type, 'depends_on');
-  assert.equal(pinned.direction, 'source_to_target');
+  assert.equal(pinned.direction, 'target_to_source');
   assert.equal(pinned.method, 'manual_pinned');
 });
 
