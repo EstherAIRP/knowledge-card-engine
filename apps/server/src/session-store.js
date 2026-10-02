@@ -28,6 +28,16 @@ export function createMemorySessionStore({ now = () => Date.now() } = {}) {
       return value ? structuredClone(value) : null;
     },
 
+    async update(id, value) {
+      if (!SESSION_ID.test(String(id || ''))) return false;
+      if (!Number.isFinite(value?.exp) || value.exp <= now()) {
+        throw new TypeError('Session value must contain a future exp timestamp.');
+      }
+      if (!purge(id)) return false;
+      sessions.set(id, structuredClone(value));
+      return true;
+    },
+
     async delete(id) {
       if (SESSION_ID.test(String(id || ''))) sessions.delete(id);
     }
@@ -120,6 +130,22 @@ export function createRestSessionStore({
       return parsed;
     },
 
+    async update(id, value) {
+      if (!SESSION_ID.test(String(id || ''))) return false;
+      if (!Number.isFinite(value?.exp) || value.exp <= now()) {
+        throw new TypeError('Session value must contain a future exp timestamp.');
+      }
+      const ttlSeconds = Math.max(1, Math.ceil((value.exp - now()) / 1000));
+      const result = await redisCommand(
+        config,
+        ['SET', prefix + id, JSON.stringify(value), 'EX', String(ttlSeconds), 'XX'],
+        fetchImpl
+      );
+      if (result == null) return false;
+      if (result !== 'OK') throw new Error('Shared session store did not update the session.');
+      return true;
+    },
+
     async delete(id) {
       if (!SESSION_ID.test(String(id || ''))) return;
       await redisCommand(config, ['DEL', prefix + id], fetchImpl);
@@ -136,9 +162,10 @@ export function assertSessionStore(store) {
     !store
     || typeof store.create !== 'function'
     || typeof store.get !== 'function'
+    || typeof store.update !== 'function'
     || typeof store.delete !== 'function'
   ) {
-    throw new TypeError('sessionStore must implement async create/get/delete.');
+    throw new TypeError('sessionStore must implement async create/get/update/delete.');
   }
   return store;
 }
