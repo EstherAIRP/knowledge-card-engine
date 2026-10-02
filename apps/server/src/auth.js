@@ -13,6 +13,8 @@ const SESSION_COOKIE = '__Host-kc_session';
 const FLOW_COOKIE = '__Host-kc_oauth';
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const USER_TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
+const USER_TOKEN_REFRESH_WAIT_MS = 5 * 1000;
+const USER_TOKEN_REFRESH_POLL_MS = 50;
 const FLOW_MS = 10 * 60 * 1000;
 const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 const GITHUB_API = 'https://api.github.com';
@@ -314,19 +316,32 @@ export function createAuthService({
       throw new HttpError(401, 'AUTH_SESSION_INVALID', 'GitHub authorization can no longer be refreshed.', { clearSession: true });
     }
 
-    let refreshed;
-    try {
-      refreshed = await refreshUserToken(config, session.refreshToken, fetchImpl);
-    } catch (error) {
-      if (error instanceof HttpError && error.clearSession) {
+    const refreshToken = session.refreshToken;
+    const acquired = await sessionStore.acquireRefresh(sessionId);
+    if (!acquired) {
+      const deadline = Date.now() + USER_TOKEN_REFRESH_WAIT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, USER_TOKEN_REFRESH_POLL_MS));
         const latest = await sessionStore.get(sessionId);
+        if (!latest) {
+          throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
+        }
         if (
-          latest
-          && latest.refreshToken !== session.refreshToken
-          && (!Number.isFinite(latest.githubTokenExp) || latest.githubTokenExp > nowMs)
+          latest.refreshToken !== refreshToken
+          || !Number.isFinite(latest.githubTokenExp)
+          || latest.githubTokenExp - now() > USER_TOKEN_REFRESH_WINDOW_MS
         ) {
           return latest;
         }
+      }
+      throw new HttpError(503, 'AUTH_UPSTREAM_UNAVAILABLE', 'GitHub session refresh is temporarily unavailable.');
+    }
+
+    let refreshed;
+    try {
+      refreshed = await refreshUserToken(config, refreshToken, fetchImpl);
+    } catch (error) {
+      if (error instanceof HttpError && error.clearSession) {
         await sessionStore.delete(sessionId);
       }
       throw error;
