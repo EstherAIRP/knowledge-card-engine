@@ -81,7 +81,7 @@ __Host-kc_session=<opaque-random-id>
 - GitHub refresh token 與其到期時間；僅在 GitHub 回傳可輪替憑證時存在
 - 工作階段到期時間
 
-`createPrivateSiteApp({ sessionStore })` 可注入工作階段儲存區；介面必須提供非同步 `create/get/update/delete`。內建 `createMemorySessionStore` 是單一處理程序內的參考實作：處理程序重新啟動會讓所有工作階段安全失效，但不適合需要跨執行個體或無伺服器請求共享工作階段的部署。
+`createPrivateSiteApp({ sessionStore })` 可注入工作階段儲存區；介面必須提供非同步 `create/get/update/acquireRefresh/delete`。`acquireRefresh` 用短效鎖序列化同一工作階段的 GitHub 憑證輪替，避免多個並行私人 API 同時使用一次性的 refresh token。內建 `createMemorySessionStore` 是單一處理程序內的參考實作：處理程序重新啟動會讓所有工作階段安全失效，但不適合需要跨執行個體或無伺服器請求共享工作階段的部署。
 
 Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis 的 REST 指令端點保存具存活期限的伺服器端工作階段。它需要 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN`，工作階段鍵使用 `kc:session:` 命名空間。REST 後端無法讀寫或回傳格式錯誤的值時，工作階段操作採驗證失敗即拒絕。
 
