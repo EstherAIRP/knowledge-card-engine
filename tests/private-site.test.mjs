@@ -281,12 +281,19 @@ test('30-day session refreshes expiring GitHub user tokens without extending the
   assert.equal(h.state.refreshCalls, 0);
 
   h.advance((8 * 60 * 60 * 1000) - (4 * 60 * 1000));
-  const refreshed = await h.app(new Request('https://cards.example.test/api/auth/session', {
-    headers: { Cookie: sessionCookie }
-  }));
-  assert.equal(refreshed.status, 200);
+  const [refreshedA, refreshedB] = await Promise.all([
+    h.app(new Request('https://cards.example.test/api/auth/session', {
+      headers: { Cookie: sessionCookie }
+    })),
+    h.app(new Request('https://cards.example.test/api/auth/session', {
+      headers: { Cookie: sessionCookie }
+    }))
+  ]);
+  assert.equal(refreshedA.status, 200);
+  assert.equal(refreshedB.status, 200);
   assert.equal(h.state.refreshCalls, 1);
-  assert.equal((await refreshed.json()).expires_at, initialPayload.expires_at);
+  assert.equal((await refreshedA.json()).expires_at, initialPayload.expires_at);
+  assert.equal((await refreshedB.json()).expires_at, initialPayload.expires_at);
 
   const cards = await h.app(new Request('https://cards.example.test/api/cards?limit=1', {
     headers: { Cookie: sessionCookie }
