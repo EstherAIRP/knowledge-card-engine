@@ -29,7 +29,7 @@
 - 搜尋、向量、關聯、Concept、圖譜與發布中繼資料都屬於生成／私人資料；真實產物不得進入公開引擎、PR、測試、日誌或建置產物。
 - 導覽分類體系與語意關聯不得混為同一維度；人工關聯的 `block`／`pin`／`override` 規則必須優先於生成結果。
 - 發布讀取器必須驗證 E／S／P 版本鏈結、manifest 雜湊／大小與目前發布指標；發布不完整時必須驗證失敗即拒絕，不能混讀最新 Card 與舊索引。
-- GitHub user access token、installation token、App private key、client secret 不得回傳到瀏覽器；瀏覽器的工作階段 Cookie 只保存不可推導憑證的識別值。
+- GitHub user access token、refresh token、installation token、App private key、client secret 不得回傳到瀏覽器；瀏覽器的工作階段 Cookie 只保存不可推導憑證的識別值。
 - 公開範例與測試只能使用合成資料。
 
 ## 正式文件規則
