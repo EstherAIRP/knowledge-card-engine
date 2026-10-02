@@ -430,7 +430,7 @@ export function createAuthService({
 
         return redirectResponse(appRoot(config), 302, [
           clearFlow,
-          cookie(SESSION_COOKIE, sessionId, Math.max(1, Math.floor((exp - now()) / 1000)))
+          cookie(SESSION_COOKIE, sessionId, Math.max(1, Math.floor((exp - createdAt) / 1000)))
         ]);
       } catch (error) {
         if (error instanceof HttpError && error.status === 403) {
