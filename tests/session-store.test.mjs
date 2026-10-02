@@ -31,7 +31,7 @@ test('shared REST session store creates, reads, and deletes TTL-bound server ses
     if (command[0] === 'SET') {
       assert.equal(command[1].startsWith('kc:session:'), true);
       assert.equal(command[3], 'EX');
-      assert.equal(command[4], '3600');
+      assert.equal(command[4], command[1].includes(':refresh:') ? '10' : '3600');
       assert.match(command[5], /^(NX|XX)$/u);
       if (command[5] === 'NX' && values.has(command[1])) {
         return new Response(JSON.stringify({ result: null }), { status: 200 });
@@ -79,10 +79,16 @@ test('shared REST session store creates, reads, and deletes TTL-bound server ses
   assert.equal(await store.update(id, updated), true);
   assert.deepEqual(await store.get(id), updated);
 
+  assert.equal(await store.acquireRefresh(id), true);
+  assert.equal(await store.acquireRefresh(id), false);
+
   await store.delete(id);
   assert.equal(await store.get(id), null);
-  assert.deepEqual(commands.map((command) => command[0]), ['SET', 'GET', 'SET', 'GET', 'DEL', 'GET']);
-  assert.deepEqual(commands.filter((command) => command[0] === 'SET').map((command) => command[5]), ['NX', 'XX']);
+  assert.deepEqual(commands.map((command) => command[0]), ['SET', 'GET', 'SET', 'GET', 'SET', 'SET', 'DEL', 'GET']);
+  assert.deepEqual(
+    commands.filter((command) => command[0] === 'SET').map((command) => [command[1].includes(':refresh:'), command[5]]),
+    [[false, 'NX'], [false, 'XX'], [true, 'NX'], [true, 'NX']]
+  );
 });
 
 test('shared REST session store fails closed on backend errors and malformed values', async () => {
