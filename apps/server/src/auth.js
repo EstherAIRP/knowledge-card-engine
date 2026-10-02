@@ -11,7 +11,10 @@ import { fetchWithTimeout } from './upstream.js';
 
 const SESSION_COOKIE = '__Host-kc_session';
 const FLOW_COOKIE = '__Host-kc_oauth';
-const SESSION_MS = 60 * 60 * 1000;
+const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+const USER_TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
+const USER_TOKEN_REFRESH_WAIT_MS = 5 * 1000;
+const USER_TOKEN_REFRESH_POLL_MS = 50;
 const FLOW_MS = 10 * 60 * 1000;
 const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 const GITHUB_API = 'https://api.github.com';
@@ -103,6 +106,33 @@ async function responseJson(response) {
   return response.json().catch(() => ({}));
 }
 
+function positiveSeconds(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function userTokenFromPayload(payload) {
+  const accessToken = typeof payload.access_token === 'string' && payload.access_token
+    ? payload.access_token
+    : null;
+  if (!accessToken) return null;
+
+  const expiresIn = positiveSeconds(payload.expires_in);
+  const refreshToken = typeof payload.refresh_token === 'string' && payload.refresh_token
+    ? payload.refresh_token
+    : null;
+  const refreshTokenExpiresIn = positiveSeconds(payload.refresh_token_expires_in);
+
+  if (expiresIn != null && (!refreshToken || refreshTokenExpiresIn == null)) return null;
+
+  return {
+    accessToken,
+    expiresIn,
+    refreshToken,
+    refreshTokenExpiresIn
+  };
+}
+
 async function exchangeCode(config, code, verifier, fetchImpl) {
   let response;
   try {
@@ -126,14 +156,44 @@ async function exchangeCode(config, code, verifier, fetchImpl) {
   }
 
   const payload = await responseJson(response);
-  if (!response.ok || typeof payload.access_token !== 'string' || !payload.access_token) {
+  const token = userTokenFromPayload(payload);
+  if (!response.ok || !token) {
     throw new HttpError(502, 'AUTH_TOKEN_EXCHANGE_FAILED', 'GitHub login token exchange failed.');
   }
-  const expiresIn = Number(payload.expires_in);
-  return {
-    accessToken: payload.access_token,
-    expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : null
-  };
+  return token;
+}
+
+async function refreshUserToken(config, refreshToken, fetchImpl) {
+  let response;
+  try {
+    response = await fetchWithTimeout(fetchImpl, 'https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Knowledge-Card-Engine'
+      },
+      body: new URLSearchParams({
+        client_id: config.githubClientId,
+        client_secret: config.githubClientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      })
+    });
+  } catch {
+    throw new HttpError(503, 'AUTH_UPSTREAM_UNAVAILABLE', 'GitHub session refresh is temporarily unavailable.');
+  }
+
+  const payload = await responseJson(response);
+  if (response.status === 429 || response.status >= 500) {
+    throw new HttpError(503, 'AUTH_UPSTREAM_UNAVAILABLE', 'GitHub session refresh is temporarily unavailable.');
+  }
+
+  const token = userTokenFromPayload(payload);
+  if (!response.ok || !token) {
+    throw new HttpError(401, 'AUTH_SESSION_INVALID', 'GitHub authorization can no longer be refreshed.', { clearSession: true });
+  }
+  return token;
 }
 
 async function githubIdentity(accessToken, fetchImpl) {
@@ -241,6 +301,80 @@ export function createAuthService({
 }) {
   assertSessionStore(sessionStore);
 
+  async function refreshSessionIfNeeded(sessionId, session) {
+    const nowMs = now();
+    if (!Number.isFinite(session.githubTokenExp)) return session;
+    if (session.githubTokenExp - nowMs > USER_TOKEN_REFRESH_WINDOW_MS) return session;
+
+    if (
+      typeof session.refreshToken !== 'string'
+      || !session.refreshToken
+      || !Number.isFinite(session.refreshTokenExp)
+      || session.refreshTokenExp <= nowMs
+    ) {
+      await sessionStore.delete(sessionId);
+      throw new HttpError(401, 'AUTH_SESSION_INVALID', 'GitHub authorization can no longer be refreshed.', { clearSession: true });
+    }
+
+    const refreshToken = session.refreshToken;
+    const acquired = await sessionStore.acquireRefresh(sessionId);
+    if (!acquired) {
+      const deadline = Date.now() + USER_TOKEN_REFRESH_WAIT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, USER_TOKEN_REFRESH_POLL_MS));
+        const latest = await sessionStore.get(sessionId);
+        if (!latest) {
+          throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
+        }
+        if (
+          latest.refreshToken !== refreshToken
+          || !Number.isFinite(latest.githubTokenExp)
+          || latest.githubTokenExp - now() > USER_TOKEN_REFRESH_WINDOW_MS
+        ) {
+          return latest;
+        }
+      }
+      throw new HttpError(503, 'AUTH_UPSTREAM_UNAVAILABLE', 'GitHub session refresh is temporarily unavailable.');
+    }
+
+    let refreshed;
+    try {
+      refreshed = await refreshUserToken(config, refreshToken, fetchImpl);
+    } catch (error) {
+      if (error instanceof HttpError && error.clearSession) {
+        await sessionStore.delete(sessionId);
+      }
+      throw error;
+    }
+
+    const refreshedAt = now();
+    const githubTokenExp = refreshed.expiresIn == null
+      ? null
+      : refreshedAt + (refreshed.expiresIn * 1000);
+    const refreshTokenExp = refreshed.refreshTokenExpiresIn == null
+      ? null
+      : refreshedAt + (refreshed.refreshTokenExpiresIn * 1000);
+    const nextSession = {
+      ...session,
+      accessToken: refreshed.accessToken,
+      githubTokenExp,
+      refreshToken: refreshed.refreshToken,
+      refreshTokenExp,
+      exp: refreshTokenExp == null ? session.exp : Math.min(session.exp, refreshTokenExp)
+    };
+
+    if (!Number.isFinite(nextSession.exp) || nextSession.exp <= refreshedAt) {
+      await sessionStore.delete(sessionId);
+      throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
+    }
+
+    const updated = await sessionStore.update(sessionId, nextSession);
+    if (!updated) {
+      throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
+    }
+    return nextSession;
+  }
+
   return {
     beginLogin() {
       const state = randomBytes(32).toString('base64url');
@@ -284,11 +418,19 @@ export function createAuthService({
         const user = await githubIdentity(exchanged.accessToken, fetchImpl);
         await verifyWorkspaceEligibility(config, exchanged.accessToken, fetchImpl);
 
+        const createdAt = now();
         const githubTokenExp = exchanged.expiresIn == null
-          ? now() + SESSION_MS
-          : now() + (exchanged.expiresIn * 1000);
-        const exp = Math.min(now() + SESSION_MS, githubTokenExp);
-        if (exp <= now()) throw new HttpError(502, 'AUTH_TOKEN_EXPIRED', 'GitHub returned an expired user token.');
+          ? null
+          : createdAt + (exchanged.expiresIn * 1000);
+        const refreshTokenExp = exchanged.refreshTokenExpiresIn == null
+          ? null
+          : createdAt + (exchanged.refreshTokenExpiresIn * 1000);
+        const exp = refreshTokenExp == null
+          ? createdAt + SESSION_MS
+          : Math.min(createdAt + SESSION_MS, refreshTokenExp);
+        if (exp <= createdAt || (githubTokenExp != null && githubTokenExp <= createdAt)) {
+          throw new HttpError(502, 'AUTH_TOKEN_EXPIRED', 'GitHub returned an expired user token.');
+        }
 
         const sessionId = await sessionStore.create({
           sub: user.id,
@@ -296,12 +438,14 @@ export function createAuthService({
           avatarUrl: user.avatarUrl,
           accessToken: exchanged.accessToken,
           githubTokenExp,
+          refreshToken: exchanged.refreshToken,
+          refreshTokenExp,
           exp
         });
 
         return redirectResponse(appRoot(config), 302, [
           clearFlow,
-          cookie(SESSION_COOKIE, sessionId, Math.max(1, Math.floor((exp - now()) / 1000)))
+          cookie(SESSION_COOKIE, sessionId, Math.max(1, Math.floor((exp - createdAt) / 1000)))
         ]);
       } catch (error) {
         if (error instanceof HttpError && error.status === 403) {
@@ -315,10 +459,12 @@ export function createAuthService({
       const sessionId = sessionIdFromRequest(request);
       if (!sessionId) throw new HttpError(401, 'AUTH_REQUIRED', 'GitHub login is required.');
 
-      const session = await sessionStore.get(sessionId);
+      let session = await sessionStore.get(sessionId);
       if (!session) {
         throw new HttpError(401, 'AUTH_SESSION_EXPIRED', 'Session has expired or was revoked.', { clearSession: true });
       }
+
+      session = await refreshSessionIfNeeded(sessionId, session);
 
       let eligibility;
       try {

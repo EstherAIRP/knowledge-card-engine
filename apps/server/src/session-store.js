@@ -5,6 +5,7 @@ const SESSION_ID = /^[A-Za-z0-9_-]{32,128}$/u;
 
 export function createMemorySessionStore({ now = () => Date.now() } = {}) {
   const sessions = new Map();
+  const refreshLocks = new Map();
 
   function purge(id) {
     const value = sessions.get(id);
@@ -26,6 +27,24 @@ export function createMemorySessionStore({ now = () => Date.now() } = {}) {
       if (!SESSION_ID.test(String(id || ''))) return null;
       const value = purge(id);
       return value ? structuredClone(value) : null;
+    },
+
+    async update(id, value) {
+      if (!SESSION_ID.test(String(id || ''))) return false;
+      if (!Number.isFinite(value?.exp) || value.exp <= now()) {
+        throw new TypeError('Session value must contain a future exp timestamp.');
+      }
+      if (!purge(id)) return false;
+      sessions.set(id, structuredClone(value));
+      return true;
+    },
+
+    async acquireRefresh(id, ttlSeconds = 10) {
+      if (!SESSION_ID.test(String(id || '')) || !purge(id)) return false;
+      const current = refreshLocks.get(id);
+      if (Number.isFinite(current) && current > now()) return false;
+      refreshLocks.set(id, now() + (Math.max(1, ttlSeconds) * 1000));
+      return true;
     },
 
     async delete(id) {
@@ -120,6 +139,34 @@ export function createRestSessionStore({
       return parsed;
     },
 
+    async update(id, value) {
+      if (!SESSION_ID.test(String(id || ''))) return false;
+      if (!Number.isFinite(value?.exp) || value.exp <= now()) {
+        throw new TypeError('Session value must contain a future exp timestamp.');
+      }
+      const ttlSeconds = Math.max(1, Math.ceil((value.exp - now()) / 1000));
+      const result = await redisCommand(
+        config,
+        ['SET', prefix + id, JSON.stringify(value), 'EX', String(ttlSeconds), 'XX'],
+        fetchImpl
+      );
+      if (result == null) return false;
+      if (result !== 'OK') throw new Error('Shared session store did not update the session.');
+      return true;
+    },
+
+    async acquireRefresh(id, ttlSeconds = 10) {
+      if (!SESSION_ID.test(String(id || ''))) return false;
+      const result = await redisCommand(
+        config,
+        ['SET', prefix + 'refresh:' + id, '1', 'EX', String(Math.max(1, ttlSeconds)), 'NX'],
+        fetchImpl
+      );
+      if (result == null) return false;
+      if (result !== 'OK') throw new Error('Shared session store did not acquire the refresh lock.');
+      return true;
+    },
+
     async delete(id) {
       if (!SESSION_ID.test(String(id || ''))) return;
       await redisCommand(config, ['DEL', prefix + id], fetchImpl);
@@ -136,9 +183,11 @@ export function assertSessionStore(store) {
     !store
     || typeof store.create !== 'function'
     || typeof store.get !== 'function'
+    || typeof store.update !== 'function'
+    || typeof store.acquireRefresh !== 'function'
     || typeof store.delete !== 'function'
   ) {
-    throw new TypeError('sessionStore must implement async create/get/delete.');
+    throw new TypeError('sessionStore must implement async create/get/update/acquireRefresh/delete.');
   }
   return store;
 }

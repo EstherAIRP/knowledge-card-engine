@@ -9,7 +9,7 @@ Knowledge Card Engine 目前提供一個不綁特定託管平台的唯讀私人�
 1. **GitHub App 使用者存取權杖（user access token）**：只用來確認 GitHub 身分，以及該使用者是否能存取設定的私人 Knowledge Card Workspace 倉庫。
 2. **GitHub App 安裝存取權杖（installation access token）**：只存在伺服器執行環境，用來讀取設定的 Knowledge Card Workspace 倉庫內容。
 
-使用者存取權杖不回傳給瀏覽器，也不放進工作階段 Cookie。瀏覽器的 `__Host-kc_session` 只保存不可推導憑證的不透明工作階段識別值；對應的使用者存取權杖與使用者資料保存在伺服器端工作階段儲存區。
+使用者存取權杖與 refresh token 都不回傳給瀏覽器，也不放進工作階段 Cookie。瀏覽器的 `__Host-kc_session` 只保存不可推導憑證的不透明工作階段識別值；對應的 GitHub 憑證與使用者資料保存在伺服器端工作階段儲存區。
 
 GitHub App 倉庫權限至少需要：
 
@@ -56,7 +56,7 @@ GitHub 回呼網址固定為：
 
 ## 工作階段
 
-工作階段有效期最長 1 小時，也不會超過 GitHub 使用者存取權杖自身有效期。
+工作階段自登入成功起固定有效最長 30 天，不採滑動延長。若 GitHub 回傳會到期的使用者存取權杖，登入時必須同時取得 refresh token；伺服器會在使用者存取權杖接近到期時以 refresh token 輪替新的憑證，輪替不延長原本 30 天的工作階段期限。若 GitHub 回傳的 refresh token 自身期限早於 30 天，伺服器端工作階段以較早期限為準。
 
 瀏覽器 Cookie：
 
@@ -71,16 +71,17 @@ __Host-kc_session=<opaque-random-id>
 - SameSite=Lax
 - Path=/
 - 無 Domain
-- Max-Age 最長 3600 秒
+- Max-Age 最長 2592000 秒（30 天）
 
 伺服器端工作階段內容保存：
 
 - GitHub 使用者 `id`／`login`／`avatar`
 - GitHub App 使用者存取權杖
-- 使用者存取權杖到期時間
+- 使用者存取權杖到期時間；若該權杖不會到期則為空值
+- GitHub refresh token 與其到期時間；僅在 GitHub 回傳可輪替憑證時存在
 - 工作階段到期時間
 
-`createPrivateSiteApp({ sessionStore })` 可注入工作階段儲存區；介面必須提供非同步 `create/get/delete`。內建 `createMemorySessionStore` 是單一處理程序內的參考實作：處理程序重新啟動會讓所有工作階段安全失效，但不適合需要跨執行個體或無伺服器請求共享工作階段的部署。
+`createPrivateSiteApp({ sessionStore })` 可注入工作階段儲存區；介面必須提供非同步 `create/get/update/acquireRefresh/delete`。`acquireRefresh` 用短效鎖序列化同一工作階段的 GitHub 憑證輪替，避免多個並行私人 API 同時使用一次性的 refresh token。內建 `createMemorySessionStore` 是單一處理程序內的參考實作：處理程序重新啟動會讓所有工作階段安全失效，但不適合需要跨執行個體或無伺服器請求共享工作階段的部署。
 
 Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis 的 REST 指令端點保存具存活期限的伺服器端工作階段。它需要 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN`，工作階段鍵使用 `kc:session:` 命名空間。REST 後端無法讀寫或回傳格式錯誤的值時，工作階段操作採驗證失敗即拒絕。
 
@@ -89,14 +90,16 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 目前不使用授權快取。每一個私人 API 請求都會：
 
 1. 解析不透明工作階段識別值。
-2. 從伺服器端工作階段儲存區取得使用者存取權杖。
-3. 使用使用者存取權杖重新讀取設定的私人 Knowledge Card Workspace 倉庫中繼資料。
-4. 成功後才讀取安裝存取權杖快取或 Knowledge Card Workspace 資料快取。
+2. 從伺服器端工作階段儲存區取得 GitHub 使用者憑證。
+3. 若使用者存取權杖距離到期不足 5 分鐘，以伺服器端 refresh token 向 GitHub 輪替新的使用者憑證，並更新同一個工作階段識別值下的伺服器端狀態。
+4. 使用目前有效的使用者存取權杖重新讀取設定的私人 Knowledge Card Workspace 倉庫中繼資料。
+5. 成功後才讀取安裝存取權杖快取或 Knowledge Card Workspace 資料快取。
 
 因此：
 
 - 沒有工作階段 → 401。
-- GitHub 使用者存取權杖已撤銷／失效 → 401，刪除伺服器工作階段並清除 Cookie。
+- GitHub 使用者存取權杖已撤銷／失效，或 refresh token 已無法再輪替 → 401，刪除伺服器工作階段並清除 Cookie。
+- GitHub 權杖輪替暫時無法連線或 GitHub 服務暫時失敗 → 503，保留尚未到期的伺服器工作階段供後續重試。
 - 使用者仍能登入 GitHub App，但失去 Knowledge Card Workspace 倉庫存取權 → 403。
 - GitHub 無法完成資格重查 → 503；不提供舊快取中的私人內容。
 
@@ -110,7 +113,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 1. 取得伺服器端工作階段與 GitHub 使用者存取權杖。
 2. 呼叫 GitHub `DELETE /applications/{client_id}/token` 撤銷該使用者存取權杖。
-3. GitHub 回報成功後，刪除伺服器工作階段。
+3. GitHub 回報成功後，刪除伺服器工作階段；其中保存的 refresh token 一併移除。
 4. 清除 `__Host-kc_session`。
 
 若 GitHub 使用者存取權杖撤銷失敗，API 回傳錯誤、保留伺服器工作階段與 Cookie，不宣稱登出成功。

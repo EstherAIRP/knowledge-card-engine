@@ -66,8 +66,10 @@ async function harness() {
     installationTokenCalls: 0,
     privateDataCalls: 0,
     qualificationCalls: 0,
+    refreshCalls: 0,
     exchangedVerifier: '',
     userToken: 'ghu_test_user_token',
+    refreshToken: 'ghr_test_refresh_token',
     installationToken: 'ghs_TEST_INSTALLATION_TOKEN_WITH_NEW_FORMAT'
   };
 
@@ -94,11 +96,26 @@ async function harness() {
 
     if (url.origin === 'https://github.com' && url.pathname === '/login/oauth/access_token') {
       const params = new URLSearchParams(String(options.body || ''));
+
+      if (params.get('grant_type') === 'refresh_token') {
+        assert.equal(params.get('refresh_token'), state.refreshToken);
+        state.refreshCalls += 1;
+        state.userToken = `ghu_refreshed_${state.refreshCalls}`;
+        state.refreshToken = `ghr_refreshed_${state.refreshCalls}`;
+        return json(200, {
+          access_token: state.userToken,
+          expires_in: 28_800,
+          refresh_token: state.refreshToken,
+          refresh_token_expires_in: 15_897_600,
+          token_type: 'bearer'
+        });
+      }
+
       state.exchangedVerifier = params.get('code_verifier') || '';
       return json(200, {
         access_token: state.userToken,
         expires_in: 28_800,
-        refresh_token: 'ghr_not_stored',
+        refresh_token: state.refreshToken,
         refresh_token_expires_in: 15_897_600,
         token_type: 'bearer'
       });
@@ -215,7 +232,8 @@ async function harness() {
     const sessionSetCookie = findCookie(finish, '__Host-kc_session');
     assert.ok(sessionSetCookie);
     assert.doesNotMatch(sessionSetCookie, /ghu_test_user_token/u);
-    assert.match(sessionSetCookie, /Max-Age=3600/u);
+    assert.doesNotMatch(sessionSetCookie, /ghr_test_refresh_token/u);
+    assert.match(sessionSetCookie, /Max-Age=2592000/u);
     return cookiePair(sessionSetCookie);
   }
 
@@ -229,7 +247,7 @@ async function harness() {
   };
 }
 
-test('login uses state + PKCE and creates an opaque one-hour server session only after private Workspace eligibility', async () => {
+test('login uses state + PKCE and creates an opaque 30-day server session only after private Workspace eligibility', async () => {
   const h = await harness();
   const sessionCookie = await h.login();
   assert.ok(sessionCookie.startsWith('__Host-kc_session='));
@@ -248,6 +266,40 @@ test('login uses state + PKCE and creates an opaque one-hour server session only
     permission: 'read'
   });
   assert.equal(typeof payload.expires_at, 'string');
+});
+
+test('30-day session refreshes expiring GitHub user tokens without extending the session deadline', async () => {
+  const h = await harness();
+  const sessionCookie = await h.login();
+
+  const initial = await h.app(new Request('https://cards.example.test/api/auth/session', {
+    headers: { Cookie: sessionCookie }
+  }));
+  assert.equal(initial.status, 200);
+  const initialPayload = await initial.json();
+  assert.equal(initialPayload.expires_at, '2026-10-18T12:00:00.000Z');
+  assert.equal(h.state.refreshCalls, 0);
+
+  h.advance((8 * 60 * 60 * 1000) - (4 * 60 * 1000));
+  const [refreshedA, refreshedB] = await Promise.all([
+    h.app(new Request('https://cards.example.test/api/auth/session', {
+      headers: { Cookie: sessionCookie }
+    })),
+    h.app(new Request('https://cards.example.test/api/auth/session', {
+      headers: { Cookie: sessionCookie }
+    }))
+  ]);
+  assert.equal(refreshedA.status, 200);
+  assert.equal(refreshedB.status, 200);
+  assert.equal(h.state.refreshCalls, 1);
+  assert.equal((await refreshedA.json()).expires_at, initialPayload.expires_at);
+  assert.equal((await refreshedB.json()).expires_at, initialPayload.expires_at);
+
+  const cards = await h.app(new Request('https://cards.example.test/api/cards?limit=1', {
+    headers: { Cookie: sessionCookie }
+  }));
+  assert.equal(cards.status, 200);
+  assert.equal(h.state.refreshCalls, 1);
 });
 
 test('invalid OAuth state and denied login never create a private session', async () => {
@@ -395,7 +447,7 @@ test('session expiry, logout CSRF, public health, methods, and public app shell 
   const h = await harness();
   const sessionCookie = await h.login();
 
-  h.advance((60 * 60 * 1000) + 1);
+  h.advance((30 * 24 * 60 * 60 * 1000) + 1);
   const expired = await h.app(new Request('https://cards.example.test/api/cards', {
     headers: { Cookie: sessionCookie }
   }));
