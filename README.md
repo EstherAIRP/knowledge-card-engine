@@ -6,7 +6,7 @@ Knowledge Card 是一套由 AI 協助維護的個人技術知識系統。
 
 它把 GitHub、Threads 等公開來源整理成結構化的 Knowledge Card，保留使用者的人工判斷與備註，並從累積的知識內容建立搜尋、語意關聯、Concept 與知識圖譜，最後透過私人網站提供瀏覽與查詢。
 
-Knowledge Card V2 將**共用程式**與**私人知識資料**分開管理：
+Knowledge Card 將**共用程式**與**私人知識資料**分開管理：
 
 - **Knowledge Card Engine**：公開的核心程式、資料契約、收錄能力、驗證、生成與網站服務。
 - **Knowledge Card Workspace**：私人的個人背景、專案、Knowledge Card、人工設定、來源狀態、生成索引與發布資料。
