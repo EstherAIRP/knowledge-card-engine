@@ -177,7 +177,14 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 ### GET /api/search
 
-需要授權。使用 `q` 與可選的 `limit` 執行伺服器端確定性搜尋。只有目前已驗證的發布版本存在時可用；只有 Knowledge Card 的啟動模式回 `503 RELEASE_REQUIRED`。
+需要授權。使用 `q` 與可選的 `limit` 執行伺服器端確定性搜尋：
+
+- `q` 必填，最長 300 字元。
+- `limit` 為 1–100，預設 20。
+- 只回傳顯示所需的 Knowledge Card 投影、比對證據與分數。
+- 只有目前已驗證的發布版本存在時可用；只有 Knowledge Card 的啟動模式回 `503 RELEASE_REQUIRED`。
+
+搜尋索引的內容、評分與生成方式由 [生成資料、搜尋與圖譜契約](./generated-data.md) 定義；本文件只規定私人 API 的授權、參數與回傳邊界。
 
 ### GET /api/graph
 
