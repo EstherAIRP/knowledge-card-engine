@@ -103,7 +103,7 @@ knowledge-card-engine/
 - 私人網站啟動
 - 生成資料與發布命令
 - GitHub Actions
-- 正式文件政策
+- 常見失敗的查找入口
 
 功能行為本身仍以對應契約為準；本文件負責操作方式，不重新定義功能契約。
 
@@ -114,9 +114,9 @@ knowledge-card-engine/
 | 文件 | 主要責任 |
 | --- | --- |
 | [提示詞文件索引](../prompts/README.md) | 說明 prompts 目錄中的文件分工 |
-| [執行契約](../prompts/RUNTIME.md) | 跨領域任務判定、執行順序、公私邊界、失敗處理與完成回報 |
-| [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) | 最終證據固定後的重新閱讀、整合理解與知識取捨 |
-| [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md) | 將已形成的理解整理成 Knowledge Card 的內容結構與寫作原則 |
+| [執行契約](../prompts/RUNTIME.md) | 跨領域任務判定、執行順序、倉庫與資料邊界、失敗處理與完成回報；不重複各領域規格 |
+| [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) | 最終證據固定後的來源閱讀、整合理解與知識取捨；不決定來源或分析資料契約 |
+| [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md) | 將已形成的理解整理成 Knowledge Card 的表達方式；不定義來源、Schema 或所有權 |
 
 ## 機器可讀契約
 
