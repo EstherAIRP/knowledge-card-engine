@@ -320,7 +320,7 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 
 保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 `parts[]` 項目的短碼／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
 
-`npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id／來源識別／標準網址與實際 Card 相同。
+來源狀態驗證器會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id、來源識別與標準網址和實際 Card 相同。實際驗證命令見 [開發與驗證指南](../guides/development.md)。
 
 ### 研究追溯狀態
 
