@@ -87,7 +87,7 @@ knowledge-card-engine/
 | [生成資料、搜尋與圖譜契約](./specs/generated-data.md) | 搜尋、向量、Card↔Card 關聯、人工關聯、Concept、Graph 與生成資料驗證 |
 | [一致發布契約](./specs/release.md) | E／S／P、資訊清單、發布指標、過期防護、發布快照與回復 |
 | [私人網站與授權契約](./specs/private-site.md) | GitHub App 登入、工作階段、Workspace 資格驗證、私人 API 與授權後讀取邊界 |
-| [網頁介面與版面配置](./specs/web-ui.md) | Web UI 模組、樣式責任、版面、響應式、無障礙與介面驗證 |
+| [網頁介面與版面配置](./specs/web-ui.md) | 網頁介面模組、樣式責任、版面、響應式、無障礙與介面驗證 |
 
 ## 操作與開發指南
 
