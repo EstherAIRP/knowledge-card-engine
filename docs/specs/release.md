@@ -10,7 +10,7 @@
 - **S**：建置開始時固定的 Knowledge Card Workspace 來源提交 SHA。
 - **P**：保存本次生成產物的 Knowledge Card Workspace 提交 SHA。
 - **release_id**：一次發布的穩定識別。
-- **manifest**：五個生成產物的資訊清單，記錄 SHA-256、位元組數與 結構版本。
+- **manifest**：五個生成產物的資訊清單，記錄 SHA-256、位元組數與結構版本；生成產物本身由 [生成資料、搜尋與圖譜契約](./generated-data.md) 定義。
 
 P 只有兩種合法形態：
 
@@ -71,7 +71,7 @@ data/graph.json
 
 發布流程依序完成生成資料建置、發布描述建立、版本鏈結檢查與目前發布指標推進。
 
-- 生成資料建置前先驗證 Knowledge Card Workspace、分類體系與 Knowledge Card 集合，再建立五個正式生成產物。
+- 生成資料建置前先驗證 Knowledge Card Workspace、分類體系與 Knowledge Card 集合，再依 [生成資料、搜尋與圖譜契約](./generated-data.md) 建立五個正式生成產物。
 - 發布定案時固定 `manifest`、發布描述與目前發布指標。
 - 發布驗證會重新檢查目前發布資料、資訊清單與 E／S／P 版本鏈結。
 - 可重用工作流程 `.github/workflows/release-workspace.yml` 固定 E 與 S，並以倉庫層級並行控制避免較舊與較新的執行同時推進目前發布版本。
@@ -114,4 +114,4 @@ data/graph.json
 - 目前發布指標已更新到預期發布版本。
 - 目前指標指向的發布描述、E／S／P 鏈結與資訊清單可重新驗證。
 
-網站部署與授權後的線上回讀屬私人網站的部署驗收；相關要求見 [私人網站與授權契約](./private-site.md)。
+網站部署與授權後的線上回讀屬私人網站的部署驗收；實際驗收要求見 [私人網站部署指南](../guides/deployment.md)。

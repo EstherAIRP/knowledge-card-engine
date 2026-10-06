@@ -21,10 +21,10 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 | `schema_version` | 目前只接受 `1`。 |
 | `id` | 小寫英數與單一連字號分隔的穩定識別，例如 `github-owner-repo`。 |
 | `title` | 非空字串；正文 H1 必須完全相同。 |
-| `canonical_url` | 合法 URI；來源收錄層負責網址正規化。 |
+| `canonical_url` | 合法 URI；網址正規化由 [來源收錄契約](./ingestion.md) 負責。 |
 | `source.type` | 非空字串，且必須存在於分類體系 `source_types`。 |
 | `source.url` | 合法 URI。 |
-| `source.identity` | 非空穩定來源識別；來源類型專屬規則由收錄契約定義。 |
+| `source.identity` | 非空穩定來源識別；來源類型專屬規則同樣由來源收錄層定義。 |
 | `resource_kind` | `{ ai, user }` 所有權包裝結構；有效值必須存在於分類體系 `resource_kinds`。 |
 | `created_at` | `YYYY-MM-DD`；一般更新不可修改。 |
 | `updated_at` | `YYYY-MM-DD`，不得早於 `created_at`。 |
@@ -87,7 +87,7 @@ effective = user ?? ai
 
 ## AI 文字語言要求
 
-Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` 與前 10 個分析正文段落。這些內容除了符合本文件的結構與所有權規則，也必須遵守目前 Knowledge Card Workspace 的分析語言政策；若 Workspace 沒有額外政策，則遵守執行契約的預設語言與術語規則。
+Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` 與前 10 個分析正文段落。這些內容除了符合本文件的結構與所有權規則，也必須遵守目前 Knowledge Card Workspace 的分析語言政策；若 Workspace 沒有額外政策，則遵守 [執行契約](../../prompts/RUNTIME.md) 的預設語言與術語規則。
 
 語言政策只作用於 AI 可更新內容，不得因此修改任何 `*.user` 覆寫或完整 `## 使用者備註`。來源證據、直接引用、程式碼與正式識別字也不因卡片語言政策而改寫。
 
@@ -147,7 +147,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 - 更新時，若 AI 分析或標準來源狀態有實質變更，`updated_at` 更新為擷取日期。
 - 若分析內容沒有實質變更，保留原 `updated_at`。
 - 成功處理已接受證據時，`last_checked_at` 更新為擷取日期。
-- 驗證失敗時，不應把來源狀態當成已重新檢查成功；詳見 [ingestion.md](./ingestion.md)。
+- 驗證失敗時，不應把來源狀態當成已重新檢查成功；詳見 [來源收錄契約](./ingestion.md)。
 
 ## 穩定路徑
 
