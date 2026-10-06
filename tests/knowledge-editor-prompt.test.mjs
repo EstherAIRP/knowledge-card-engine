@@ -5,8 +5,8 @@ import test from 'node:test';
 const editorUrl = new URL('../prompts/KNOWLEDGE_EDITOR.md', import.meta.url);
 const styleUrl = new URL('../prompts/CARD_STYLE.md', import.meta.url);
 const runtimeUrl = new URL('../prompts/RUNTIME.md', import.meta.url);
-const analysisDocUrl = new URL('../docs/analysis.md', import.meta.url);
-const cardContractUrl = new URL('../docs/card-contract.md', import.meta.url);
+const analysisDocUrl = new URL('../docs/specs/analysis.md', import.meta.url);
+const cardContractUrl = new URL('../docs/specs/card.md', import.meta.url);
 
 test('Knowledge Editor requires final evidence reread before loading card style', async () => {
   const prompt = await readFile(editorUrl, 'utf8');
