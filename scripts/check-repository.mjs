@@ -14,16 +14,16 @@ const requiredFiles = [
   'package-lock.json',
   '.nvmrc',
   'docs/index.md',
-  'docs/architecture.md',
-  'docs/development.md',
-  'docs/workspace.md',
-  'docs/card-contract.md',
-  'docs/ingestion.md',
-  'docs/analysis.md',
-  'docs/generated-data.md',
-  'docs/release.md',
-  'docs/private-site.md',
-  'docs/web-ui.md',
+  'docs/architecture/overview.md',
+  'docs/guides/development.md',
+  'docs/specs/workspace.md',
+  'docs/specs/card.md',
+  'docs/specs/ingestion.md',
+  'docs/specs/analysis.md',
+  'docs/specs/generated-data.md',
+  'docs/specs/release.md',
+  'docs/specs/private-site.md',
+  'docs/specs/web-ui.md',
   'prompts/RUNTIME.md',
   'schema/workspace.schema.json',
   'schema/engine-lock.schema.json',
@@ -98,12 +98,19 @@ const forbiddenPaths = [
   'CHANGELOG.md'
 ];
 
+function listMarkdownFilesRecursively(directory, relativePrefix) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = path.join(directory, entry.name);
+    const relative = relativePrefix + '/' + entry.name;
+    if (entry.isDirectory()) return listMarkdownFilesRecursively(absolute, relative);
+    return entry.isFile() && entry.name.endsWith('.md') ? [relative] : [];
+  });
+}
+
 const documentationFiles = [
   'README.md',
   'AGENTS.md',
-  ...fs.readdirSync(path.join(root, 'docs'), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => 'docs/' + entry.name),
+  ...listMarkdownFilesRecursively(path.join(root, 'docs'), 'docs'),
   'schema/README.md',
   'prompts/README.md',
   'prompts/RUNTIME.md',
