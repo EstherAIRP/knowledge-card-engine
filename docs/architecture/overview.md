@@ -50,8 +50,8 @@ Knowledge Card Engine 保存可公開重用的程式、Schema、驗證器與共�
 
 Knowledge Card 的不同資料由不同權威來源負責：
 
-- Card 前置中繼資料形狀：`schema/knowledge-card.schema.json`。
-- 分類體系資料形狀：`schema/taxonomy.schema.json`。
+- Card 前置中繼資料形狀：[Knowledge Card Schema](../../schema/knowledge-card.schema.json)。
+- 分類體系資料形狀：[Taxonomy Schema](../../schema/taxonomy.schema.json)。
 - Workspace 實際受控詞彙：各 Knowledge Card Workspace 的 `config/taxonomy.yaml`。
 - Knowledge Card 所有權、正文、唯一性與穩定路徑：[Knowledge Card 契約](../specs/card.md)。
 - Workspace 結構與 Engine 版本鎖定：[Knowledge Card Workspace 契約](../specs/workspace.md)。
