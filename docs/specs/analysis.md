@@ -1,6 +1,8 @@
 # 分析與研究契約
 
-`packages/analysis` 定義與來源類型無關的分析結果欄位，以及研究型分析使用的研究計畫、分析證據與研究覆蓋契約。此模組只驗證資料契約；不自行擷取來源、不操作 Knowledge Card Workspace 檔案系統，也不指定特定模型供應商。
+`packages/analysis` 定義分析結果、研究計畫、分析證據包、結構化研究報告與證據綁定。分析層回答的是「目前證據足以支持哪些分析，以及分析與哪些證據綁定」；它不自行擷取外部來源、不操作 Knowledge Card Workspace 檔案系統，也不指定特定模型供應商。
+
+來源身分、來源完整性、已接受來源證據，以及 GitHub 固定版本的安全來源擷取由 [來源收錄契約](./ingestion.md) 負責。Analysis 從已驗證的來源證據開始工作，不重新定義來源是否可接受。
 
 ## 分析版本
 
@@ -8,7 +10,7 @@
 
 | `analysis_version` | 綁定 | 用途 |
 | --- | --- | --- |
-| `1` | `source_identity + evidence_digest` | 現行 GitHub／Threads 收錄寫入器使用的已接受來源分析。 |
+| `1` | `source_identity + evidence_digest` | 來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用的已接受來源分析。 |
 | `2` | `source_identity + source_evidence_digest + analysis_evidence_digest` | 需要獨立研究證據包的研究型分析契約。 |
 
 `analysis_version: 1` 與 `2` 的摘要值欄位不可混用。版本 1 不接受 `research`、`source_evidence_digest` 或 `analysis_evidence_digest`；版本 2 不使用 `evidence_digest`。
@@ -65,7 +67,7 @@
 
 目前分析證據包只定義 GitHub 倉庫形式；其他來源類型若沒有正式研究證據包契約，驗證器會拒絕繼續處理。
 
-GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分支提交並建立受限探索，再由 Agent 提交關鍵研究問題計畫與選定的倉庫相對路徑；執行器會在同一版本重新驗證選定路徑，再讀取對應的 Git blob。探索候選項目只用於提供導覽與重用已知 Git blob 中繼資料，不代表只有候選集合中的檔案才能被選為證據。完整的版本鎖定、目錄樹上限、路徑防護，以及二進位／UTF-8 規則見 [來源收錄契約](./ingestion.md)。
+GitHub 分析證據所使用的來源文字由 Ingestion 的受控擷取能力取得。Ingestion 負責固定倉庫版本、驗證安全路徑、讀取 Git blob 與限制擷取量；Analysis 則負責研究計畫、證據包結構、摘要值與品質門檻。候選探索只是導覽，不是允許清單。完整的版本鎖定、路徑防護、擷取上限與二進位／UTF-8 規則見 [來源收錄契約](./ingestion.md)。
 
 ## 研究計畫
 
@@ -95,6 +97,8 @@ GitHub 研究證據由收錄層的受控擷取 API 產生：先固定預設分�
 GitHub 多輪擴充在收錄層另有重試綁定：Remote Ingest 從第 0 輪開始，第一份 Agent 研究計畫不帶 `prior_analysis_evidence_digest`；第一輪已驗證證據包形成後，若 Agent 還需要第二輪證據，新計畫必須把 `prior_analysis_evidence_digest` 設為目前證據包的 `analysis_evidence_digest`。這個欄位用來證明新的關鍵研究問題判定是基於目前研究證據，而不是較舊的證據包。
 
 目前可表達的 `kind` 包含 `README`、`documentation`、`manifest`、`configuration`、`entrypoint`、`API`、`data model`、`auth`、`security`、`background job`、`deployment`、`license`、`source`、`test` 與 `other`。
+
+研究計畫只描述還缺哪些證據，以及選定來源應對應哪些研究問題；它不授予任意來源存取權。實際可讀路徑、固定倉庫版本、輪次與位元組上限仍由 Ingestion 驗證。
 
 ## GitHub 分析證據包
 
@@ -216,15 +220,36 @@ GitHub 研究的下列覆蓋維度不能用 `not_applicable` 直接略過：
 
 ## Knowledge Card Workspace 寫入器邊界
 
-`packages/workspace` 的 `applyAcceptedSourceAnalysis(...)` 可接受選用的 `analysisEvidenceBundle`：
+`packages/workspace` 的 `applyAcceptedSourceAnalysis(...)` 只接受已通過來源與分析契約的資料：
 
-- `analysis_version: 1` 不得傳入分析證據包；寫入器維持既有已接受來源分析行為。
-- GitHub `analysis_version: 2` 必須傳入與已接受證據綁定的分析證據包；寫入器重新執行分析與證據包契約驗證後，才可建立卡片與研究追溯狀態。
-- Threads 目前沒有研究證據包契約，因此正式寫入器仍只接受版本 1 分析。
+- `analysis_version: 1` 不得傳入分析證據包。
+- GitHub `analysis_version: 2` 必須同時傳入與已接受來源綁定、且已驗證的分析證據包。
+- Threads 目前沒有研究證據包契約，因此正式寫入器只接受版本 1 分析。
 
-GitHub 版本 2 成功寫入時，Knowledge Card Workspace 只保存精簡研究追溯資訊，不永久保存證據項目的 `text`、結構化研究結果或 `unknowns`。若之後同一 GitHub 卡片以版本 1 成功更新，舊研究追溯狀態會在同一寫入交易中移除，避免過期追溯資訊繼續被視為目前卡片的研究依據。
+寫入器會重新驗證分析版本、來源摘要值與必要的研究摘要值，再依 Knowledge Card 所有權與集合規則建立或更新 Card。GitHub 版本 2 成功寫入時，Card、已接受來源狀態與研究追溯狀態必須在同一交易中推進；任一驗證或檔案替換失敗，都不能留下部分更新。
 
-Remote Ingest 的 GitHub 交接會先建立固定版本的探索與空的第 0 輪研究狀態。Agent 必須先回填研究計畫與選定路徑；執行器驗證計畫、路徑、版本與上限後建立第一輪累積分析證據包。Agent 接著可提交綁定該證據包的 `analysis_version: 2`，或再回填一次綁定目前摘要值的研究計畫做第二輪擴充。執行器最後把目前證據包一併交給正式寫入器。Threads 目前沒有研究證據包契約，因此 Remote Ingest 仍使用版本 1。任何來源類型都不得以手工卡片寫入繞過寫入器。
+若同一 GitHub Card 之後以版本 1 成功更新，既有研究追溯狀態會在同一交易中移除，避免舊研究被誤認為目前分析依據。
+
+Remote Ingest 如何準備交接檔、擷取來源與限制研究輪次，由 [來源收錄契約](./ingestion.md) 定義；本文件只定義研究計畫、分析證據與最終分析必須滿足的條件。
+
+## 研究追溯狀態
+
+GitHub 版本 2 成功寫入後，Knowledge Card Workspace 會保存精簡的研究追溯狀態：
+
+```text
+state/research/github/{owner-lower}--{repo-lower}.json
+```
+
+此狀態保存目前分析所依據的來源／研究摘要值、固定倉庫版本、證據項目的 `path`／`kind`／Git blob SHA／內容雜湊／位元組數、覆蓋狀態、分析時間與 Card 對應。它不保存：
+
+- 證據來源全文 `text`。
+- 結構化研究結果。
+- `unknowns`。
+- 任何 GitHub 或模型憑證。
+
+`npm run research-state:validate` 會驗證研究狀態的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id、來源識別與標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。
+
+研究追溯狀態是分析證據的精簡持久化投影，不是已接受來源狀態，也不能取代分析證據包本身。
 
 ## 錯誤語意
 

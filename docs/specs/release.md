@@ -1,6 +1,8 @@
 # 一致發布契約
 
-Knowledge Card 的私人閱覽、搜尋與圖譜使用同一個已驗證發布版本。發布模型以 E／S／P 固定 Knowledge Card Engine、來源與生成資料版本，避免 Knowledge Card 與索引混用不同版本。
+一致發布契約回答的是「私人網站應該讀取哪一個完整版本」。Knowledge Card 的 Card、搜尋與圖譜必須來自同一個已驗證發布快照，不能把不同版本的 Knowledge Card 與生成資料混在一起。
+
+登入、工作階段與 Workspace 資格由 [私人網站與授權契約](./private-site.md) 負責；只有授權成功後，伺服器才可使用本文件定義的發布讀取模型。
 
 ## E／S／P
 
@@ -97,6 +99,8 @@ npm run release:validate -- /path/to/workspace
 
 ## 私人讀取模型
 
+本節只定義授權完成後「讀哪一版資料」。授權是否成立由 [私人網站與授權契約](./private-site.md) 決定；發布讀取器不得自行放寬授權條件。
+
 授權成功後，伺服器：
 
 1. 解析設定的 Knowledge Card Workspace 版本參照（ref）與目前發布指標。
@@ -119,9 +123,10 @@ npm run release:validate -- /path/to/workspace
 
 新的建置或部署失敗時，只要目前發布指標沒有被更新，使用者就會繼續讀取上一個完整發布版本。
 
-完整發布成功應同時滿足：
+就發布資料本身而言，發布完成至少必須滿足：
 
 - Knowledge Card Workspace 發布工作流程成功。
 - 目前發布指標已更新到預期發布版本。
-- 部署成功。
-- 授權後的 `/api/release` 即時回讀與預期的 `release_id`／E／S／P／`manifest` 相符。
+- 目前指標指向的發布描述、E／S／P 鏈結與資訊清單可重新驗證。
+
+網站部署與授權後的線上回讀屬私人網站的部署驗收；相關要求見 [私人網站與授權契約](./private-site.md)。

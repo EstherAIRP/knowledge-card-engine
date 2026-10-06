@@ -13,17 +13,18 @@
 
 ```text
 來源 URL
-→ 來源供應者專屬解析／標準來源識別
-→ 已接受證據
-→ 可選的 GitHub 研究證據包
-→ 與證據綁定的分析結果
+→ 來源供應者專屬解析與穩定來源識別
+→ 已接受來源證據
+→ 必要時依研究需求受控擷取更多第一手來源
+→ 交由分析契約產生並驗證分析結果
 → 新建／更新解析
-→ 遵守所有權規則的 Card 候選
-→ 完整集合驗證
-→ Card + 已接受來源狀態 + 可選的研究追溯資訊持久化
+→ Workspace 寫入器驗證完整 Card 集合與所有權
+→ Card + 已接受來源狀態 + 必要的研究追溯狀態持久化
 ```
 
-來源收錄、分析與 Workspace 持久化是不同責任層：來源收錄負責驗證外部來源、建立已接受證據，並可為 GitHub 擷取固定倉庫版本的受控研究證據；分析層產生與來源／研究摘要值綁定的 AI 管理結果；Workspace 寫入器才會把合法結果合併進 Card、已接受來源狀態與必要的精簡研究追溯資訊。
+來源收錄層回答的是「來源是誰、來源是否可接受，以及可安全取得哪些來源資料」。它負責來源識別、已接受證據、來源完整性與受控擷取，不定義分析結果的內容品質。
+
+研究計畫、分析證據包、分析版本、證據綁定與品質門檻由 [分析與研究契約](./analysis.md) 定義。Workspace 寫入器只接受已通過來源與分析契約的結果，再依 Knowledge Card 所有權與集合規則完成正式寫入。
 
 來源擷取失敗與來源本身不完整必須分開。網路、速率限制、執行器能力或其他執行環境問題不能冒充來源不存在或來源不完整。
 
@@ -91,28 +92,15 @@ https://threads.com/@user/post/{root_shortcode}
 
 README 全文只存在於分析輸入的已接受證據；已接受來源狀態不保存 README 全文。
 
-## GitHub 研究證據
+## GitHub 研究來源擷取
 
-GitHub 已接受證據只回答來源是否可接受；需要超出 README 的技術分析時，可另外建立固定倉庫版本的研究證據。研究階段不改變已接受來源證據，也不會把「研究深度不足」視為來源接受失敗。
+GitHub 已接受證據只回答來源是否可接受。若分析需要 README 以外的第一手資料，來源收錄層可在固定倉庫版本上提供受控探索與擷取；研究問題、研究計畫、分析證據包及品質門檻則由 [分析與研究契約](./analysis.md) 負責。
 
-Knowledge Card Engine 提供固定倉庫版本的探索／擷取基礎操作，以及可驗證的受限擴充流程：
+兩層責任不可混用：
 
-```text
-已接受 GitHub 證據
-→ discoverGitHubResearchCandidates(...)
-→ 固定倉庫版本 + 受限候選提示
-→ createGitHubResearchProgress(...) 建立第 0 輪狀態
-→ Agent 關鍵研究問題計畫 + 選定路徑
-→ evaluateGitHubResearchContinuation(...)
-→ 在固定版本驗證選定路徑
-→ fetchGitHubResearchExpansion(...)
-→ 累積分析證據包
-→ 可選的第二份研究計畫，綁定先前 analysis_evidence_digest
-→ 可選的第二輪擴充
-→ 確定性停止
-```
-
-`fetchGitHubResearchEvidence(...)` 仍可直接建立單次選定證據包；需要依關鍵研究問題進行多輪擴充時，必須使用研究進度／續行契約，不能由呼叫端自行忽略輪次或累計上限。
+- Ingestion 固定倉庫版本、驗證路徑、讀取 Git blob，並限制擷取輪次、項目數與位元組數。
+- Analysis 判斷還缺哪些證據、驗證研究計畫與分析證據包，並以摘要值把最終分析綁定到實際證據。
+- 研究深度不足不等於來源不完整；已接受來源證據不會因後續研究結果而被改寫。
 
 ### 固定倉庫版本與過期防護
 
@@ -121,25 +109,15 @@ Knowledge Card Engine 提供固定倉庫版本的探索／擷取基礎操作，�
 - `repository_revision`：40 字元提交 SHA。
 - `root_tree_sha`：該提交的根目錄樹 SHA。
 
-接著以同一 `repository_revision` 重新查 README。若其 Git blob SHA 已與已接受證據的 README SHA 不同，回報 `SOURCE_RESEARCH_STALE`，不得把較舊的來源接受結果與較新的倉庫目錄樹混成同一份研究證據包。
+接著以同一 `repository_revision` 重新檢查 README。若 Git blob SHA 已與已接受證據中的 README SHA 不同，回報 `SOURCE_RESEARCH_STALE`，不得把舊的來源接受結果與新的倉庫內容混在同一次研究。
 
 ### 候選探索
 
-GitHub 倉庫目錄樹透過 Git tree API 逐層、受限展開。Knowledge Card Engine 產生可能具有研究價值、可視為第一手文字來源的候選提示，例如：
+GitHub 倉庫目錄樹透過 Git tree API 逐層、受限展開。候選提示優先涵蓋具有研究價值的第一手文字來源，例如 README、架構文件、設定、進入點、API、資料模型、Schema、安全、工作流程、部署、授權、代表性原始碼與測試。
 
-- README、架構／設計文件。
-- 相依套件／建置清單檔（manifest）。
-- 設定、進入點、API／路由。
-- 資料模型／Schema／遷移。
-- 授權／安全。
-- 背景工作／工作流程。
-- 部署／容器。
-- LICENSE。
-- 具代表性的原始碼／測試。
+生成目錄、第三方套件、相依套件、建置／快取目錄、套件鎖定檔、壓縮檔與明確非文字內容不進候選集合。候選只提供導覽與已知 Git blob 中繼資料，**不是允許清單**；Agent 仍可選擇候選以外、但能在同一固定版本中驗證的安全第一手文字檔。
 
-常見生成目錄、第三方套件目錄、相依套件目錄、建置／快取目錄，以及套件鎖定檔、壓縮後檔案、非文字副檔名不進候選集合。候選探索只提供受限的倉庫導覽與已知 Git blob 中繼資料，不代表只有候選集合中的檔案才可被選為證據。
-
-探索程序有硬性上限；目前預設：
+探索與擷取都有硬性上限，目前預設：
 
 | 項目 | 預設上限 |
 | --- | ---: |
@@ -150,72 +128,28 @@ GitHub 倉庫目錄樹透過 Git tree API 逐層、受限展開。Knowledge Card
 | 擴充輪次 | 2 |
 | 選定證據項目（累計） | 20 |
 | 單一項目 | 163840 位元組 |
-| 選定證據包總量（累計） | 786432 位元組 |
+| 選定證據總量（累計） | 786432 位元組 |
 
-呼叫端只能把上限調低，不能透過選項提高 Knowledge Card Engine 的硬性上限。
+呼叫端只能把上限調低，不能提高 Engine 的硬性上限。探索若因上限或 GitHub 回應截斷而未完整走完，會以 `exhaustive: false` 與確定性的停止原因記錄結果。
 
-探索程序若因上限或 GitHub 回應被截斷而未完整走完，會把 `exhaustive` 設為 `false`，並保存確定性的 `stop_reasons`；目前可能值：
+### 選定來源與擷取
 
-- `tree_request_budget_exhausted`
-- `tree_entry_budget_exhausted`
-- `candidate_budget_exhausted`
-- `depth_budget_exhausted`
-- `github_tree_truncated`
+選定路徑必須是安全、非重複的倉庫相對路徑。若路徑已在候選集合中，可以重用其 Git blob 中繼資料；若不在候選集合，Engine 會在同一 `repository_revision` 重新解析該精確路徑，確認它是存在於該版本的一般文字檔後再讀取內容。
 
-### 選定證據
+以下內容一律拒絕：
 
-`fetchGitHubResearchEvidence(...)` 接受非空、不得重複的安全倉庫相對路徑。若路徑已存在於探索候選集合，Knowledge Card Engine 可直接使用探索結果的 Git blob 中繼資料；若不在候選集合，Knowledge Card Engine 會以固定的 `repository_revision` 重新解析該精確路徑，確認它是存在於同一倉庫版本的一般文字檔，再取得對應的 Git blob。選定路徑不能指定任意 URL、任意分支、其他倉庫、被排除的生成／第三方套件／相依套件／建置／快取目錄、非文字內容或命令列指令。
+- 任意 URL、其他分支或其他倉庫。
+- Engine 明確排除的生成、第三方套件、相依套件、建置或快取目錄。
+- 二進位、非 UTF-8 或超過單檔／累計上限的內容。
+- 多輪研究中已經取得過的路徑。
 
-因此探索候選之外的核心第一手來源仍可由 Agent 主動選取，但內容仍固定於同一倉庫版本，且仍須通過相同的路徑、二進位內容、UTF-8、項目數與位元組上限檢查。每個選定項目會保存：
+每次成功擷取都保留固定版本、路徑、Git blob SHA、內容雜湊與位元組數等可驗證資訊，供 Analysis 建立或更新分析證據包。分析證據包的欄位、`analysis_evidence_digest`、研究計畫重試綁定與品質門檻，以 [分析與研究契約](./analysis.md) 為唯一權威來源。
 
-- 確定性的 `evidence_id`
-- 倉庫相對 `path`
-- 證據 `kind`
-- Git blob SHA：`blob_sha`
-- `content_sha256`
-- UTF-8 位元組數：`bytes`
-- `text`
+### 受限擴充
 
-二進位、非 UTF-8、超過單檔或總證據包上限的內容一律拒絕。
+多輪研究由 Analysis 產生並驗證研究計畫，Ingestion 只依已驗證計畫與目前進度決定是否還能擷取下一輪來源。續行時仍必須遵守固定倉庫版本、安全路徑、不得重複、累計項目數與累計位元組上限。
 
-### 受限證據擴充
-
-`createGitHubResearchProgress(...)` 建立第 0 輪進度；此時尚無選定研究項目。進度會綁定已接受來源摘要值與探索結果的倉庫版本，並記錄：
-
-- `completed_rounds`
-- 已選路徑
-- 累計項目數
-- 累計位元組數
-- 目前 `analysis_evidence_digest`
-
-`evaluateGitHubResearchContinuation(...)` 只依已驗證研究計畫、目前進度、目前證據包與探索上限決定是否繼續。結果只有：
-
-- `needs_evidence`：仍有研究問題明確要求證據，而且輪次、項目數與位元組上限都還有額度。
-- `plan_complete`：目前研究計畫沒有任何 `needs_evidence`。
-- `round_budget_exhausted`：已完成最大擴充輪次。
-- `item_budget_exhausted`：累計選定項目已達上限。
-- `byte_budget_exhausted`：累計證據位元組數已達上限。
-
-第一輪研究計畫不得帶先前研究摘要值。完成一輪後，下一份研究計畫若仍要求證據，必須帶：
-
-```text
-prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
-```
-
-摘要值不一致時回報 `GITHUB_RESEARCH_PLAN_STALE`，不得把較舊的關鍵研究問題判定套到新的累積證據。
-
-`fetchGitHubResearchExpansion(...)` 另外限制：
-
-- 每輪選定路徑必須是安全的倉庫相對路徑；候選集合之外的路徑由 Knowledge Card Engine 在同一固定版本重新解析與驗證。
-- 選定路徑不得落在 Knowledge Card Engine 排除目錄，且必須是受支援的第一手文字來源。
-- 已在先前輪次使用的路徑不可重複擷取。
-- 選定證據必須符合至少一個 `needs_evidence` 問題的證據類型或精確路徑提示。
-- 項目數與位元組上限以累計證據包計算，不會因拆成多輪而重置。
-- 每次成功擴充都重新計算累積的 `analysis_evidence_digest`。
-
-目前研究進度最多記錄兩輪。Remote Ingest 從空的第 0 輪開始；第一輪與可能的第二輪都由 Agent 根據關鍵研究問題選取證據路徑，再交給 Knowledge Card Engine 驗證與擷取。第二輪後必須停止研究擴充；後續結構化研究報告應以 `unavailable`／`budget_exhausted` 表達缺口，而不是繼續無界限讀取倉庫。
-
-最後形成的分析證據包由 [分析與研究契約](./analysis.md) 驗證，並產生獨立的 `analysis_evidence_digest`。這份全文證據包是分析輸入，不是已接受來源狀態。GitHub `analysis_version: 2` 會把已驗證證據包一併交給正式 Workspace 寫入器；寫入器只永久保存精簡研究追溯資訊。GitHub Remote Ingest 的準備階段只寫入已接受證據、固定倉庫版本的探索結果，以及 `completed_rounds: 0`／`bundle: null` 的 `research-evidence.json`；Agent 必須先用 `research-plan.json` 指定第一輪關鍵證據。第一輪證據包形成後可直接提交最終版本 2 分析，或在剩餘額度內再要求一次與摘要值綁定的擴充。直接 `ingest:github` CLI 不接收研究證據包，因此仍使用版本 1 的已接受來源分析。
+目前最多擴充兩輪。第二輪後即使仍有未知事項，也必須停止擷取；未取得的關鍵證據由分析契約以明確的不可用原因保留，而不是繼續無界限讀取倉庫。
 
 ## Threads 已接受證據
 
@@ -322,22 +256,17 @@ Threads 證據會保留完整有序文字與媒體資訊供分析使用；已接
 | `GITHUB_RESEARCH_BINARY_UNSUPPORTED` | 選定的 Git blob 不是可接受的 UTF-8 文字內容。 |
 | `INGESTION_IDENTITY_CONFLICT` | Knowledge Card Workspace 內的來源識別／標準網址對應互相衝突或已有重複資料。 |
 
-## 分析結果契約
+## 與分析契約的交界
 
-分析供應者不屬於來源收錄層。Knowledge Card Engine 不固定特定 LLM 供應商。
+來源收錄層不定義分析內容，也不固定特定模型供應商。正式分析結果必須先通過 [分析與研究契約](./analysis.md)，來源收錄流程只確認它綁定的是本次有效來源與研究證據。
 
-正式分析結果必須符合 [分析與研究契約](./analysis.md)：
+目前交界如下：
 
-- 版本 1 綁定 `source_identity + evidence_digest`；來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用此格式。GitHub Remote Ingest 不使用版本 1；準備階段必須先建立非空、固定倉庫版本且已驗證的分析證據包，之後才能提交版本 2。
-- GitHub 版本 2 綁定 `source_identity + source_evidence_digest + analysis_evidence_digest`，並必須一併提供已驗證分析證據包與結構化研究報告。
-- 兩種版本都提供 Card 契約要求的 AI 管理中繼資料與 10 個正文段落；`summary` 不超過 600 字元，相關性分數為 1–5 整數。
-- Threads 目前沒有研究證據包契約，因此不得使用版本 2。
+- 來源供應者專屬直接 CLI 與 Threads Remote Ingest 使用 `analysis_version: 1`，綁定目前已接受來源證據。
+- GitHub Remote Ingest 使用 `analysis_version: 2`，除已接受來源證據外，還必須綁定目前最終分析證據包。
+- 來源或分析證據摘要值只要已改變，舊分析就不得套用，也不得推進 Card、已接受來源狀態或研究追溯狀態。
 
-由舊來源證據或舊研究證據包產生的分析不能套用到新的摘要值；綁定不一致時一律拒絕，且不得寫入 Card、已接受來源狀態或研究狀態。
-
-當本輪證據已固定並準備產生最終分析時，Agent 必須先依 [Knowledge Card 知識編輯提示契約](../../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀目前有效的來源證據。GitHub 版本 2 另須重新閱讀目前最終證據包中的已選來源原文；若又完成一輪擴充，舊整理與舊分析都不得沿用。Threads 則重新閱讀最終已接受串文，不以語意判定草稿、搜尋摘要或先前候選代替來源。
-
-這個重新閱讀步驟不建立新的來源收錄狀態；它只規定 Agent 從已驗證交接證據產生 `analysis.json` 前的處理順序。
+分析版本的欄位、研究報告、品質門檻、重新閱讀順序與證據綁定規則只在 Analysis 契約定義；本文件不重複維護。
 
 ## 新建／更新解析
 
@@ -393,17 +322,9 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 
 `npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id／來源識別／標準網址與實際 Card 相同。
 
-### GitHub 研究追溯狀態
+### 研究追溯狀態
 
-GitHub 版本 2 成功寫入後，另保存：
-
-```text
-state/research/github/{owner-lower}--{repo-lower}.json
-```
-
-此狀態只保存來源／研究摘要值、倉庫版本、證據項目的 `path`／`kind`／Git blob SHA／內容雜湊／位元組數、覆蓋狀態、分析時間與 Card 對應；不保存證據 `text`、結構化研究結果、`unknowns` 或憑證。
-
-`npm run research-state:validate` 會驗證研究狀態本身的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id／來源識別／標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。
+研究追溯狀態不屬於已接受來源狀態。GitHub 研究型分析成功後，Workspace 只保存精簡追溯資訊，不永久保存研究來源原文；其資料內容、與分析證據的綁定及驗證要求由 [分析與研究契約](./analysis.md) 定義。
 
 ## Remote Ingest 交接
 
@@ -469,72 +390,15 @@ state/ingestion/analysis.json
 
 ### GitHub 研究交接
 
-GitHub 請求第一次執行時，執行器：
+GitHub Remote Ingest 會把來源擷取與分析判斷分成可驗證的交接步驟：
 
-1. 取得並驗證已接受來源證據，寫入 `evidence.json`。
-2. 固定預設分支的倉庫版本，建立受限候選探索。
-3. 以 `createGitHubResearchProgress(...)` 建立 `completed_rounds: 0`、尚未擷取任何研究項目的進度。
-4. 把探索結果、第 0 輪進度與 `bundle: null` 寫入 `research-evidence.json`。
-5. 回報 `waiting_for: research-plan`；此階段不得直接提交 GitHub 版本 2 分析。
+1. 執行器先取得已接受來源證據，固定預設分支倉庫版本，建立受限候選探索與尚未選取研究來源的初始進度。
+2. Agent 依 [分析與研究契約](./analysis.md) 提交研究計畫與選定路徑；執行器重新驗證計畫所依據的證據狀態，再依本文件的固定版本、路徑安全與擷取上限取得第一輪來源。
+3. 第一輪證據形成後，Agent 可以提交最終分析，或在仍有額度時提交第二份研究計畫。第二輪仍使用同一固定倉庫版本，並拒絕重複路徑、過期計畫與超出累計上限的要求。
+4. 最終分析必須綁定目前有效的分析證據包。執行器重新驗證來源、研究證據與分析後，才交給正式 Workspace 寫入器。
+5. 正式套用成功後，只留下 Card、已接受來源狀態與精簡研究追溯狀態；來源全文與交接檔全部移除。
 
-`research-evidence.json` 是執行器管理的暫存狀態，第一次準備階段的外層形狀為：
-
-```json
-{
-  "schema_version": 1,
-  "provider": "github",
-  "discovery": {},
-  "progress": {
-    "completed_rounds": 0,
-    "selected_paths": [],
-    "analysis_evidence_digest": null
-  },
-  "bundle": null
-}
-```
-
-探索候選提供受限倉庫導覽、證據類型與已知 Git blob 中繼資料，但不代表只有候選集合中的檔案才能被 Agent 選為證據。Agent 必須先判斷關鍵研究問題，再提交第一份 `research-plan.json`：
-
-```json
-{
-  "schema_version": 1,
-  "provider": "github",
-  "plan": {},
-  "selected_paths": [
-    "skills/example/SKILL.md",
-    "docs/architecture.md"
-  ]
-}
-```
-
-第一份 `plan` 必須符合正式研究計畫契約，且不得帶 `prior_analysis_evidence_digest`。每個 `selected_paths` 都必須符合至少一個 `needs_evidence` 問題的證據類型或精確路徑提示。
-
-執行器讀到 `research-plan.json` 後：
-
-1. 重新驗證已接受證據、探索結果與第 0 輪進度。
-2. 套用輪次、累計項目數與累計位元組上限。
-3. 對每個選定路徑做安全的倉庫相對路徑驗證。
-4. 若路徑已存在於探索候選集合，使用其固定版本的 Git blob 中繼資料；若不在候選集合，則以同一 `repository_revision` 重新解析精確路徑，確認它是存在於該倉庫版本的受支援第一手文字來源。
-5. 拒絕 Knowledge Card Engine 排除目錄、任意 URL／分支／其他倉庫、二進位／非 UTF-8，以及超過單檔或累計上限的內容。
-6. 依固定的 Git blob SHA 擷取第一輪證據，建立累積分析證據包。
-7. 更新 `research-evidence.json` 為 `completed_rounds: 1`、非空證據包，並移除已消費的 `research-plan.json`。
-
-第一輪證據包形成後，Agent 有兩個合法下一步：
-
-- 證據已足夠：重新閱讀目前 `evidence.json` 與最終 `research-evidence.json` 證據包，完成知識整合後，再提交綁定目前 `analysis_evidence_digest` 的最終 `analysis.json`。
-- 仍缺關鍵證據：提交第二份 `research-plan.json` 做第二輪擴充；新的證據包形成後，再以新證據重新閱讀與整合。
-
-第二份研究計畫必須以：
-
-```text
-prior_analysis_evidence_digest == current bundle.analysis_evidence_digest
-```
-
-綁定目前累積證據。執行器會再次驗證先前摘要值、剩餘輪次／項目數／位元組上限、重複路徑與研究計畫相關性；第二輪選定路徑同樣可以是探索候選項目，或候選目錄之外但能在同一固定版本驗證的安全第一手文字來源。
-
-目前最大 `max_expansion_rounds` 為 2，因此最多有兩輪 Agent 指定的證據擷取。第二輪後即使仍有關鍵未知事項，也只能進入分析，以 `unavailable`／`budget_exhausted` 表達缺口。
-
-證據包內的已選第一手來源原文只允許存在於專用來源收錄分支的暫存交接檔；正式寫入器只保存精簡的 `state/research/**` 追溯資訊。GitHub 最終 `analysis.json` 必須使用 `analysis_version: 2`，並綁定目前 `research-evidence.json.bundle.analysis_evidence_digest`。執行器會重新驗證完整的分析／來源／研究綁定，再把證據包一併交給正式寫入器。成功後留下正式 Card、已接受來源狀態與精簡研究追溯狀態，並清除全部來源收錄交接檔。
+`research-plan.json` 與 `research-evidence.json` 的資料形狀、研究問題、`analysis_evidence_digest` 與品質門檻以 Analysis 契約為準；Ingestion 不另行定義第二份分析規格。
 
 ### Threads 語意交接
 

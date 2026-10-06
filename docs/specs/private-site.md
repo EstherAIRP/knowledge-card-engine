@@ -1,6 +1,10 @@
 # 私人網站與授權契約
 
-Knowledge Card Engine 目前提供一個不綁特定託管平台的唯讀私人網站邊界。瀏覽器只取得公開介面外殼與通過授權的 Knowledge Card API 回應；GitHub 憑證、Knowledge Card Workspace 倉庫憑證、`profile/`、`projects/` 與其他私人原始資料都不會打包進公開靜態資產。
+Knowledge Card Engine 目前提供一個不綁特定託管平台的唯讀私人網站邊界。本文件回答的是「誰可以讀取私人資料，以及授權後如何安全讀取」。
+
+瀏覽器只取得公開介面外殼與通過授權的 Knowledge Card API 回應；GitHub 憑證、Knowledge Card Workspace 倉庫憑證、`profile/`、`projects/` 與其他私人原始資料都不會打包進公開靜態資產。
+
+發布版本如何選定、E／S／P 如何驗證，以及哪些資料必須屬於同一發布快照，由 [一致發布契約](./release.md) 定義。本文件不重新定義發布一致性規則。
 
 ## 安全責任分離
 
@@ -185,20 +189,18 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 ## Knowledge Card Workspace 倉庫讀取器
 
-讀取器的倉庫由 `KC_WORKSPACE_OWNER`、`KC_WORKSPACE_REPO` 與 `KC_WORKSPACE_REF`（預設 `main`）定位，但 Knowledge Card／搜尋／圖譜的資料來源由目前發布版本決定。
+讀取器的倉庫由 `KC_WORKSPACE_OWNER`、`KC_WORKSPACE_REPO` 與 `KC_WORKSPACE_REF`（預設 `main`）定位，但私人 API 不直接以目前分支內容拼裝 Card、搜尋與圖譜資料。
 
-每次建立快照：
+每次私人請求都必須先完成本文件定義的 Workspace 資格重查。授權成功後，伺服器才可依 [一致發布契約](./release.md) 建立或取得已驗證的發布快照。發布讀取器負責固定目前發布版本、驗證版本鏈結與生成資料一致性；Private Site 只使用驗證成功的結果，不另行選擇其他版本。
 
-1. 解析設定的版本參照（ref），讀取 `releases/current.json`。
-2. 驗證發布指標與發布描述。
-3. 固定已發布版本 P，驗證 P = S，或 P 是 S 的直接、僅含生成資料的子提交。
-4. 從 P 載入 `content/knowledge/{YYYY}/{stable-id}.md`、`config/taxonomy.yaml` 與五個生成產物。
-5. 驗證 Knowledge Card 集合、資訊清單雜湊／位元組數／追溯資訊與生成資料一致性。
-6. 只在完整驗證成功後建立快照快取。
+因此：
 
-若 Knowledge Card Workspace 尚未有發布指標，且完全沒有生成產物，讀取器允許只有 Knowledge Card 的啟動模式；Knowledge Card 列表／詳細資料可讀，搜尋／圖譜不可用。若生成產物已存在卻沒有發布指標，視為不完整發布並採驗證失敗即拒絕。
+- `/api/cards`、`/api/cards/:id`、`/api/search`、`/api/graph` 與 `/api/release` 不得跨不同發布版本混讀。
+- 第一個發布版本尚未建立時，是否可進入只有 Knowledge Card 的啟動模式，由 Release 契約判定。
+- 生成產物已存在但發布狀態不完整時，讀取器必須驗證失敗即拒絕，Private Site 不得自行退回其他版本。
+- 發布快照快取只能在授權完成後使用；快取命中不能取代每次請求的 Workspace 資格重查。
 
-Knowledge Card 單檔上限目前是 1 MiB；分類體系／發布中繼資料與生成產物另有伺服器端大小限制。發布快照快取以 `release_id` + P 隔離，最多保留少量版本；授權永遠先於快取。完整 E／S／P 與資訊清單契約見 [release.md](./release.md)。
+Knowledge Card 單檔上限目前是 1 MiB；分類體系、發布中繼資料與生成產物另有伺服器端大小限制。完整發布讀取流程、快照鍵、E／S／P 與資訊清單驗證見 [一致發布契約](./release.md)。
 
 ## GitHub App 伺服器憑證
 
@@ -297,6 +299,15 @@ Vercel 轉接器**不允許單一處理程序記憶體工作階段的備援模�
 
 Vercel Function 的 `maxDuration` 設為 30 秒，但 GitHub 與共用 REST 工作階段儲存區的單次上游請求會在 5 秒內中止並採驗證失敗即拒絕，不把託管平台硬性逾時當作應用層錯誤處理。發布快照冷載入時，Knowledge Card 與生成產物 Git blob 採最多 8 個並行讀取；仍逐檔執行既有大小、雜湊、結構規格、所有權與發布一致性驗證，不因效能最佳化降低驗證門檻。
 
+### 線上驗收
+
+正式網站要視為本次發布已完成線上驗收，至少必須確認：
+
+- Knowledge Card Workspace 的發布流程已成功，且目前發布指標已前進到預期版本。
+- 部署本身成功。
+- 使用具資格的帳號完成授權後，`/api/release` 的即時回讀與預期 `release_id`、E／S／P 與 `manifest` 相符。
+
+發布資料本身的完整性與版本鏈結仍以 [一致發布契約](./release.md) 為準；這裡只規定私人網站的部署與授權後讀回驗收。
 ## 尚未提供的能力
 
 目前私人網站不提供：
