@@ -27,7 +27,8 @@ knowledge-card-engine/
 │  │  ├─ private-site.md
 │  │  └─ web-ui.md
 │  └─ guides/
-│     └─ development.md
+│     ├─ development.md
+│     └─ deployment.md
 │
 ├─ prompts/
 │  ├─ README.md
@@ -106,6 +107,20 @@ knowledge-card-engine/
 - 常見失敗的查找入口
 
 功能行為本身仍以對應契約為準；本文件負責操作方式，不重新定義功能契約。
+
+### [私人網站部署](./guides/deployment.md)
+
+回答「如何設定、部署並驗收目前的私人網站」。
+
+涵蓋：
+
+- 伺服器環境變數
+- Node HTTP 本機啟動
+- Vercel 部署
+- 共用工作階段儲存區
+- 授權後線上回讀
+
+登入與授權規則仍以 Private Site spec 為準；發布資料完整性仍以 Release spec 為準。
 
 ## 執行與 AI 行為契約
 
@@ -187,13 +202,21 @@ JSON Schema 之外的跨欄位、所有權、集合或執行階段規則，仍�
 - [生成資料、搜尋與圖譜契約](./specs/generated-data.md)
 - [開發與驗證](./guides/development.md)
 
-### 登入、授權、私人 API 或部署
+### 登入、授權或私人 API
 
 讀：
 
 - [私人網站與授權契約](./specs/private-site.md)
 - UI 變更時再讀 [網頁介面與版面配置](./specs/web-ui.md)
 - 發布版本讀取行為涉及變更時再讀 [一致發布契約](./specs/release.md)
+
+### 私人網站部署或線上驗收
+
+讀：
+
+- [私人網站部署](./guides/deployment.md)
+- [私人網站與授權契約](./specs/private-site.md)
+- [一致發布契約](./specs/release.md)
 
 ### Knowledge Card 分析品質或寫作行為
 
@@ -204,16 +227,30 @@ JSON Schema 之外的跨欄位、所有權、集合或執行階段規則，仍�
 - Knowledge Card 表達與章節結構： [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)
 - Card 結構與所有權： [Knowledge Card 契約](./specs/card.md)
 
-## 權威來源原則
+## 權威來源對照
 
-不同層級的權威來源分工如下：
+同一規則只由一個主要來源完整定義。其他文件可以保留理解或操作所需的摘要，但應連回主要權威來源，不再維護第二份完整規則。
 
-- **資料形狀**：`schema/` 下的 JSON Schema。
-- **受控詞彙**：Knowledge Card Workspace 的 `config/taxonomy.yaml`。
-- **跨領域執行順序**：`prompts/RUNTIME.md`。
-- **功能與資料語意**：`docs/` 中對應的正式契約。
-- **Agent 的知識整理與寫作行為**：`prompts/KNOWLEDGE_EDITOR.md` 與 `prompts/CARD_STYLE.md`。
-- **倉庫工程與提交安全**：`AGENTS.md`。
-- **可執行行為**：對應程式、驗證器與測試。
+| 規則領域 | 主要權威來源 | 其他文件的責任 |
+| --- | --- | --- |
+| 資料形狀 | `schema/` 下對應 JSON Schema | spec 解釋欄位語意與跨欄位規則；不得複製 Schema 當第二份欄位定義。 |
+| Workspace 受控詞彙 | Workspace `config/taxonomy.yaml` | Card spec 說明哪些欄位受分類體系約束。 |
+| Engine／Workspace 資料邊界 | [架構](./architecture/overview.md) | `README.md` 提供入口摘要；`AGENTS.md` 把邊界轉成公開倉庫的工程守門。 |
+| Workspace 結構與 Engine 版本鎖定 | [Workspace 契約](./specs/workspace.md) | Development Guide 只提供驗證操作。 |
+| Card 結構、所有權、穩定欄位與唯一性 | [Knowledge Card 契約](./specs/card.md) | Ingestion、Runtime、Knowledge Editor 只引用需要遵守的邊界。 |
+| Knowledge Card AI 語言政策 | Knowledge Card Workspace 的 `profile/language-policy.md` | Card／Analysis／Runtime 只界定適用範圍；`CARD_STYLE.md` 負責表達方式，不另建語言政策。 |
+| Engine 正式文件的中文與術語規則 | [`AGENTS.md`](../AGENTS.md) | 其他正式文件直接遵守，不各自維護一份文件寫作政策。 |
+| 來源識別、已接受證據、受控擷取與來源狀態 | [來源收錄契約](./specs/ingestion.md) | Analysis 從已接受證據開始；Runtime 只規定執行順序。 |
+| 研究計畫、分析證據、品質門檻與研究追溯 | [分析與研究契約](./specs/analysis.md) | Ingestion 只提供安全擷取；Knowledge Editor 只負責閱讀已固定證據。 |
+| 搜尋、向量、關聯、Concept 與 Graph | [生成資料契約](./specs/generated-data.md) | Private Site 只定義 API 授權與回傳邊界。 |
+| E／S／P、資訊清單、發布快照與回復 | [一致發布契約](./specs/release.md) | Private Site 只使用驗證成功的快照；guides 只提供操作步驟。 |
+| 登入、工作階段、Workspace 資格、私人 API 與憑證邊界 | [私人網站與授權契約](./specs/private-site.md) | Web UI 只描述介面；Deployment Guide 只描述設定與部署。 |
+| Web UI 版面、互動、響應式與無障礙 | [網頁介面與版面配置](./specs/web-ui.md) | Private Site 只保留與授權資料流的整合邊界。 |
+| 跨領域執行順序 | [`prompts/RUNTIME.md`](../prompts/RUNTIME.md) | 各 spec 不重複 Agent 編排流程。 |
+| 最終證據閱讀與知識取捨 | [`prompts/KNOWLEDGE_EDITOR.md`](../prompts/KNOWLEDGE_EDITOR.md) | Analysis 只定義證據與輸出契約。 |
+| Knowledge Card 最終表達方式 | [`prompts/CARD_STYLE.md`](../prompts/CARD_STYLE.md) | Card spec 只固定頂層正文結構。 |
+| 開發、驗證與 CLI 操作 | [開發與驗證指南](./guides/development.md) | specs 定義必須符合什麼，不重複命令範例。 |
+| 私人網站環境設定、部署與線上驗收 | [私人網站部署指南](./guides/deployment.md) | Private Site／Release specs 保留功能與安全契約。 |
+| 倉庫工程、分支、提交與公開資料安全 | [`AGENTS.md`](../AGENTS.md) | Runtime 只在跨領域流程中引用必要守門。 |
 
-文件、Schema、驗證器、測試或實際行為若互相衝突，應視為需要修正的缺陷，不自行選擇較方便的規則。
+文件、Schema、驗證器、測試或實際行為若互相衝突，應視為需要修正的缺陷，不自行選擇較方便的規則，也不以摘要文件覆蓋主要權威來源。
