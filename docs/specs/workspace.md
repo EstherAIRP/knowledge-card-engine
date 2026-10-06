@@ -124,16 +124,8 @@ uses: EstherAIRP/knowledge-card-engine/.github/workflows/ingest-workspace.yml@<4
 
 工作流程版本鎖定驗證會同時核對可重用工作流程名稱、倉庫與提交 SHA。驗證執行器會檢查三個 Knowledge Card Workspace 呼叫端；發布與收錄執行器也會再次核對自己的呼叫端版本鎖定與實際簽出的 Knowledge Card Engine SHA。任何倉庫、工作流程名稱或 SHA 不一致都會拒絕繼續執行。
 
-## 驗證命令
+## 驗證責任
 
-本機或 CI 可使用：
+Workspace 驗證必須確認目錄結構、路徑安全、`engine.lock.json`、可重用工作流程版本鎖定與目前 Engine 相容性。完整 Workspace CI 還會連同 Card、分類體系、已接受來源狀態與研究追溯狀態一起驗證。
 
-```bash
-npm run workspace:validate -- /path/to/workspace \
-  --engine-repository=EstherAIRP/knowledge-card-engine \
-  --engine-commit=<40-sha> \
-  --workflow-file=.github/workflows/ingest.yml \
-  --reusable-workflow=ingest-workspace.yml
-```
-
-完整的 Knowledge Card Workspace CI 還會驗證卡片與分類體系、已接受來源狀態，以及研究追溯狀態；詳見 [development.md](../guides/development.md)。
+實際驗證命令與參數集中在 [開發與驗證指南](../guides/development.md)；本契約只定義 Workspace 必須符合的結構與版本鎖定規則。
