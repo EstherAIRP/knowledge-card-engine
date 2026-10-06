@@ -100,7 +100,7 @@ Workspace = 私人權威資料與私人衍生資料
 
 ## 5. 來源收錄
 
-目前正式支援的來源類型以 [來源收錄契約](../docs/ingestion.md) 為準，目前包含 GitHub 倉庫與 Threads。若來源不屬於已實作類型，應回報不支援並停止正式寫入；一般網址可以正規化，不代表已有通用內容擷取器。
+目前正式支援的來源類型以 [來源收錄契約](../docs/specs/ingestion.md) 為準，目前包含 GitHub 倉庫與 Threads。若來源不屬於已實作類型，應回報不支援並停止正式寫入；一般網址可以正規化，不代表已有通用內容擷取器。
 
 支援來源共用的高階資料流是：
 
@@ -126,7 +126,7 @@ Threads 必須先解析到具體貼文，再收斂到根貼文識別。分享權
 
 不得只根據網址路徑代稱、倉庫名稱、Threads 分享權杖、搜尋摘要、README／貼文片段或模型記憶產生正式分析。
 
-GitHub 與 Threads 正式收錄都必須取得並驗證來源類型專屬的已接受證據。來源身分、標準網址、內容完整性與證據摘要值條件，由 `docs/ingestion.md` 與收錄驗證器定義。
+GitHub 與 Threads 正式收錄都必須取得並驗證來源類型專屬的已接受證據。來源身分、標準網址、內容完整性與證據摘要值條件，由 `docs/specs/ingestion.md` 與收錄驗證器定義。
 
 核心不變量：
 
@@ -171,7 +171,7 @@ Agent 只負責建立受控請求、必要時產生 Threads 綁定摘要值的�
 
 正式產生分析前，Agent 必須先讀 [Knowledge Card 知識編輯提示](./KNOWLEDGE_EDITOR.md)，再重新閱讀本輪最終有效證據並形成整體理解。GitHub 研究型分析至少重新閱讀目前的已接受來源證據與最終分析證據包；Threads 重新閱讀最終已接受證據。**在整體理解形成以前，不得先讀 `CARD_STYLE.md` 或用 Card 正文段落當閱讀框架。**若 GitHub 後續又完成新的研究擴充，先前依較舊證據包形成的理解立即失效，必須以新的 `analysis_evidence_digest` 重新執行。研究計畫、結構化研究覆蓋狀態或研究結果可用來檢查證據，但不能取代重新閱讀來源文字，也不能直接當成卡片大綱。
 
-整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md) 與 [Knowledge Card 契約](../docs/card-contract.md)，把已形成的理解整理成正式分析。更新既有卡片時，也是在整體理解形成後才讀既有 Knowledge Card，判斷差異、關聯與需要保留的上下文；既有 AI 正文不得作為本輪事實證據。正文段落、相關性、建議動作、分類、標籤與關聯都在這個階段才決定。
+整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md) 與 [Knowledge Card 契約](../docs/specs/card.md)，把已形成的理解整理成正式分析。更新既有卡片時，也是在整體理解形成後才讀既有 Knowledge Card，判斷差異、關聯與需要保留的上下文；既有 AI 正文不得作為本輪事實證據。正文段落、相關性、建議動作、分類、標籤與關聯都在這個階段才決定。
 
 分析必須：
 
@@ -208,7 +208,7 @@ Agent 只負責建立受控請求、必要時產生 Threads 綁定摘要值的�
 effective = user ?? ai
 ```
 
-`relevance` 等逐欄位所有權依 [Knowledge Card 契約](../docs/card-contract.md) 與驗證器執行。使用者明確要求修改人工狀態時，只修改該要求涵蓋的使用者值，不藉此重寫其他人工內容。
+`relevance` 等逐欄位所有權依 [Knowledge Card 契約](../docs/specs/card.md) 與驗證器執行。使用者明確要求修改人工狀態時，只修改該要求涵蓋的使用者值，不藉此重寫其他人工內容。
 
 ## 8. 寫入與驗證
 
@@ -237,13 +237,13 @@ npm run source-state:validate -- /path/to/workspace
 npm run research-state:validate -- /path/to/workspace
 ```
 
-實際可用命令與參數以鎖定的 Knowledge Card Engine `docs/development.md` 為準，不得從其他版本混用 CLI。
+實際可用命令與參數以鎖定的 Knowledge Card Engine `docs/guides/development.md` 為準，不得從其他版本混用 CLI。
 
 ## 9. 生成資料與發布
 
 `data/**` 與 `releases/**` 是由機器管理的私人衍生資料。不得手工修改生成產物或目前發布指標來表達使用者意圖。
 
-權威資料變更進入 Knowledge Card Workspace `main` 後，依 Workspace 現行工作流程觸發生成資料與發布流程。發布必須遵守 [一致發布契約](../docs/release.md) 的 E／S／P、資訊清單、版本鏈結與過期防護。
+權威資料變更進入 Knowledge Card Workspace `main` 後，依 Workspace 現行工作流程觸發生成資料與發布流程。發布必須遵守 [一致發布契約](../docs/specs/release.md) 的 E／S／P、資訊清單、版本鏈結與過期防護。
 
 以下狀態必須分開：
 
@@ -312,13 +312,13 @@ Knowledge Card 收錄／更新時，可再包含卡片名稱、有效分類、�
 
 - 資料形狀：JSON Schema。
 - 受控詞彙：Knowledge Card Workspace `config/taxonomy.yaml`。
-- 卡片所有權、正文、唯一性與穩定路徑：`docs/card-contract.md` 與核心驗證器。
-- Knowledge Card Workspace 結構與 Knowledge Card Engine 版本鎖定：`docs/workspace.md` 與 Workspace 載入器。
-- 來源識別、已接受證據、GitHub 研究擷取與來源狀態：`docs/ingestion.md` 與收錄驗證器。
-- 分析版本、研究證據包、結構化品質門檻與研究追溯綁定：`docs/analysis.md`、分析驗證器與 Knowledge Card Workspace 研究狀態驗證器。
-- 生成資料：`docs/generated-data.md` 與圖譜／生成資料驗證器。
-- E／S／P 與發布一致性：`docs/release.md` 與發布驗證器。
-- 登入、授權與私人讀取：`docs/private-site.md` 與伺服器實作／測試。
+- 卡片所有權、正文、唯一性與穩定路徑：`docs/specs/card.md` 與核心驗證器。
+- Knowledge Card Workspace 結構與 Knowledge Card Engine 版本鎖定：`docs/specs/workspace.md` 與 Workspace 載入器。
+- 來源識別、已接受證據、GitHub 研究擷取與來源狀態：`docs/specs/ingestion.md` 與收錄驗證器。
+- 分析版本、研究證據包、結構化品質門檻與研究追溯綁定：`docs/specs/analysis.md`、分析驗證器與 Knowledge Card Workspace 研究狀態驗證器。
+- 生成資料：`docs/specs/generated-data.md` 與圖譜／生成資料驗證器。
+- E／S／P 與發布一致性：`docs/specs/release.md` 與發布驗證器。
+- 登入、授權與私人讀取：`docs/specs/private-site.md` 與伺服器實作／測試。
 - 執行順序與跨領域編排：本文件。
 - 倉庫工程與修改安全：`AGENTS.md`。
 

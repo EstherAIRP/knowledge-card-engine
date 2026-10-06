@@ -27,7 +27,7 @@ npm run validate
 npm run ui:verify
 ```
 
-此檢查會驗證設計變數、樣式責任歸屬、頁面／閱讀寬度、主要響應式斷點、圖譜呈現／執行程式邊界，以及介面外殼的樣式組合。完整介面架構見 [web-ui.md](./web-ui.md)。
+此檢查會驗證設計變數、樣式責任歸屬、頁面／閱讀寬度、主要響應式斷點、圖譜呈現／執行程式邊界，以及介面外殼的樣式組合。完整介面架構見 [web-ui.md](../specs/web-ui.md)。
 
 ## Knowledge Card Workspace 驗證
 
@@ -67,7 +67,7 @@ npm run ingest:threads -- /path/to/workspace https://threads.com/share/token \
 
 兩者都可用 `--evidence-file=accepted-evidence.json` 注入已取得、仍需重新驗證的證據。GitHub 命令列工具則透過 GitHub API 即時取得中繼資料與 README；需要授權時使用環境變數 `GITHUB_TOKEN`。Threads 命令列工具只有在結構證據可證明來源完整時接受，不提供語意續篇猜測。密鑰不得提交。
 
-來源寫入器的資料與所有權前置條件見 [ingestion.md](./ingestion.md) 與 [card-contract.md](./card-contract.md)。
+來源寫入器的資料與所有權前置條件見 [ingestion.md](../specs/ingestion.md) 與 [card-contract.md](../specs/card.md)。
 
 受控 Remote Ingest 執行器使用：
 
@@ -79,7 +79,7 @@ npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.js
 
 此命令列工具只讀取設定狀態根目錄下的固定交接檔名，不接受任意交接路徑。GitHub 流程使用 `request.json`、`evidence.json`、`research-evidence.json`、`research-plan.json` 與最終 `analysis.json`；第一次準備階段只建立固定倉庫版本的探索結果與空的第 0 輪研究狀態，必須由 Agent 先提交關鍵研究問題計畫與選定路徑。執行器會在同一倉庫版本驗證選定的安全文字路徑並形成第一輪證據包；之後可直接提交分析，或在剩餘輪次／項目數／位元組上限及先前摘要值守門下，再做一次由 Agent 指定的擴充。Threads 流程保留 `semantic-handoff.json`／`semantic-judgement.json`，形成已接受證據後直接等待版本 1 分析。
 
-當分析已是合法下一步時，執行器結果會提供 `analysis_handoff`，列出本輪必須重新閱讀的 `input_paths`、要寫入的 `analysis.json` 路徑，以及目前證據摘要值。這個提示不是新的持久化狀態；新的 Agent 工作階段直接從目前分支上的交接檔案接手即可。GitHub 若再完成第二輪研究，必須使用更新後的 `analysis_evidence_digest` 重新整合，舊分析會被過期防護拒絕。完整交接契約見 [ingestion.md](./ingestion.md)。
+當分析已是合法下一步時，執行器結果會提供 `analysis_handoff`，列出本輪必須重新閱讀的 `input_paths`、要寫入的 `analysis.json` 路徑，以及目前證據摘要值。這個提示不是新的持久化狀態；新的 Agent 工作階段直接從目前分支上的交接檔案接手即可。GitHub 若再完成第二輪研究，必須使用更新後的 `analysis_evidence_digest` 重新整合，舊分析會被過期防護拒絕。完整交接契約見 [ingestion.md](../specs/ingestion.md)。
 
 ## 私人網站
 
@@ -89,7 +89,7 @@ npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.js
 npm run site:serve
 ```
 
-完整登入／工作階段／資料邊界見 [private-site.md](./private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設記憶體儲存區只提供單一處理程序的參考執行環境。Vercel 部署由 `api/site.js` 與 `vercel.json` 提供，並要求 `KC_SESSION_STORE_REST_URL`／`KC_SESSION_STORE_REST_TOKEN` 共用 REST 工作階段儲存區；缺少它們時，部署維持 `unconfigured`。
+完整登入／工作階段／資料邊界見 [private-site.md](../specs/private-site.md)。`createPrivateSiteApp` 可注入 `sessionStore`；預設記憶體儲存區只提供單一處理程序的參考執行環境。Vercel 部署由 `api/site.js` 與 `vercel.json` 提供，並要求 `KC_SESSION_STORE_REST_URL`／`KC_SESSION_STORE_REST_TOKEN` 共用 REST 工作階段儲存區；缺少它們時，部署維持 `unconfigured`。
 
 ## 生成資料與發布
 
@@ -101,7 +101,7 @@ npm run release:finalize -- /path/to/workspace --engine-sha=<E> --source-sha=<S>
 npm run release:validate -- /path/to/workspace
 ```
 
-生成資料契約見 [generated-data.md](./generated-data.md)；E／S／P、資訊清單、發布指標、過期防護與回復見 [release.md](./release.md)。
+生成資料契約見 [generated-data.md](../specs/generated-data.md)；E／S／P、資訊清單、發布指標、過期防護與回復見 [release.md](../specs/release.md)。
 
 ## GitHub Actions
 

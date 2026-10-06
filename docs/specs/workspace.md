@@ -67,7 +67,7 @@ paths:
 - 解析後越出工作區根目錄。
 - 對應路徑不存在或不是目錄。
 
-結構定義：[`schema/workspace.schema.json`](../schema/workspace.schema.json)。
+結構定義：[`schema/workspace.schema.json`](../../schema/workspace.schema.json)。
 
 ## engine.lock.json
 
@@ -91,7 +91,7 @@ paths:
 
 Knowledge Card Workspace 不追隨 Knowledge Card Engine 的 `main`。升級 Knowledge Card Engine 時必須以新的不可變提交 SHA 更新鎖定檔，不能只修改分支或標籤名稱。
 
-結構定義：[`schema/engine-lock.schema.json`](../schema/engine-lock.schema.json)。
+結構定義：[`schema/engine-lock.schema.json`](../../schema/engine-lock.schema.json)。
 
 ## 載入器與相容性驗證
 
@@ -136,4 +136,4 @@ npm run workspace:validate -- /path/to/workspace \
   --reusable-workflow=ingest-workspace.yml
 ```
 
-完整的 Knowledge Card Workspace CI 還會驗證卡片與分類體系、已接受來源狀態，以及研究追溯狀態；詳見 [development.md](./development.md)。
+完整的 Knowledge Card Workspace CI 還會驗證卡片與分類體系、已接受來源狀態，以及研究追溯狀態；詳見 [development.md](../guides/development.md)。

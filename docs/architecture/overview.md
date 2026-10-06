@@ -57,7 +57,7 @@ Card 與狀態寫入前會完成證據、分析綁定、所有權與集合驗證
 
 Knowledge Card Engine 接收明確指定的工作區根目錄，不以目前工作目錄或固定私人倉庫名稱推測資料位置。Knowledge Card Workspace 以 `engine.lock.json` 固定核准的 Knowledge Card Engine 倉庫與完整提交 SHA；CI 再驗證工作流程版本鎖定、鎖定檔與實際簽出的 Knowledge Card Engine SHA 一致。
 
-Workspace、Card、來源收錄、生成資料與一致發布的詳細契約分別見 [workspace.md](./workspace.md)、[card-contract.md](./card-contract.md)、[ingestion.md](./ingestion.md)、[generated-data.md](./generated-data.md) 與 [release.md](./release.md)。
+Workspace、Card、來源收錄、生成資料與一致發布的詳細契約分別見 [workspace.md](../specs/workspace.md)、[card-contract.md](../specs/card.md)、[ingestion.md](../specs/ingestion.md)、[generated-data.md](../specs/generated-data.md) 與 [release.md](../specs/release.md)。
 
 ## 私人閱覽資料流
 
@@ -79,6 +79,6 @@ Workspace、Card、來源收錄、生成資料與一致發布的詳細契約分�
 
 登入憑證與倉庫資料憑證彼此分離。使用者存取權杖只存在伺服器端工作階段儲存區；GitHub App 安裝權杖只存在伺服器執行環境。私人 API 必須先完成授權，才能讀取 Knowledge Card Workspace 快照快取。
 
-私人 API 也必須先完成授權，才能讀取發布快照快取。第一個發布版本尚未建立、且 Workspace 沒有任何生成產物時，只提供啟動階段的 Card 列表／詳細資料；一旦存在目前發布版本，Card、搜尋、圖譜與發布 API 都固定讀取同一個 P。詳細契約見 [private-site.md](./private-site.md)、[web-ui.md](./web-ui.md) 與 [release.md](./release.md)。
+私人 API 也必須先完成授權，才能讀取發布快照快取。第一個發布版本尚未建立、且 Workspace 沒有任何生成產物時，只提供啟動階段的 Card 列表／詳細資料；一旦存在目前發布版本，Card、搜尋、圖譜與發布 API 都固定讀取同一個 P。詳細契約見 [private-site.md](../specs/private-site.md)、[web-ui.md](../specs/web-ui.md) 與 [release.md](../specs/release.md)。
 
 Node 轉接器預設使用單一處理程序內的記憶體工作階段儲存區；正式部署若需要跨處理程序或無伺服器（serverless）執行個體共享工作階段，必須注入共用的伺服器端工作階段儲存區。

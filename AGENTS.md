@@ -19,8 +19,8 @@
 ## 資料與修改規則
 
 - 只修改本次任務必要範圍；保留與本次任務無關的既有修改。
-- Knowledge Card 必須遵守 [docs/card-contract.md](./docs/card-contract.md)。
-- GitHub／Threads 收錄必須遵守 [docs/ingestion.md](./docs/ingestion.md)；不得以 URL 路徑代稱、分享 token、時間接近、倉庫名稱或模型記憶取代已接受證據。Threads 未證明完整串文時必須驗證失敗即拒絕。
+- Knowledge Card 必須遵守 [docs/specs/card.md](./docs/specs/card.md)。
+- GitHub／Threads 收錄必須遵守 [docs/specs/ingestion.md](./docs/specs/ingestion.md)；不得以 URL 路徑代稱、分享 token、時間接近、倉庫名稱或模型記憶取代已接受證據。Threads 未證明完整串文時必須驗證失敗即拒絕。
 - 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` 覆寫或完整 `## 使用者備註`。
 - 相同來源應解析為既有 Knowledge Card 更新；來源識別或標準網址發生衝突時必須驗證失敗即拒絕。
 - 已接受來源狀態只能在證據、分析綁定、所有權與完整 Card 集合驗證成功後推進。綁定 GitHub 研究證據的分析，其研究追溯狀態必須和 Card／已接受來源狀態在同一交易中推進；不得永久保存已選來源原文。

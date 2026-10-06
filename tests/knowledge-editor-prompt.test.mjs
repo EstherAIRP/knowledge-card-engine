@@ -5,8 +5,8 @@ import test from 'node:test';
 const editorUrl = new URL('../prompts/KNOWLEDGE_EDITOR.md', import.meta.url);
 const styleUrl = new URL('../prompts/CARD_STYLE.md', import.meta.url);
 const runtimeUrl = new URL('../prompts/RUNTIME.md', import.meta.url);
-const analysisDocUrl = new URL('../docs/analysis.md', import.meta.url);
-const cardContractUrl = new URL('../docs/card-contract.md', import.meta.url);
+const analysisDocUrl = new URL('../docs/specs/analysis.md', import.meta.url);
+const cardContractUrl = new URL('../docs/specs/card.md', import.meta.url);
 
 test('Knowledge Editor requires final evidence reread before loading card style', async () => {
   const prompt = await readFile(editorUrl, 'utf8');
@@ -75,10 +75,10 @@ test('Runtime and formal contracts defer Card Style until after synthesis', asyn
   assert.ok(runtime.includes('整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md)'));
   assert.ok(runtime.includes('不能取代重新閱讀來源文字，也不能直接當成卡片大綱'));
 
-  assert.ok(analysisDoc.includes('形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)'));
+  assert.ok(analysisDoc.includes('形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../../prompts/CARD_STYLE.md)'));
   assert.ok(analysisDoc.includes('Card 的十個正文段落與寫作樣式都只在整體理解形成後才套用'));
 
-  assert.ok(cardContract.includes('完成理解後才讀 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)'));
+  assert.ok(cardContract.includes('完成理解後才讀 [Knowledge Card 寫作樣式](../../prompts/CARD_STYLE.md)'));
   assert.ok(cardContract.includes('「核心概念」選 2～3 個真正重要的主題'));
   assert.ok(cardContract.includes('「技術亮點」選 2～3 個有辨識度、值得記住的設計或機制'));
   assert.ok(cardContract.includes('現有 `packages/core` 驗證器仍負責 H1、頂層段落順序'));

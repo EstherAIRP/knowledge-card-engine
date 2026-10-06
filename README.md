@@ -77,7 +77,7 @@ knowledge-card-engine/
 | `prompts` | Runtime、Knowledge Editor 與 Knowledge Card 寫作規則 |
 | `tests` | Engine 測試與合成 Workspace 測試資料 |
 
-完整架構與責任邊界見 [Architecture](./docs/architecture.md)。
+完整架構與責任邊界見 [Architecture](./docs/architecture/overview.md)。
 
 ---
 
@@ -159,18 +159,18 @@ Engine 的公開測試只能使用明確標示的合成資料。
 
 如果是第一次閱讀 Knowledge Card Engine，建議從以下文件開始：
 
-- [Architecture](./docs/architecture.md) — 系統與模組如何組成
-- [Workspace](./docs/workspace.md) — Engine 與私人 Workspace 如何配合
-- [Development](./docs/development.md) — 如何開發與驗證 Engine
+- [Architecture](./docs/architecture/overview.md) — 系統與模組如何組成
+- [Workspace](./docs/specs/workspace.md) — Engine 與私人 Workspace 如何配合
+- [Development](./docs/guides/development.md) — 如何開發與驗證 Engine
 
 正式功能契約：
 
-- [Card Contract](./docs/card-contract.md) — Knowledge Card 結構與所有權
-- [Ingestion](./docs/ingestion.md) — 來源收錄
-- [Analysis](./docs/analysis.md) — 分析與研究
-- [Generated Data](./docs/generated-data.md) — 搜尋、向量、關聯、Concept 與 Graph
-- [Release](./docs/release.md) — 一致發布
-- [Private Site](./docs/private-site.md) — 登入、授權與私人網站
-- [Web UI](./docs/web-ui.md) — Web UI 與版面
+- [Card Contract](./docs/specs/card.md) — Knowledge Card 結構與所有權
+- [Ingestion](./docs/specs/ingestion.md) — 來源收錄
+- [Analysis](./docs/specs/analysis.md) — 分析與研究
+- [Generated Data](./docs/specs/generated-data.md) — 搜尋、向量、關聯、Concept 與 Graph
+- [Release](./docs/specs/release.md) — 一致發布
+- [Private Site](./docs/specs/private-site.md) — 登入、授權與私人網站
+- [Web UI](./docs/specs/web-ui.md) — Web UI 與版面
 
 完整文件導航見 [docs/index.md](./docs/index.md)。

@@ -2,7 +2,7 @@
 
 > **角色：** 最終證據固定後的來源閱讀、理解與知識取捨  
 > **寫作樣式：** [CARD_STYLE.md](./CARD_STYLE.md)  
-> **資料契約：** [分析與研究契約](../docs/analysis.md)  
+> **資料契約：** [分析與研究契約](../docs/specs/analysis.md)  
 > **執行編排：** [執行契約](./RUNTIME.md)
 
 你的工作是先把來源讀懂，再決定真正值得留下的知識。
@@ -117,7 +117,7 @@ README 的描述不自動等於實作已驗證；設計文件、RFC、規格或�
 這時再讀：
 
 1. `prompts/CARD_STYLE.md`
-2. `docs/card-contract.md`
+2. `docs/specs/card.md`
 3. Knowledge Card Workspace 的語言政策與允許使用的分析背景
 4. 更新既有 Card 時的舊 Card
 

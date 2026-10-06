@@ -17,7 +17,7 @@
 
 ## 輸出語言與術語
 
-分析產生的卡片 AI 可更新中繼資料、十個正文段落，以及會進入卡片敘述的自由文字，必須符合 [Knowledge Card 契約](./card-contract.md) 的 AI 文字語言規則與 Knowledge Card Workspace 明確的分析語言政策。研究報告中會供卡片分析使用的敘述性研究結果，也應遵守同一政策；證據引用、程式識別字與受控狀態值則維持原契約。
+分析產生的卡片 AI 可更新中繼資料、十個正文段落，以及會進入卡片敘述的自由文字，必須符合 [Knowledge Card 契約](./card.md) 的 AI 文字語言規則與 Knowledge Card Workspace 明確的分析語言政策。研究報告中會供卡片分析使用的敘述性研究結果，也應遵守同一政策；證據引用、程式識別字與受控狀態值則維持原契約。
 
 語言整理不得：
 
@@ -32,12 +32,12 @@
 
 分析資料契約只規定輸出的可驗證形狀與證據綁定；它不把研究計畫、研究覆蓋或 Card 正文段落順序定義成模型的閱讀順序。
 
-在正式建立分析結果前，執行 Agent 必須先依 [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據：
+在正式建立分析結果前，執行 Agent 必須先依 [Knowledge Card 知識編輯提示](../../prompts/KNOWLEDGE_EDITOR.md) 重新閱讀本輪最終有效證據：
 
 - 版本 1：重新閱讀目前已接受來源證據。
 - GitHub 版本 2：重新閱讀目前已接受來源證據與最終分析證據包內的已選來源原文。
 - 若版本 2 的證據包因第二輪研究而改變，先前以舊 `analysis_evidence_digest` 形成的理解不得沿用。
-- 形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)，也不使用 Card 正文段落當作閱讀來源的分類框架。
+- 形成整體理解以前，不先載入 [Knowledge Card 寫作樣式](../../prompts/CARD_STYLE.md)，也不使用 Card 正文段落當作閱讀來源的分類框架。
 - 更新既有 Card 時，先依本輪證據形成新的整體理解，再讀既有 Card；舊 AI 正文不是本輪證據。
 - 整體理解形成後，才讀 `CARD_STYLE.md` 與 Knowledge Card 契約，把既有理解映射成分析結果。
 

@@ -4,7 +4,7 @@
 
 文件採漸進式揭露：先建立系統全貌，再依任務讀取需要的正式契約。不同類型的文件有不同責任；同一規則只應有一個主要權威來源，其他文件以連結引用，不重複維護完整規則。
 
-目前檔案仍維持現有位置；下列分類是**文件責任分類**，不是新的實體目錄結構。
+正式文件依責任分層如下。
 
 ## 文件總覽
 
@@ -15,7 +15,7 @@ knowledge-card-engine/
 │
 ├─ docs/
 │  ├─ index.md
-│  ├─ architecture.md
+│  ├─ architecture/\n│  │  └─ overview.md
 │  ├─ workspace.md
 │  ├─ card-contract.md
 │  ├─ ingestion.md
@@ -56,7 +56,7 @@ knowledge-card-engine/
 
 ## 架構
 
-### [Knowledge Card Engine 架構](./architecture.md)
+### [Knowledge Card Engine 架構](./architecture/overview.md)
 
 回答「系統如何組成」。
 
@@ -76,18 +76,18 @@ knowledge-card-engine/
 
 | 文件 | 主要責任 |
 | --- | --- |
-| [Knowledge Card Workspace 契約](./workspace.md) | Workspace 結構、標準路徑、背景政策、Engine 版本鎖定與相容性驗證 |
-| [Knowledge Card 契約](./card-contract.md) | Card 前置中繼資料、分類體系、AI／使用者所有權、正文、唯一性與穩定路徑 |
-| [來源收錄契約](./ingestion.md) | URL 正規化、來源識別、GitHub／Threads 已接受證據、新建／更新、安全寫入與來源狀態 |
-| [分析與研究契約](./analysis.md) | 分析版本、重新閱讀與整合、研究計畫、分析證據包、品質門檻與證據綁定 |
-| [生成資料、搜尋與圖譜契約](./generated-data.md) | 搜尋、向量、Card↔Card 關聯、人工關聯、Concept、Graph 與生成資料驗證 |
-| [一致發布契約](./release.md) | E／S／P、資訊清單、發布指標、過期防護、私人讀取版本與回復 |
-| [私人網站與授權契約](./private-site.md) | GitHub App 登入、工作階段、資格驗證、私人 API、Workspace 讀取與部署邊界 |
-| [網頁介面與版面配置](./web-ui.md) | Web UI 模組、樣式責任、版面、響應式、無障礙與介面驗證 |
+| [Knowledge Card Workspace 契約](./specs/workspace.md) | Workspace 結構、標準路徑、背景政策、Engine 版本鎖定與相容性驗證 |
+| [Knowledge Card 契約](./specs/card.md) | Card 前置中繼資料、分類體系、AI／使用者所有權、正文、唯一性與穩定路徑 |
+| [來源收錄契約](./specs/ingestion.md) | URL 正規化、來源識別、GitHub／Threads 已接受證據、新建／更新、安全寫入與來源狀態 |
+| [分析與研究契約](./specs/analysis.md) | 分析版本、重新閱讀與整合、研究計畫、分析證據包、品質門檻與證據綁定 |
+| [生成資料、搜尋與圖譜契約](./specs/generated-data.md) | 搜尋、向量、Card↔Card 關聯、人工關聯、Concept、Graph 與生成資料驗證 |
+| [一致發布契約](./specs/release.md) | E／S／P、資訊清單、發布指標、過期防護、私人讀取版本與回復 |
+| [私人網站與授權契約](./specs/private-site.md) | GitHub App 登入、工作階段、資格驗證、私人 API、Workspace 讀取與部署邊界 |
+| [網頁介面與版面配置](./specs/web-ui.md) | Web UI 模組、樣式責任、版面、響應式、無障礙與介面驗證 |
 
 ## 操作與開發指南
 
-### [開發與驗證](./development.md)
+### [開發與驗證](./guides/development.md)
 
 回答「如何在目前 Engine 上開發、驗證與執行常用工作」。
 
@@ -142,9 +142,9 @@ JSON Schema 之外的跨欄位、所有權、集合或執行階段規則，仍�
 在 Knowledge Card Workspace 確認目前核准的 Engine 版本後，依序讀：
 
 1. [執行契約](../prompts/RUNTIME.md)
-2. [來源收錄契約](./ingestion.md)
-3. [分析與研究契約](./analysis.md)
-4. [Knowledge Card 契約](./card-contract.md)
+2. [來源收錄契約](./specs/ingestion.md)
+3. [分析與研究契約](./specs/analysis.md)
+4. [Knowledge Card 契約](./specs/card.md)
 
 需要建立最終分析內容時，再依流程讀：
 
@@ -155,50 +155,50 @@ JSON Schema 之外的跨欄位、所有權、集合或執行階段規則，仍�
 
 1. [AGENTS.md](../AGENTS.md)
 2. [執行契約](../prompts/RUNTIME.md)
-3. [架構](./architecture.md)
+3. [架構](./architecture/overview.md)
 4. 本次修改領域的正式契約
-5. [開發與驗證](./development.md)
+5. [開發與驗證](./guides/development.md)
 6. 直接相關的 Schema、程式與測試
 
 ### Workspace 結構或 Engine 版本升級
 
 讀：
 
-- [Knowledge Card Workspace 契約](./workspace.md)
-- [開發與驗證](./development.md)
+- [Knowledge Card Workspace 契約](./specs/workspace.md)
+- [開發與驗證](./guides/development.md)
 - 受變更直接影響的其他契約與 Schema
 
 ### 搜尋、關聯、Concept 或 Graph
 
 讀：
 
-- [生成資料、搜尋與圖譜契約](./generated-data.md)
-- 必要時再讀 [一致發布契約](./release.md)
+- [生成資料、搜尋與圖譜契約](./specs/generated-data.md)
+- 必要時再讀 [一致發布契約](./specs/release.md)
 
 ### 發布與版本一致性
 
 讀：
 
-- [一致發布契約](./release.md)
-- [生成資料、搜尋與圖譜契約](./generated-data.md)
-- [開發與驗證](./development.md)
+- [一致發布契約](./specs/release.md)
+- [生成資料、搜尋與圖譜契約](./specs/generated-data.md)
+- [開發與驗證](./guides/development.md)
 
 ### 登入、授權、私人 API 或部署
 
 讀：
 
-- [私人網站與授權契約](./private-site.md)
-- UI 變更時再讀 [網頁介面與版面配置](./web-ui.md)
-- 發布版本讀取行為涉及變更時再讀 [一致發布契約](./release.md)
+- [私人網站與授權契約](./specs/private-site.md)
+- UI 變更時再讀 [網頁介面與版面配置](./specs/web-ui.md)
+- 發布版本讀取行為涉及變更時再讀 [一致發布契約](./specs/release.md)
 
 ### Knowledge Card 分析品質或寫作行為
 
 依責任讀：
 
-- 研究、證據與分析資料： [分析與研究契約](./analysis.md)
+- 研究、證據與分析資料： [分析與研究契約](./specs/analysis.md)
 - 來源閱讀與知識取捨： [Knowledge Card 知識編輯提示](../prompts/KNOWLEDGE_EDITOR.md)
 - Knowledge Card 表達與章節結構： [Knowledge Card 寫作樣式](../prompts/CARD_STYLE.md)
-- Card 結構與所有權： [Knowledge Card 契約](./card-contract.md)
+- Card 結構與所有權： [Knowledge Card 契約](./specs/card.md)
 
 ## 權威來源原則
 
