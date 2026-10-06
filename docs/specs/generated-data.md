@@ -28,9 +28,9 @@ data/graph.json
 
 ## 向量與搜尋
 
-正式關聯與圖譜向量預設使用本機 `Xenova/multilingual-e5-small`，由 `@huggingface/transformers` 執行 `feature-extraction`，採 mean pooling、normalize 與 q8 模型。向量維度為 384；推論只在生成資料建置期間執行，不會在網站請求路徑執行，也不需要外部模型憑證。
+用於語意關聯與圖譜的向量，預設由本機 `Xenova/multilingual-e5-small` 產生；`@huggingface/transformers` 以 `feature-extraction` 執行平均池化（mean pooling）、正規化與 q8 模型推論。向量維度為 384。推論只在生成資料建置期間執行，不會進入網站請求路徑，也不需要外部模型憑證。
 
-每張 Knowledge Card 的嵌入向量輸入固定由下列有效資料組成：
+每張 Knowledge Card 的嵌入向量輸入固定由下列生效資料組成：
 
 - `title`
 - `summary`
@@ -43,19 +43,13 @@ data/graph.json
 - `架構與技術`
 - `技術亮點`
 
-`navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與嵌入向量輸入。向量產物保存 `provider`、`model`、`method`、`dimensions`、每張 Card 的輸入雜湊與向量；只有供應器、模型、維度與輸入雜湊都相容時，才可沿用既有向量。
+`navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與嵌入向量輸入。向量產物保存 `provider`、`model`、`method`、`dimensions`、每張 Card 的輸入雜湊與向量；只有供應器、模型、維度與輸入雜湊都相容時，才能沿用既有向量。
 
 `deterministic-token-hash` 仍可作為明確指定的備援供應器，但不是正式環境預設，也不得標示為神經網路或模型嵌入向量。正式的本機嵌入向量建置失敗時，生成資料建置必須失敗，不得靜默切換成 token hash。
 
 搜尋索引涵蓋 Knowledge Card 的 `title`、`summary`、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
-`GET /api/search?q=<query>&limit=<n>`：
-
-- 需要私人授權。
-- `q` 必填，最長 300 字元。
-- `limit` 為 1–100，預設 20。
-- 只回傳顯示所需的 Knowledge Card 投影、比對證據與分數。
-- 只有存在已驗證發布版本時可用；只有 Knowledge Card 的啟動模式回 `503 RELEASE_REQUIRED`。
+本文件只定義搜尋索引與評分所依據的生成資料。私人搜尋 API 的授權、查詢參數與回傳邊界由 [私人網站與授權契約](./private-site.md) 定義；搜尋與其他私人讀取介面必須使用同一個已驗證發布快照，版本一致性由 [一致發布契約](./release.md) 定義。
 
 ## Card↔Card 關聯
 
@@ -113,7 +107,7 @@ Knowledge Card ↔ Concept 成員關係必須帶證據、來源與強度。Conce
 - 可重建的 2D 版面
 - 版面方法／追溯資訊
 
-`GET /api/graph` 需要私人授權，並只回傳圖譜介面所需投影。圖譜與搜尋必須和 Knowledge Card API 讀取同一個發布版本。
+本文件只定義圖譜產物的內容與一致性。私人圖譜 API 的授權與回傳投影由 [私人網站與授權契約](./private-site.md) 定義；圖譜、搜尋與 Knowledge Card 必須來自同一個已驗證發布快照，版本選擇由 [一致發布契約](./release.md) 定義。
 
 ## 驗證與失敗行為
 
@@ -127,3 +121,5 @@ Knowledge Card ↔ Concept 成員關係必須帶證據、來源與強度。Conce
 - 圖譜節點／邊一致性
 
 缺少必要產物、內容與 Knowledge Card 不一致或追溯資訊不符時，不得發布；私人伺服器讀取已發布資料時也必須驗證失敗即拒絕。
+
+生成、重建與發布前驗證的實際指令集中在 [開發與驗證指南](../guides/development.md)，本契約不重複操作步驟。
