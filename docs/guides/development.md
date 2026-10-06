@@ -91,7 +91,7 @@ Remote Ingest 只讀取 Workspace 狀態目錄中的固定交接檔，並依執�
 npm run site:serve
 ```
 
-登入、工作階段、私人 API、Workspace 資格與正式部署限制見 [私人網站與授權契約](../specs/private-site.md)；介面與版面契約見 [網頁介面與版面配置](../specs/web-ui.md)。
+登入、工作階段、私人 API 與 Workspace 資格見 [私人網站與授權契約](../specs/private-site.md)；正式環境設定、Vercel 部署與線上驗收見 [私人網站部署指南](./deployment.md)；介面與版面契約見 [網頁介面與版面配置](../specs/web-ui.md)。
 
 ## 生成資料與發布
 
@@ -146,6 +146,7 @@ Workspace 的驗證、收錄與發布流程都必須使用 `engine.lock.json.eng
 - 搜尋、關聯或圖譜資料：`docs/specs/generated-data.md`。
 - 發布版本：`docs/specs/release.md`。
 - 登入、私人 API 或伺服器讀取：`docs/specs/private-site.md`。
+- 部署、環境變數或線上回讀：`docs/guides/deployment.md`。
 - 網頁介面：`docs/specs/web-ui.md`。
 
 倉庫修改、分支、PR 與文件治理規則見 [`AGENTS.md`](../../AGENTS.md)；完整文件導航見 [`docs/index.md`](../index.md)。
