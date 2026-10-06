@@ -24,7 +24,7 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 | `canonical_url` | 合法 URI；網址正規化由 [來源收錄契約](./ingestion.md) 負責。 |
 | `source.type` | 非空字串，且必須存在於分類體系 `source_types`。 |
 | `source.url` | 合法 URI。 |
-| `source.identity` | 非空穩定來源識別；來源類型專屬規則由 [來源收錄契約](./ingestion.md) 定義。 |
+| `source.identity` | 非空穩定來源識別；來源類型專屬規則同樣由來源收錄層定義。 |
 | `resource_kind` | `{ ai, user }` 所有權包裝結構；有效值必須存在於分類體系 `resource_kinds`。 |
 | `created_at` | `YYYY-MM-DD`；一般更新不可修改。 |
 | `updated_at` | `YYYY-MM-DD`，不得早於 `created_at`。 |
@@ -147,7 +147,7 @@ Knowledge Card 中由 AI 產生的自然語言內容包含 `title`、`summary` �
 - 更新時，若 AI 分析或標準來源狀態有實質變更，`updated_at` 更新為擷取日期。
 - 若分析內容沒有實質變更，保留原 `updated_at`。
 - 成功處理已接受證據時，`last_checked_at` 更新為擷取日期。
-- 驗證失敗時，不應把來源狀態當成已重新檢查成功；詳見 [ingestion.md](./ingestion.md)。
+- 驗證失敗時，不應把來源狀態當成已重新檢查成功；詳見 [來源收錄契約](./ingestion.md)。
 
 ## 穩定路徑
 
