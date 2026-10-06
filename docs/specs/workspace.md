@@ -22,11 +22,11 @@ Knowledge Card Workspace 是 Knowledge Card 的私人資料根目錄。Knowledge
 
 `profile/` 保存使用者明確授權的私人背景與分析政策。這些政策不是 Knowledge Card 正文來源，也不會因為位於 Knowledge Card Workspace 就自動取得引用權限；背景是否可供分析、是否可寫入卡片，仍依各 Knowledge Card Workspace 的明確授權處理。
 
-Knowledge Card Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，建立、重新分析 Knowledge Card 或執行 Remote Ingest 分析時，在產生 AI 自然語言內容前必須先讀取；若不存在，使用執行契約中的預設語言規則。
+Knowledge Card Workspace 可以用 `profile/language-policy.md` 定義 Knowledge Card 的輸出語言與術語偏好。若此檔存在，建立、重新分析 Knowledge Card 或執行 Remote Ingest 分析時，在產生 AI 自然語言內容前必須先讀取；若不存在，使用 [執行契約](../../prompts/RUNTIME.md) 中的預設語言規則。
 
 語言政策只控制 AI 產生的敘述，不可：
 
-- 覆蓋卡片結構、分類體系、證據綁定或所有權契約。
+- 覆蓋 [Knowledge Card 契約](./card.md) 定義的卡片結構、分類體系與所有權規則，或 [分析與研究契約](./analysis.md) 定義的證據綁定。
 - 改寫已接受證據、直接引用或程式碼。
 - 修改任何 `*.user` 覆寫或完整 `## 使用者備註`。
 - 從聊天記憶或其他未授權來源補充私人背景。
