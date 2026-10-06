@@ -247,7 +247,7 @@ state/research/github/{owner-lower}--{repo-lower}.json
 - `unknowns`。
 - 任何 GitHub 或模型憑證。
 
-`npm run research-state:validate` 會驗證研究狀態的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id、來源識別與標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。
+研究狀態驗證器會檢查研究狀態的結構與固定路徑，並交叉確認目前已接受來源狀態的 `evidence_digest`、擷取時間與 Card 對應，以及實際 Card 的 id、來源識別與標準網址。GitHub 的關鍵覆蓋維度不可在持久化狀態中改成 `not_applicable`。實際驗證命令見 [開發與驗證指南](../guides/development.md)。
 
 研究追溯狀態是分析證據的精簡持久化投影，不是已接受來源狀態，也不能取代分析證據包本身。
 
