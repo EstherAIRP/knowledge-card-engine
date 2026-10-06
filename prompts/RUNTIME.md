@@ -99,7 +99,7 @@ Agent 只處理交接結果明確要求的下一步，例如提供必要判定�
 
 整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md)、[Knowledge Card 契約](../docs/specs/card.md) 與 Workspace 語言政策，把既有理解整理成正式分析結果。更新既有 Card 時，也是在形成本輪理解後才讀舊 Card；舊 AI 正文不是本輪事實證據。
 
-分析版本、研究計畫、證據包、摘要值綁定、品質門檻與研究追溯，全部以 [分析與研究契約](../docs/specs/analysis.md) 為準。Runtime 不再重複欄位或版本規則。
+分析版本、研究計畫、證據包、摘要值綁定、品質門檻與研究追溯，全部以 [分析與研究契約](../docs/specs/analysis.md) 為準。本文件不重複欄位或版本規則。
 
 ## 7. 新建、更新與所有權
 
