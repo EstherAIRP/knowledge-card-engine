@@ -12,8 +12,8 @@ test('Knowledge Editor requires final evidence reread before loading card style'
   const prompt = await readFile(editorUrl, 'utf8');
 
   for (const required of [
-    '重新閱讀目前的 `evidence.json`',
-    '重新閱讀目前 `research-evidence.json` 最終研究證據包',
+    '只有本輪要用來分析的證據已經固定後，才開始這一步',
+    '依目前結果逐一讀取',
     '先形成新的整體理解',
     '完成理解後，才讀 `CARD_STYLE.md`',
     '既有 Card 的舊 AI 正文不是本輪事實來源',
@@ -94,4 +94,27 @@ test('Deferred card style does not change analysis schema or require persistent 
 
   assert.ok(analysisDoc.includes('不新增 `analysis_version`、不新增持久化欄位'));
   assert.ok(cardContract.includes('寫作樣式不改變前置中繼資料 Schema，也不新增或刪除頂層正文段落'));
+});
+
+test('Prompt roles do not duplicate source or data contracts', async () => {
+  const [runtime, editor, style] = await Promise.all([
+    readFile(runtimeUrl, 'utf8'),
+    readFile(editorUrl, 'utf8'),
+    readFile(styleUrl, 'utf8')
+  ]);
+
+  assert.ok(runtime.includes('本文件只描述它們應以什麼順序銜接，不建立第二套領域規格'));
+  assert.ok(runtime.includes('本文件不重複欄位或版本規則'));
+  assert.ok(editor.includes('本提示只負責「拿到最終證據之後，應如何閱讀與形成理解」'));
+  assert.ok(style.includes('本文件只負責最終內容的表達方式'));
+
+  for (const duplicatedDetail of [
+    'completed_rounds: 0',
+    'max_expansion_rounds',
+    'confidence >= 0.90'
+  ]) {
+    assert.ok(!runtime.includes(duplicatedDetail), `runtime duplicated domain detail: ${duplicatedDetail}`);
+    assert.ok(!editor.includes(duplicatedDetail), `editor duplicated domain detail: ${duplicatedDetail}`);
+    assert.ok(!style.includes(duplicatedDetail), `style duplicated domain detail: ${duplicatedDetail}`);
+  }
 });
