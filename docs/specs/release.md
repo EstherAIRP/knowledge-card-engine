@@ -69,34 +69,19 @@ data/graph.json
 
 ## 建置與發布
 
-Knowledge Card Engine 命令列工具：
+發布流程依序完成生成資料建置、發布描述建立、版本鏈結檢查與目前發布指標推進。
 
-```bash
-npm run generated:build -- /path/to/workspace \
-  --engine-sha=<E> \
-  --source-sha=<S> \
-  --generated-at=<iso> \
-  --mode=incremental
+- 生成資料建置前先驗證 Knowledge Card Workspace、分類體系與 Knowledge Card 集合，再建立五個正式生成產物。
+- 發布定案時固定 `manifest`、發布描述與目前發布指標。
+- 發布驗證會重新檢查目前發布資料、資訊清單與 E／S／P 版本鏈結。
+- 可重用工作流程 `.github/workflows/release-workspace.yml` 固定 E 與 S，並以倉庫層級並行控制避免較舊與較新的執行同時推進目前發布版本。
+- 來源在建置期間前進時，較舊的執行不得更新發布指標。
+- 只含生成資料或只更新發布指標的機器提交，必須由 Workspace 觸發條件排除，避免形成發布循環。
+- 使用本機語意嵌入向量時，模型下載或推論失敗視為建置失敗，不得靜默改用較弱方法。
 
-npm run release:finalize -- /path/to/workspace \
-  --engine-sha=<E> \
-  --source-sha=<S> \
-  --published-sha=<P> \
-  --release-id=<id> \
-  --created-at=<iso> \
-  --mode=incremental
+只要目前發布指標尚未前進，私人網站就繼續讀取上一個完整發布版本。
 
-npm run release:validate -- /path/to/workspace
-```
-
-`generated:build` 先驗證 Knowledge Card Workspace、分類體系與 Knowledge Card 集合，再建立五個生成產物。`release:finalize` 固定 `manifest`、發布描述與目前發布指標。`release:validate` 重新驗證完整的目前發布資料。
-
-可重用工作流程 `.github/workflows/release-workspace.yml` 固定 E 與 S，執行建置、僅含生成資料的提交、版本鏈結／過期防護、發布定案與發布指標推進。工作流程使用倉庫層級並行控制，避免較舊與較新的執行同時更新目前發布版本。
-
-生成資料建置使用本機語意嵌入向量時，工作流程會快取 Transformers 模型檔；模型下載或推論失敗視為建置失敗，不得用較弱方法靜默替代。只要發布指標尚未前進，網站就繼續讀取上一個完整發布版本。
-
-來源在建置期間已前進時，較舊的執行不得更新發布指標。僅含生成資料／僅含發布指標的機器提交必須由 Knowledge Card Workspace 的觸發條件排除，避免形成發布循環。
-
+實際建置、定案與驗證命令集中在 [開發與驗證指南](../guides/development.md)；本契約只定義發布必須滿足的版本與一致性規則。
 ## 私人讀取模型
 
 本節只定義授權完成後「讀哪一版資料」。授權是否成立由 [私人網站與授權契約](./private-site.md) 決定；發布讀取器不得自行放寬授權條件。
