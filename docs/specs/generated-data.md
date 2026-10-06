@@ -34,10 +34,10 @@ data/graph.json
 
 - `title`
 - `summary`
-- effective `classification.categories`
-- effective `classification.tags`
-- effective `actions`
-- effective relevance
+- 生效後的 `classification.categories`
+- 生效後的 `classification.tags`
+- 生效後的 `actions`
+- 生效後的 `relevance`
 - `一句話介紹`
 - `核心概念`
 - `架構與技術`
@@ -45,7 +45,7 @@ data/graph.json
 
 `navigation.categories`、`resource_kind`、使用者備註與其他正文段落不參與嵌入向量輸入。向量產物保存 `provider`、`model`、`method`、`dimensions`、每張 Card 的輸入雜湊與向量；只有供應器、模型、維度與輸入雜湊都相容時，才能沿用既有向量。
 
-`deterministic-token-hash` 仍可作為明確指定的備援供應器，但不是正式環境預設，也不得標示為神經網路或模型嵌入向量。正式的本機嵌入向量建置失敗時，生成資料建置必須失敗，不得靜默切換成 token hash。
+`deterministic-token-hash` 仍可作為明確指定的備援供應器，但不是正式環境預設，也不得標示為神經網路或模型嵌入向量。正式的本機嵌入向量建置失敗時，生成資料建置必須失敗，不得靜默切換成 `deterministic-token-hash`。
 
 搜尋索引涵蓋 Knowledge Card 的 `title`、`summary`、有效分類類別／標籤、資源種類、動作與 Markdown 正文文字。伺服器端執行查詢正規化與確定性評分。
 
@@ -57,7 +57,7 @@ data/graph.json
 
 自動 Card↔Card 關聯使用兩組可追溯訊號：
 
-- taxonomy：effective categories × 0.45、tags × 0.30、高相關度維度 × 0.20、actions × 0.05。
+- 分類體系訊號：生效後的 categories × 0.45、tags × 0.30、高相關度維度 × 0.20、actions × 0.05。
 - 語意：E5 原始餘弦相似度經 `0.70..0.95 → 0..1` 正規化。
 
 分類訊號與語意訊號以 0.40／0.60 組合。候選發現與正式發布分成兩階段：預設候選訊號門檻為分類分數 ≥ 0.08 或語意分數 ≥ 0.20，且組合分數 ≥ 0.30；未使用外部分類器時，只有組合分數 ≥ 0.48 且通過 `fallback_top_k` 的候選會成為正式關聯。
@@ -73,7 +73,7 @@ data/graph.json
 - 方法
 - 分類／語意／原始語意／可選 LLM 分數
 - 信心分數、理由與分類器
-- shared signals／證據與追溯資訊
+- 共用訊號、證據與追溯資訊
 
 有方向性的關聯在標準配對處理後仍保留主體／客體語意。
 
