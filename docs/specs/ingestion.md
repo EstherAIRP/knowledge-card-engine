@@ -320,7 +320,7 @@ state/sources/threads/{root-shortcode-slug}-{identity-hash}.json
 
 保存根來源識別／標準網址、作者、串文狀態／總數／驗證方式、每個 `parts[]` 項目的短碼／標準網址／回覆與根貼文結構、文字位元組數，以及文字／媒體／引用 SHA-256 與 Card 對應；不保存 Threads 原文。
 
-`npm run source-state:validate` 會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id／來源識別／標準網址與實際 Card 相同。
+來源狀態驗證器會遞迴驗證 `state/sources/**` 的已支援來源供應者，並確認 `card_path` 位於設定的知識根目錄，且狀態中的 Card id、來源識別與標準網址和實際 Card 相同。實際驗證命令見 [開發與驗證指南](../guides/development.md)。
 
 ### 研究追溯狀態
 
@@ -425,28 +425,8 @@ Threads 不使用 GitHub 研究計畫／證據包，也不因 GitHub 的研究�
 
 `state/ingestion/**` 不得合併到 Workspace `main`。
 
-## CLI
+## 操作入口
 
-GitHub：
+GitHub、Threads 與 Remote Ingest 都必須使用 Engine 提供的正式收錄入口，不得以手工寫檔取代來源驗證、分析綁定與 Workspace 寫入器。
 
-```bash
-npm run ingest:github -- /path/to/workspace https://github.com/owner/repo \
-  --analysis-file=analysis.json
-```
-
-Threads：
-
-```bash
-npm run ingest:threads -- /path/to/workspace https://threads.com/share/token \
-  --analysis-file=analysis.json
-```
-
-兩者都可用 `--evidence-file=accepted-evidence.json` 注入已取得且仍需重新驗證的證據，並可用 `--captured-at=<iso>` 固定擷取時間。GitHub 即時擷取需要授權時使用 `GITHUB_TOKEN`；密鑰不得提交。
-
-受控 Remote Ingest 執行器：
-
-```bash
-npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.json
-```
-
-分析 JSON 必須已綁定本次已接受證據；CLI 不會動態載入任意分析器程式。
+實際 CLI 指令、參數與 Remote Ingest 執行方式集中在 [開發與驗證指南](../guides/development.md)。本契約只定義來源識別、已接受證據、受控擷取、交接守門與正式寫入前置條件。

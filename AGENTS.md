@@ -1,36 +1,34 @@
 # AGENTS.md
 
-本檔定義 `knowledge-card-engine` 目前有效的開發與資料規則。規則採漸進式揭露：先判定任務類型，再讀取該任務必要契約；不得為保險而預先掃描整個倉庫、全部正式文件、所有分支或 PR。
+本檔定義 `knowledge-card-engine` 目前有效的開發、資料安全與提交規則。開始工作時先判斷任務類型，再依 [`docs/index.md`](./docs/index.md) 讀取必要的正式契約；不要為了保險預先掃描整個倉庫、全部文件或所有分支。
 
 ## 倉庫責任
 
-- 保存核心程式、網站程式邊界、Schema、通用規則、共用 GitHub Actions、正式現行文件與合成測試資料。
-- 真實私人背景、專案、Knowledge Card、人工設定、來源狀態、生成索引與發布紀錄只屬於私人 Knowledge Card Workspace，不得複製到本公開倉庫。
-- 密鑰不得提交，也不得出現在測試、PR、日誌或建置產物。
+- 本倉庫保存核心程式、網站程式邊界、Schema、通用規則、共用 GitHub Actions、正式現行文件與合成測試資料。
+- 真實私人背景、專案、Knowledge Card、人工設定、來源狀態、生成資料與發布紀錄屬於私人 Knowledge Card Workspace，不得複製到本公開倉庫。
+- 公開測試、範例、PR、執行日誌與建置產物不得包含真實私人資料；需要資料時只能使用公開資訊或明確合成資料。
+- 密鑰、權杖、私鑰與其他憑證不得提交到 Git，也不得出現在測試、PR、日誌或建置產物。
+
+Engine／Workspace 的系統邊界以 [架構文件](./docs/architecture/overview.md) 為權威來源；本檔只負責把這些邊界轉成公開倉庫的工程守門規則。
 
 ## 開工前：漸進式揭露
 
-1. 先讀本檔與 [`prompts/RUNTIME.md`](./prompts/RUNTIME.md) 的任務路由；只有 Knowledge Card Engine 開發或需要理解倉庫能力時才額外讀 `README.md`。
-2. 依任務類型從 [`docs/index.md`](./docs/index.md) 只讀相關正式契約、Schema、程式與測試，不把索引中的全部文件當成必讀清單。
-3. 單張 Knowledge Card 收錄／更新屬於 Knowledge Card Workspace 的日常資料任務，不應因此掃描 Knowledge Card Engine 的全部程式、文件、分支或 PR；只讀 Workspace 鎖定之 Engine 版本中，來源收錄、分析、Knowledge Card 與寫入器所需的契約。
-4. 只有會修改 `knowledge-card-engine` 倉庫的任務，才確認 `main`、相關既有分支、未合併 PR 與工作範圍；搜尋應以本次任務關鍵字或預定分支名稱為界，不預設列出全部分支或 PR。
-5. 以目前 Schema、執行契約、測試與本次相關正式規格交叉確認行為；若彼此衝突，先把衝突視為缺陷處理，不自行猜測。
+1. 先讀本檔與 [`prompts/RUNTIME.md`](./prompts/RUNTIME.md)，確認任務屬於哪個領域。
+2. 依 [`docs/index.md`](./docs/index.md) 只讀本次任務相關的正式契約、Schema、程式與測試。
+3. 單張 Knowledge Card 收錄或更新屬於 Workspace 日常資料任務，不應因此掃描 Engine 全部程式與文件；只讀 Workspace 鎖定 Engine 版本中實際需要的契約。
+4. 只有要修改本倉庫時，才確認 `main`、目前分支、可取得的工作樹狀態、相關短期分支與未合併 PR，避免覆蓋或重複開發。
+5. 若 Schema、正式契約、驗證器、測試與實際行為互相衝突，把它視為缺陷，不自行挑選較方便的規則。
 
-## 資料與修改規則
+## 修改規則
 
-- 只修改本次任務必要範圍；保留與本次任務無關的既有修改。
-- Knowledge Card 必須遵守 [docs/specs/card.md](./docs/specs/card.md)。
-- GitHub／Threads 收錄必須遵守 [docs/specs/ingestion.md](./docs/specs/ingestion.md)；不得以 URL 路徑代稱、分享 token、時間接近、倉庫名稱或模型記憶取代已接受證據。Threads 未證明完整串文時必須驗證失敗即拒絕。
-- 一般重新分析不得修改穩定 `id`、`created_at`、任何 `*.user` 覆寫或完整 `## 使用者備註`。
-- 相同來源應解析為既有 Knowledge Card 更新；來源識別或標準網址發生衝突時必須驗證失敗即拒絕。
-- 已接受來源狀態只能在證據、分析綁定、所有權與完整 Card 集合驗證成功後推進。綁定 GitHub 研究證據的分析，其研究追溯狀態必須和 Card／已接受來源狀態在同一交易中推進；不得永久保存已選來源原文。
-- Remote Ingest 交接只能在專用 `chore/ingest-*` Workspace 分支執行；`state/ingestion/` 的請求、已接受證據、Threads 語意交接、GitHub 研究證據、必要時的 GitHub 研究計畫與分析都是暫存交換資料，正式套用成功後必須移除，不得進入 Workspace `main`。GitHub 準備階段只固定倉庫版本、建立受限探索與空的第 0 輪研究狀態；Agent 必須先提交與摘要值綁定的研究計畫及選定路徑，執行器才擷取第一輪已驗證研究證據。第一輪證據包形成後，Agent 可提交分析，或在剩餘額度內再提交一次與摘要值綁定的研究計畫。選定路徑不以探索候選集合當作允許清單，但必須是同一固定版本中可驗證的安全倉庫相對文字檔，且不得位於 Engine 排除目錄。Agent 的請求、判定、研究計畫與分析提交仍必須遵守單一輸入檔與執行器父提交版本鏈結守門，不得修改由執行器管理的證據狀態。GitHub 研究證據交接可暫存已選來源原文供分析，但正式研究狀態只能保留精簡追溯資訊。
-- 私人 API 必須在讀取伺服器端 Workspace／發布快取前重新驗證使用者的 Workspace 資格；前端 AuthGate 不能作為唯一授權邊界。
-- 搜尋、向量、關聯、Concept、圖譜與發布中繼資料都屬於生成／私人資料；真實產物不得進入公開引擎、PR、測試、日誌或建置產物。
-- 導覽分類體系與語意關聯不得混為同一維度；人工關聯的 `block`／`pin`／`override` 規則必須優先於生成結果。
-- 發布讀取器必須驗證 E／S／P 版本鏈結、manifest 雜湊／大小與目前發布指標；發布不完整時必須驗證失敗即拒絕，不能混讀最新 Card 與舊索引。
-- GitHub user access token、refresh token、installation token、App private key、client secret 不得回傳到瀏覽器；瀏覽器的工作階段 Cookie 只保存不可推導憑證的識別值。
-- 公開範例與測試只能使用合成資料。
+- 只修改本次任務必要範圍，保留與本次任務無關的既有修改。
+- 資料形狀、所有權、來源收錄、分析研究、生成資料、發布、授權與介面規則，依 [`docs/index.md`](./docs/index.md) 的權威來源對照執行；本檔不另行定義第二套領域規格。
+- 支援來源的 Knowledge Card 建立或更新必須走目前 Engine 的正式收錄與 Workspace 寫入流程，不得手工繞過驗證器模擬成功。
+- 相同來源應更新既有 Knowledge Card；來源識別或標準網址發生衝突時，不得自行拆成新卡片規避衝突。
+- 使用者管理內容、穩定欄位與所有權規則以 [Knowledge Card 契約](./docs/specs/card.md) 為準；一般重新分析不得藉其他任務改寫人工狀態。
+- `data/`、`releases/` 與其他生成結果由正式流程管理；人工意圖應寫入相應設定，不直接修改生成產物。
+- 私人 API、工作階段與伺服器端憑證遵守 [私人網站與授權契約](./docs/specs/private-site.md)；前端狀態不能取代伺服器授權。
+- 不得刪除測試、放寬驗證規則或以假資料讓驗證看似成功。
 
 ## 正式文件規則
 
@@ -39,16 +37,17 @@
 - 產品代際、遷移比較、開發路線圖、開發階段文件、任務計畫、封存文件與過期設計不得放入正式文件。
 - 一般敘述使用自然繁體中文；已有成熟中文譯名的一般技術概念優先使用中文，不因來源或程式本身是英文就沿用中英夾雜句型。
 - 官方專案／產品名稱、倉庫名稱、程式碼、API、函式、參數、欄位、識別字、指令、檔案路徑、縮寫、錯誤碼、狀態值，以及不宜硬譯的標準名稱保留原文。
-- `Workspace` 必須先判斷指涉再決定寫法：泛指檔案系統或執行位置時寫「工作區」，例如「工作區根目錄」；指 Knowledge Card 的正式私人資料元件時寫 `Knowledge Card Workspace`，上下文明確時可簡稱 `Workspace`；指 GitHub 倉庫名稱時使用實際名稱 `knowledge-card-workspace`，不得翻譯。
-- `Engine` 同樣依指涉處理：正式產品名稱使用 `Knowledge Card Engine`，倉庫名稱使用 `knowledge-card-engine`；僅在泛指一般引擎概念時使用「引擎」。
-- 重要術語首次需要中英對照時，可使用「中文（English）」格式；後續優先使用中文。不得以單字表機械替換整份文件，應以整句重寫維持技術語意。
-- `schema_version`、`analysis_version`、API／通訊協定／資料格式版本等可由機器驗證的版本屬於現行契約，可以保留並必須說明其驗證行為。
-- 文件與執行行為不一致視為缺陷；不能以歷史敘事或「沿用既有行為」代替完整現行定義。
+- `Workspace`、`Engine` 等詞先判斷指涉再決定寫法；正式元件與倉庫名稱保留正式名稱，一般概念則用自然中文。
+- `schema_version`、`analysis_version`、API／通訊協定／資料格式版本等可由機器驗證的版本屬於現行契約，可以保留並應說明其驗證行為。
+- 同一規則只設一個主要權威來源；其他文件只保留必要摘要並連回權威文件。
+
+完整文件分工與權威來源對照見 [`docs/index.md`](./docs/index.md)。
 
 ## 分支與交付
 
-- `main` 是唯一長期分支，不 force push。
-- 一項任務使用一個短期分支：`feat/`、`fix/`、`docs/`、`chore/` 或 `migration/`。
+- `main` 是唯一長期分支，不得 force push。
+- 一項任務使用一個短期分支，名稱使用 `feat/`、`fix/`、`docs/`、`chore/` 或 `migration/` 前綴。
 - 正常變更透過 PR，原則採 Squash merge；合併後刪除工作分支。
-- 執行與變更相關的測試、格式檢查、建置與資料驗證。
-- 未執行或失敗的檢查必須明確回報，不得刪除測試、放寬規則或以假資料冒充成功。
+- 合併前執行與變更相關的測試、格式檢查、建置與資料驗證。
+- 未執行或失敗的檢查必須明確回報。
+- 完成時回報主要變更、驗證結果、commit／PR、部署狀態，以及仍未完成或無法驗證的事項。純文件任務不要求無關部署。

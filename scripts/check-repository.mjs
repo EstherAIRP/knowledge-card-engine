@@ -16,6 +16,7 @@ const requiredFiles = [
   'docs/index.md',
   'docs/architecture/overview.md',
   'docs/guides/development.md',
+  'docs/guides/deployment.md',
   'docs/specs/workspace.md',
   'docs/specs/card.md',
   'docs/specs/ingestion.md',
@@ -29,6 +30,7 @@ const requiredFiles = [
   'schema/engine-lock.schema.json',
   'schema/knowledge-card.schema.json',
   'schema/taxonomy.schema.json',
+  'schema/threads-continuation-judgement.schema.json',
   '.github/workflows/validate.yml',
   '.github/workflows/validate-workspace.yml',
   '.github/workflows/release-workspace.yml',
@@ -141,6 +143,15 @@ for (const relative of documentationFiles) {
       issue.path + ':' + issue.line + ': ' + issue.message +
       ' Matched: ' + JSON.stringify(issue.match)
     );
+  }
+}
+
+const schemaReadmeText = fs.readFileSync(path.join(root, 'schema/README.md'), 'utf8');
+const schemaFiles = fs.readdirSync(path.join(root, 'schema'))
+  .filter((name) => name.endsWith('.schema.json'));
+for (const schemaFile of schemaFiles) {
+  if (!schemaReadmeText.includes('`' + schemaFile + '`')) {
+    errors.push('Schema index is missing: ' + schemaFile);
   }
 }
 
