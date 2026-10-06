@@ -15,16 +15,19 @@ knowledge-card-engine/
 │
 ├─ docs/
 │  ├─ index.md
-│  ├─ architecture/\n│  │  └─ overview.md
-│  ├─ workspace.md
-│  ├─ card-contract.md
-│  ├─ ingestion.md
-│  ├─ analysis.md
-│  ├─ generated-data.md
-│  ├─ release.md
-│  ├─ private-site.md
-│  ├─ web-ui.md
-│  └─ development.md
+│  ├─ architecture/
+│  │  └─ overview.md
+│  ├─ specs/
+│  │  ├─ workspace.md
+│  │  ├─ card.md
+│  │  ├─ ingestion.md
+│  │  ├─ analysis.md
+│  │  ├─ generated-data.md
+│  │  ├─ release.md
+│  │  ├─ private-site.md
+│  │  └─ web-ui.md
+│  └─ guides/
+│     └─ development.md
 │
 ├─ prompts/
 │  ├─ README.md
@@ -65,8 +68,9 @@ knowledge-card-engine/
 - Engine／Workspace 邊界
 - 各模組責任
 - 高階資料流
-- 資料權威與所有權
-- 私人網站讀取資料流
+- 資料權威
+- Engine／Workspace 邊界
+- 私人讀取高階流程
 
 這份文件負責跨模組的現行架構，不取代各領域的詳細契約。
 
@@ -78,11 +82,11 @@ knowledge-card-engine/
 | --- | --- |
 | [Knowledge Card Workspace 契約](./specs/workspace.md) | Workspace 結構、標準路徑、背景政策、Engine 版本鎖定與相容性驗證 |
 | [Knowledge Card 契約](./specs/card.md) | Card 前置中繼資料、分類體系、AI／使用者所有權、正文、唯一性與穩定路徑 |
-| [來源收錄契約](./specs/ingestion.md) | URL 正規化、來源識別、GitHub／Threads 已接受證據、新建／更新、安全寫入與來源狀態 |
-| [分析與研究契約](./specs/analysis.md) | 分析版本、重新閱讀與整合、研究計畫、分析證據包、品質門檻與證據綁定 |
+| [來源收錄契約](./specs/ingestion.md) | URL 正規化、來源識別、GitHub／Threads 已接受證據、固定版本來源擷取、新建／更新與來源狀態 |
+| [分析與研究契約](./specs/analysis.md) | 研究計畫、分析證據包、分析版本、品質門檻、證據綁定與研究追溯 |
 | [生成資料、搜尋與圖譜契約](./specs/generated-data.md) | 搜尋、向量、Card↔Card 關聯、人工關聯、Concept、Graph 與生成資料驗證 |
-| [一致發布契約](./specs/release.md) | E／S／P、資訊清單、發布指標、過期防護、私人讀取版本與回復 |
-| [私人網站與授權契約](./specs/private-site.md) | GitHub App 登入、工作階段、資格驗證、私人 API、Workspace 讀取與部署邊界 |
+| [一致發布契約](./specs/release.md) | E／S／P、資訊清單、發布指標、過期防護、發布快照與回復 |
+| [私人網站與授權契約](./specs/private-site.md) | GitHub App 登入、工作階段、Workspace 資格驗證、私人 API 與授權後讀取邊界 |
 | [網頁介面與版面配置](./specs/web-ui.md) | Web UI 模組、樣式責任、版面、響應式、無障礙與介面驗證 |
 
 ## 操作與開發指南
