@@ -55,7 +55,7 @@ knowledge-card-engine/
 | 文件 | 回答的問題 | 定位 |
 | --- | --- | --- |
 | [README](../README.md) | Knowledge Card 是什麼、Engine 做什麼 | 第一次閱讀的產品與系統入口 |
-| [AGENTS.md](../AGENTS.md) | 如何安全修改此 repository | 倉庫工程、所有權、驗證、分支與提交規則 |
+| [AGENTS.md](../AGENTS.md) | 如何安全修改此 repository | 倉庫工程、資料安全、文件、驗證、分支與提交規則 |
 | [本索引](./index.md) | 需要讀哪份文件 | 正式文件的唯一導航 |
 
 ## 架構
@@ -70,7 +70,7 @@ knowledge-card-engine/
 - 各模組責任
 - 高階資料流
 - 資料權威
-- Engine／Workspace 邊界
+- 公開 Engine 與私人 Workspace 的資料邊界
 - 私人讀取高階流程
 
 這份文件負責跨模組的現行架構，不取代各領域的詳細契約。
