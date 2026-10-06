@@ -1,6 +1,6 @@
 # 網頁介面與版面配置
 
-`apps/web` 產生單頁、唯讀的 Knowledge Radar 瀏覽器介面外殼。私人資料只在使用者完成授權後由已授權 API 取得；樣式與版面模組不得嵌入 Knowledge Card、生成資料或憑證。
+`apps/web` 產生單頁、唯讀的 Knowledge Radar 瀏覽器介面外殼。私人資料只在使用者依 [私人網站與授權契約](./private-site.md) 完成授權後，由已授權 API 取得；樣式與版面模組不得嵌入 Knowledge Card、生成資料或憑證。
 
 ## 模組結構
 
