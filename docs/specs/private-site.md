@@ -225,96 +225,28 @@ Knowledge Card Engine 以 RS256 GitHub App JWT 建立安裝存取權杖。JWT `i
 
 GitHub REST 請求使用 API 版本 `2026-03-10`。
 
-## UI
+## UI 整合邊界
 
-`apps/web` 提供單頁唯讀 Knowledge Radar 介面：
+`apps/web` 提供唯讀的 Knowledge Radar 介面，但 UI 不建立自己的授權或資料讀取規則。
 
-- 未登入：以 Knowledge Radar 品牌頁提供 GitHub 登入。
-- `cancelled`／`invalid`／`forbidden`／`unavailable`：顯示同一視覺系統的登入錯誤狀態。
-- 已登入首頁：使用寬版 Radar 頁面框架、主視覺、統計資訊、搜尋／篩選控制項與響應式 Knowledge Card 網格。
-- 初始啟動、Knowledge Card 集合、Knowledge Card 詳細資料與圖譜非同步讀取期間，介面先顯示 Knowledge Radar 載入狀態：品牌化 Radar 動畫、狀態文案與骨架內容面板；載入畫面只含公開介面外殼，不預載私人 Knowledge Card。`prefers-reduced-motion: reduce` 會停用載入動畫。
-- Knowledge Card 列表摘要只使用 `/api/cards` 已授權回傳的 title、summary、source／resource kind、navigation categories、tags、relevance、actions、status 與日期；首頁可依這些中繼資料篩選與排序，但不額外下載私人正文。
-- Knowledge Card 詳細資料瀏覽器路由使用 `/knowledge/<stable-id>`。點開 Knowledge Card 後以 History API 寫入永久連結；重新整理或直接開啟該網址時，伺服器只回公開介面外殼，瀏覽器完成工作階段與 Knowledge Card Workspace 授權後，才由 `/api/cards/:id` 取得正文並恢復同一張 Knowledge Card。瀏覽器上一頁／下一頁由 `popstate` 依目前 URL 在 Knowledge Card 詳細資料與首頁之間切換；路由本身不繞過私人 API 授權。
-- Knowledge Card 詳細資料：先以寬版中繼資料內容面板顯示來源、狀態、Navigation Category、Action、Relevance、Tag 與日期；Markdown 正文維持較窄閱讀寬度。桌機右側提供固定文章目錄；較窄可視區域則把「文章目錄」整合進主固定頁首，與 Cards／Search／Graph 共用同一列，點擊後在頁首下方展開同一份章節清單，不再額外保留第二條固定區域導覽。目錄依序納入正文 H2／H3，以及實際存在的 Concept Neighborhood、Related Knowledge 頂層區段；點擊可捲動定位，並隨閱讀位置標示目前章節。Concept Neighborhood 與 Related Knowledge 在正文後維持寬版內容區，以卡片網格呈現。Concept 卡會切換至 Graph 並以該 Concept 作為查詢；Related Knowledge 顯示鄰近 Card 摘要，以及目前關聯產物可提供的 score／evidence／manual note。
-- 搜尋沿用同一套頁面框架、內容面板、品牌色與控制項；資料只由已授權的 `/api/search` 取得。
-- 圖譜介面使用與 Cards 首頁一致的 Radar 頁面語言：主視覺內容面板、四格統計與圓角探索／篩選面板；其下維持語意可視區域調整、依節點感知的指標擷取（pointer capture）、滑鼠／觸控平移加雙指／滾輪縮放、Knowledge Card 選取、焦點／全域模式、響應式檢視器抽屜、語意鄰近清單、節點標籤優先序、關聯顯示與圖譜篩選。資料只由已授權的 `/api/graph` 提供。
-- `/api/graph` 在目前發布快照上投影圖譜檢視模型：Knowledge Card 中繼資料、Concept 中繼資料、具型別邊、版面／統計，以及由目前發布版本向量即時計算的 `semantic.neighborsByCard`／`semantic.distancesByCard`。這個投影不寫回生成產物，也不跨發布版本讀資料。
-- 圖譜指標規則：`pointerdown` 發生在 `.graph-node` 上時不得建立拖曳狀態或指標擷取；Knowledge Card 節點的 `click`／`Enter`／`Space` 必須可進入已選檢視器。
-- 頁首只保留 Knowledge Radar 品牌與 Cards／Search／Graph 導覽，不顯示 `release_id`、GitHub `avatar`／`login` 或登出按鈕；工作階段與發布 API 契約仍保留。401／403 會立即清除前端目前私人狀態，回到授權介面。
-- Markdown 仍以安全 DOM 建構，不使用 `innerHTML` 解譯 Knowledge Card 原文；支援 H1–H3、段落、無序／有序列表、區塊引用、水平分隔線、圍欄程式碼區塊、表格、粗體／斜體、行內程式碼、HTTP(S) 連結與相對 Knowledge Card `.md` 連結。圍欄程式碼區塊提供本機 Clipboard API 複製操作；相對 Knowledge Card 連結會以穩定 ID 開啟私人 Knowledge Card；原始 HTML 不執行，Markdown 圖片不自動載入外部資源。
-- UI 支援淺色／深色配色；桌機版 Radar 網格為三欄，較窄可視區域依序收斂為兩欄與單欄。
+- 未授權狀態只顯示公開介面外殼。
+- Card、搜尋與圖譜資料只能由本文件定義的已授權 API 取得。
+- Knowledge Card 永久連結與瀏覽器歷程不能繞過伺服器端工作階段與 Workspace 資格重查。
+- 401／403 回應必須讓前端清除目前私人狀態並回到授權流程。
+- 介面外殼不得預載私人 Knowledge Card、生成索引或憑證。
 
-介面外殼本身不包含任何私人 Knowledge Card、生成索引或憑證；外觀與版面調整不能改變伺服器端授權與固定於發布版本的讀取邊界。樣式模組、頁面框架、閱讀寬度、響應式斷點與 UI 回歸契約見 [web-ui.md](./web-ui.md)。
+版面、路由、Markdown 呈現、圖譜互動、響應式與無障礙等介面規則，以 [網頁介面與版面配置](./web-ui.md) 為權威來源。
 
-## 執行環境設定
+## 部署邊界
 
-需要：
+私人網站的部署不得改變本文件的授權與憑證模型：
 
-```text
-KC_PUBLIC_URL
-KC_SESSION_SECRET
-KC_GITHUB_APP_ID
-KC_GITHUB_CLIENT_ID
-KC_GITHUB_CLIENT_SECRET
-KC_GITHUB_PRIVATE_KEY
-KC_GITHUB_INSTALLATION_ID
-KC_WORKSPACE_OWNER
-KC_WORKSPACE_REPO
-```
+- `KC_PUBLIC_URL` 必須對應正式 HTTPS origin；OAuth 回呼、同源檢查與 Cookie 安全屬性都以此為基準。
+- 單一處理程序可使用記憶體工作階段儲存區作為參考實作；多執行個體或無伺服器環境必須使用可共享的伺服器端工作階段儲存區。
+- Vercel 轉接器只有在共用 REST 工作階段儲存區設定完整時才啟用登入能力，不能退回單一處理程序記憶體模式。
+- 部署平台的逾時、快取或平行讀取最佳化不得降低資格重查、資料大小、雜湊、Schema、所有權與發布一致性的驗證門檻。
 
-無伺服器／多執行個體部署另外需要：
-
-```text
-KC_SESSION_STORE_REST_URL
-KC_SESSION_STORE_REST_TOKEN
-```
-
-可選：
-
-```text
-KC_WORKSPACE_REF=main
-PORT=3000
-```
-
-`KC_SESSION_SECRET` 至少 32 UTF-8 位元組，目前只用來保護短效 OAuth state／PKCE 流程 Cookie；GitHub 使用者存取權杖仍只存在伺服器端工作階段儲存區。
-
-範例見 `apps/server/.env.example`。範例值不是正式秘密。
-
-## 啟動
-
-安裝依賴：
-
-```bash
-npm ci
-```
-
-Node HTTP 轉接器：
-
-```bash
-npm run site:serve
-```
-
-Node 轉接器可以放在 TLS 反向代理伺服器後方；正式瀏覽器來源（origin） 仍以 `KC_PUBLIC_URL` 的 HTTPS origin 為準。
-
-## Vercel 部署
-
-倉庫根目錄的 `vercel.json` 會把公開請求改寫到 `api/site.js` Node Function。此轉接器直接重用 `createPrivateSiteApp`，不另建一套授權邏輯。
-
-Vercel 轉接器**不允許單一處理程序記憶體工作階段的備援模式**：只有同時存在 `KC_SESSION_STORE_REST_URL` 與 `KC_SESSION_STORE_REST_TOKEN` 時，才把完整環境設定交給私人網站。缺少共用工作階段儲存區時，`GET /api/health` 會顯示 `configured: false`，登入 API 不會啟用。
-
-這讓 Vercel 可以先部署取得 HTTPS 主機名稱，再補 GitHub App 回呼設定／秘密 與共用 REST 工作階段資源；未完整配置前不能誤判成可用的私人登入站。
-
-Vercel Function 的 `maxDuration` 設為 30 秒，但 GitHub 與共用 REST 工作階段儲存區的單次上游請求會在 5 秒內中止並採驗證失敗即拒絕，不把託管平台硬性逾時當作應用層錯誤處理。發布快照冷載入時，Knowledge Card 與生成產物 Git blob 採最多 8 個並行讀取；仍逐檔執行既有大小、雜湊、結構規格、所有權與發布一致性驗證，不因效能最佳化降低驗證門檻。
-
-### 線上驗收
-
-正式網站要視為本次發布已完成線上驗收，至少必須確認：
-
-- Knowledge Card Workspace 的發布流程已成功，且目前發布指標已前進到預期版本。
-- 部署本身成功。
-- 使用具資格的帳號完成授權後，`/api/release` 的即時回讀與預期 `release_id`、E／S／P 與 `manifest` 相符。
-
-發布資料本身的完整性與版本鏈結仍以 [一致發布契約](./release.md) 為準；這裡只規定私人網站的部署與授權後讀回驗收。
+環境變數、Node 本機啟動、Vercel 設定與授權後線上回讀的操作步驟，集中在 [私人網站部署指南](../guides/deployment.md)。
 ## 尚未提供的能力
 
 目前私人網站不提供：
