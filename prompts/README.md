@@ -1,10 +1,18 @@
 # 提示詞文件
 
-此目錄保存可公開重用的執行與分析契約。
+`prompts/` 保存 Agent 執行 Knowledge Card 任務時使用的行為契約。它們負責執行順序、來源閱讀、知識取捨與表達方式，不取代 `docs/specs/` 的系統與資料契約。
 
-- [RUNTIME.md](./RUNTIME.md)：定義 Knowledge Card 任務的執行順序、Knowledge Card Engine／Knowledge Card Workspace 邊界、收錄與寫入守門、發布狀態及完成回報。
-- [KNOWLEDGE_EDITOR.md](./KNOWLEDGE_EDITOR.md)：最終證據固定後先讀來源、形成整體理解與做知識取捨；這個階段不先載入 Knowledge Card 寫作樣式。
-- [CARD_STYLE.md](./CARD_STYLE.md)：整體理解形成後才讀取的 Knowledge Card 寫作樣式；把既有理解整理成固定章節與可讀版型。
-- 分析流程不固定 OpenAI、Anthropic 或其他模型供應商；可驗證輸出格式由 `packages/analysis` 定義，並要求結果綁定已接受來源識別與證據摘要值。知識編輯與寫作樣式只調整最終證據固定後的閱讀／表達順序，不改變分析資料結構、來源證據或寫入器契約。詳見 [GitHub 收錄契約](../docs/specs/ingestion.md)。
+- [RUNTIME.md](./RUNTIME.md)：跨領域執行編排。決定先讀什麼、何時收錄、分析、寫入、驗證與發布，以及失敗和完成時如何處理。
+- [KNOWLEDGE_EDITOR.md](./KNOWLEDGE_EDITOR.md)：最終證據固定後的來源閱讀與知識取捨。先形成整體理解，不先套用 Card 章節。
+- [CARD_STYLE.md](./CARD_STYLE.md)：整體理解形成後使用的 Knowledge Card 表達規則，負責正文的閱讀層次、段落目的與寫作方式。
 
-來源專屬演算法、資料結構規格與來源供應者實作不在 `prompts/` 目錄重複維護，應以對應正式契約與程式為準。
+責任邊界：
+
+- 來源身分、已接受證據與受控來源擷取：[`docs/specs/ingestion.md`](../docs/specs/ingestion.md)。
+- 研究計畫、分析證據、分析版本與品質門檻：[`docs/specs/analysis.md`](../docs/specs/analysis.md)。
+- Card 結構與所有權：[`docs/specs/card.md`](../docs/specs/card.md)。
+- 執行順序：`RUNTIME.md`。
+- 來源閱讀與知識取捨：`KNOWLEDGE_EDITOR.md`。
+- 最終文字表達：`CARD_STYLE.md`。
+
+來源專屬演算法、資料欄位、Schema、API 細節與 Workspace 持久化規則不在 `prompts/` 重複維護。若 prompt 需要依賴這些規則，只引用目前正式契約。
