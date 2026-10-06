@@ -104,7 +104,7 @@ test('Prompt roles do not duplicate source or data contracts', async () => {
   ]);
 
   assert.ok(runtime.includes('本文件只描述它們應以什麼順序銜接，不建立第二套領域規格'));
-  assert.ok(runtime.includes('Runtime 不再重複欄位或版本規則'));
+  assert.ok(runtime.includes('本文件不重複欄位或版本規則'));
   assert.ok(editor.includes('本提示只負責「拿到最終證據之後，應如何閱讀與形成理解」'));
   assert.ok(style.includes('本文件只負責最終內容的表達方式'));
 
