@@ -146,6 +146,15 @@ for (const relative of documentationFiles) {
   }
 }
 
+const schemaReadmeText = fs.readFileSync(path.join(root, 'schema/README.md'), 'utf8');
+const schemaFiles = fs.readdirSync(path.join(root, 'schema'))
+  .filter((name) => name.endsWith('.schema.json'));
+for (const schemaFile of schemaFiles) {
+  if (!schemaReadmeText.includes('`' + schemaFile + '`')) {
+    errors.push('Schema index is missing: ' + schemaFile);
+  }
+}
+
 const releaseWorkflowText = fs.readFileSync(path.join(root, '.github/workflows/release-workspace.yml'), 'utf8');
 const statusProbe = 'git status --porcelain=v1 --untracked-files=all';
 const statusProbeCount = releaseWorkflowText.split(statusProbe).length - 1;
