@@ -1,5 +1,6 @@
 const METRIC_NAME = /^[a-z][a-z0-9_]*$/u;
 const MAX_DURATION_MS = 120_000;
+const MAX_COUNTER_VALUE = 1_000_000;
 const BROWSER_METRICS = [
   'auth_fetch_ms',
   'cards_fetch_ms',
@@ -38,6 +39,7 @@ export function createSitePerformanceTrace({
   const routeName = String(route || 'unknown');
   const startedAt = now();
   const metrics = new Map();
+  const values = new Map();
   let finished = false;
 
   function record(name, value) {
@@ -46,6 +48,14 @@ export function createSitePerformanceTrace({
     const duration = roundedMs(value);
     if (duration == null || duration > MAX_DURATION_MS) return;
     metrics.set(metricName, duration);
+  }
+
+  function recordValue(name, value) {
+    if (!enabled) return;
+    const metricName = safeMetricName(name);
+    const numeric = Number(value);
+    if (!Number.isInteger(numeric) || numeric < 0 || numeric > MAX_COUNTER_VALUE) return;
+    values.set(metricName, numeric);
   }
 
   async function measure(name, task) {
@@ -80,7 +90,8 @@ export function createSitePerformanceTrace({
       route: routeName,
       status: Number(status) || 0,
       ...(total == null ? {} : { total_ms: total }),
-      ...Object.fromEntries(metrics)
+      ...Object.fromEntries(metrics),
+      ...Object.fromEntries(values)
     };
     logger(JSON.stringify(payload));
   }
@@ -88,6 +99,7 @@ export function createSitePerformanceTrace({
   return {
     enabled,
     record,
+    recordValue,
     measure,
     serverTiming,
     headers,
