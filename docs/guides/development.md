@@ -91,6 +91,16 @@ Remote Ingest 只讀取 Workspace 狀態目錄中的固定交接檔，並依執�
 npm run site:serve
 ```
 
+要量測目前讀取器在不同合成 Card 數量下的冷／暖路徑，可執行：
+
+```bash
+npm run site:benchmark
+```
+
+基準使用公開合成資料與受控的模擬 GitHub blob 延遲，輸出 Card 數量、冷／暖耗時、上游呼叫數、blob 讀取數、回傳筆數與是否仍有下一頁。它用來比較資料量成長時的讀取路徑，不代表正式網路或正式 Workspace 的實際延遲，也不設定脆弱的固定毫秒門檻。
+
+正式或本機網站需要收集端到端效能分布時，可在受控環境設定 `KC_SITE_PERFORMANCE=1`。診斷模式預設關閉，且只記錄私人網站契約允許的耗時與狀態指標；不得加入 Card、來源、Workspace 或憑證內容。完整部署操作見 [私人網站部署指南](./deployment.md)。
+
 登入、工作階段、私人 API 與 Workspace 資格見 [私人網站與授權契約](../specs/private-site.md)；正式環境設定、Vercel 部署與線上驗收見 [私人網站部署指南](./deployment.md)；介面與版面契約見 [網頁介面與版面配置](../specs/web-ui.md)。
 
 ## 生成資料與發布
@@ -129,7 +139,7 @@ npm run release:validate -- /path/to/workspace
 
 | Workflow | 用途 |
 | --- | --- |
-| `.github/workflows/validate.yml` | Engine PR、`main` 推送與手動執行的完整驗證。 |
+| `.github/workflows/validate.yml` | Engine PR、`main` 推送與手動執行的完整驗證，並輸出合成私人網站效能基準。 |
 | `.github/workflows/validate-workspace.yml` | Workspace 以固定 Engine SHA 呼叫的可重用驗證流程。 |
 | `.github/workflows/release-workspace.yml` | Workspace 以固定 Engine SHA 建立生成資料並完成一致發布。 |
 | `.github/workflows/ingest-workspace.yml` | Workspace `chore/ingest-*` 分支使用的受控 Remote Ingest。 |

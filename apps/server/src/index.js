@@ -1,9 +1,16 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createAuthService, clearSessionCookie } from './auth.js';
 import { tryLoadSiteConfig } from './config.js';
 import { HttpError, htmlResponse, jsonResponse, methodNotAllowed } from './http.js';
 import { createWorkspaceRepositoryReader } from './workspace-reader.js';
 import { assertSessionStore, createMemorySessionStore } from './session-store.js';
+import {
+  createSitePerformanceTrace,
+  logBrowserPerformance,
+  sitePerformanceEnabled
+} from './performance.js';
 import { renderPrivateSiteShell } from '../../web/src/index.js';
+import { instrumentPrivateSiteShell } from '../../web/src/performance-runtime.js';
 
 export const moduleId = 'server';
 export const moduleKind = 'app';
@@ -50,19 +57,96 @@ function assertSameOrigin(request, config) {
   }
 }
 
+function requestUrl(input) {
+  try {
+    if (input instanceof Request) return new URL(input.url);
+    return new URL(String(input));
+  } catch {
+    return null;
+  }
+}
+
 export function createPrivateSiteApp({
   env = process.env,
   fetchImpl = fetch,
   now = () => Date.now(),
   sessionStore = null,
-  runtimeError = null
+  runtimeError = null,
+  performanceLogger = console.info
 } = {}) {
   const state = tryLoadSiteConfig(env);
   const configured = state.configured && !runtimeError;
+  const performanceEnabled = sitePerformanceEnabled(env);
+  const performanceContext = performanceEnabled ? new AsyncLocalStorage() : null;
+
+  const measuredFetchImpl = performanceEnabled
+    ? async (input, options) => {
+        const context = performanceContext.getStore();
+        if (!context) return fetchImpl(input, options);
+        const url = requestUrl(input);
+        const isGithub = url?.hostname === 'api.github.com' || url?.hostname === 'github.com';
+        const isBlob = isGithub && /\/git\/blobs\//u.test(url.pathname);
+        const started = performance.now();
+        try {
+          return await fetchImpl(input, options);
+        } finally {
+          if (isGithub) {
+            const duration = Math.max(0, performance.now() - started);
+            context.githubCalls += 1;
+            context.githubMs += duration;
+            if (isBlob) {
+              context.blobCalls += 1;
+              context.blobMs += duration;
+            }
+          }
+        }
+      }
+    : fetchImpl;
+
   const store = configured ? assertSessionStore(sessionStore || createMemorySessionStore({ now })) : null;
-  const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
-  const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
+  const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl: measuredFetchImpl, now }) : null;
+  const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl: measuredFetchImpl, now }) : null;
   const configurationError = runtimeError || state.error;
+
+  async function withUpstreamMeasurements(trace, prefix, task) {
+    if (!performanceEnabled) return task();
+    const upstream = {
+      githubCalls: 0,
+      githubMs: 0,
+      blobCalls: 0,
+      blobMs: 0
+    };
+    try {
+      return await performanceContext.run(upstream, task);
+    } finally {
+      trace.record(prefix + '_github', upstream.githubMs);
+      trace.record(prefix + '_blob', upstream.blobMs);
+      trace.recordValue(prefix + '_github_calls', upstream.githubCalls);
+      trace.recordValue(prefix + '_blob_calls', upstream.blobCalls);
+    }
+  }
+
+  async function authorizedJson(request, route, task) {
+    const trace = createSitePerformanceTrace({
+      enabled: performanceEnabled,
+      route,
+      logger: performanceLogger
+    });
+    try {
+      const authorized = await trace.measure('auth', () =>
+        withUpstreamMeasurements(trace, 'auth', () => auth.authorize(request))
+      );
+      const payload = await trace.measure('handler', () =>
+        withUpstreamMeasurements(trace, 'handler', () => task(authorized))
+      );
+      const response = jsonResponse(200, payload, trace.headers());
+      trace.finish(200);
+      return response;
+    } catch (error) {
+      trace.finish(error instanceof HttpError ? error.status : 500);
+      throw error;
+    }
+  }
 
   return async function handle(request) {
     const url = new URL(request.url);
@@ -85,7 +169,8 @@ export function createPrivateSiteApp({
 
       if (pathname === '/' || /^\/knowledge\/[^/]+$/u.test(pathname)) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return htmlResponse(200, renderPrivateSiteShell(), {
+        const shell = renderPrivateSiteShell();
+        return htmlResponse(200, performanceEnabled ? instrumentPrivateSiteShell(shell) : shell, {
           'Content-Security-Policy': [
             "default-src 'self'",
             "img-src 'self' https://avatars.githubusercontent.com data:",
@@ -115,8 +200,7 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/auth/session') {
         if (request.method === 'GET') {
-          const authorized = await auth.authorize(request);
-          return jsonResponse(200, {
+          return await authorizedJson(request, 'auth_session', async (authorized) => ({
             authenticated: true,
             user: {
               id: authorized.user.id,
@@ -125,7 +209,7 @@ export function createPrivateSiteApp({
               permission: authorized.user.permission
             },
             expires_at: authorized.user.expiresAt
-          });
+          }));
         }
         if (request.method === 'POST') {
           assertSameOrigin(request, config);
@@ -134,26 +218,36 @@ export function createPrivateSiteApp({
         return methodNotAllowed(['GET', 'POST']);
       }
 
-      if (pathname === '/api/cards') {
+      if (pathname === '/api/performance') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
         await auth.authorize(request);
-        const result = await reader.listCards({
+        logBrowserPerformance({
+          enabled: performanceEnabled,
+          searchParams: url.searchParams,
+          logger: performanceLogger
+        });
+        return new Response(null, {
+          status: 204,
+          headers: { 'Cache-Control': 'no-store' }
+        });
+      }
+
+      if (pathname === '/api/cards') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        return await authorizedJson(request, 'cards_list', async () => reader.listCards({
           limit: url.searchParams.get('limit'),
           cursor: url.searchParams.get('cursor')
-        });
-        return jsonResponse(200, result);
+        }));
       }
 
       if (pathname.startsWith('/api/cards/')) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.getCard(safeCardId(pathname)));
+        return await authorizedJson(request, 'card_detail', async () => reader.getCard(safeCardId(pathname)));
       }
 
       if (pathname === '/api/search') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.search({
+        return await authorizedJson(request, 'search', async () => reader.search({
           query: url.searchParams.get('q'),
           limit: url.searchParams.get('limit')
         }));
@@ -161,14 +255,12 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/graph') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.graph());
+        return await authorizedJson(request, 'graph', async () => reader.graph());
       }
 
       if (pathname === '/api/release') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.release());
+        return await authorizedJson(request, 'release', async () => reader.release());
       }
 
       if (pathname.startsWith('/api/')) {

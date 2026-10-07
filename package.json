@@ -21,6 +21,7 @@
     "research-state:validate": "node scripts/validate-research-state.mjs",
     "ingest:github": "node scripts/ingest-github.mjs",
     "site:serve": "node apps/server/src/node-server.js",
+    "site:benchmark": "node scripts/benchmark-site-performance.mjs",
     "generated:build": "node scripts/release-workspace.mjs build",
     "release:finalize": "node scripts/release-workspace.mjs finalize",
     "release:validate": "node scripts/release-workspace.mjs validate",
