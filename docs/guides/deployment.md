@@ -29,8 +29,11 @@ KC_SESSION_STORE_REST_TOKEN
 
 ```text
 KC_WORKSPACE_REF=main
+KC_SITE_PERFORMANCE=0
 PORT=3000
 ```
+
+`KC_SITE_PERFORMANCE=1` 只用於受控效能診斷；預設關閉。診斷模式的資料範圍、授權要求與禁止記錄內容以 [私人網站與授權契約](../specs/private-site.md) 為準。
 
 `KC_PUBLIC_URL` 必須是 HTTPS origin，不能帶路徑、查詢參數或片段。GitHub App 的回呼網址使用：
 
@@ -83,6 +86,18 @@ KC_SESSION_STORE_REST_TOKEN
 6. 先檢查 `/api/health` 已顯示設定完成，再進行登入與私人資料驗收。
 
 目前 Vercel Function 的 `maxDuration` 為 30 秒。GitHub 與共用 REST 工作階段儲存區的單次上游請求會在 5 秒內中止；發布快照冷載入時，Knowledge Card 與生成產物 Git blob 最多同時讀取 8 個。這些效能設定不會降低大小、雜湊、Schema、所有權或發布一致性的驗證門檻。
+
+## 效能診斷
+
+需要量測正式站延遲時，先在目標環境設定：
+
+```text
+KC_SITE_PERFORMANCE=1
+```
+
+重新部署後，以具資格帳號正常登入並開啟 Knowledge Radar 首頁。診斷模式會記錄伺服器端授權與主要處理耗時，以及瀏覽器端第一次工作階段請求、第一次卡片列表請求、Radar 呈現與整體啟動耗時。紀錄只包含固定的毫秒數、路由名稱與 HTTP 狀態，不包含 Card 內容、Card ID、來源 URL、標籤、Workspace 名稱、發布識別或憑證。
+
+量測完成後應把 `KC_SITE_PERFORMANCE` 改回 `0` 或移除並重新部署，避免長期產生不必要的診斷日誌。診斷模式不能取代授權後線上回讀，也不能放寬任何資料驗證或發布一致性規則。
 
 ## 線上驗收
 
