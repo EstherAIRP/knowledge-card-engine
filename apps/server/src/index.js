@@ -200,7 +200,7 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/auth/session') {
         if (request.method === 'GET') {
-          return authorizedJson(request, 'auth_session', async (authorized) => ({
+          return await authorizedJson(request, 'auth_session', async (authorized) => ({
             authenticated: true,
             user: {
               id: authorized.user.id,
@@ -234,7 +234,7 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/cards') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return authorizedJson(request, 'cards_list', async () => reader.listCards({
+        return await authorizedJson(request, 'cards_list', async () => reader.listCards({
           limit: url.searchParams.get('limit'),
           cursor: url.searchParams.get('cursor')
         }));
@@ -242,12 +242,12 @@ export function createPrivateSiteApp({
 
       if (pathname.startsWith('/api/cards/')) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return authorizedJson(request, 'card_detail', async () => reader.getCard(safeCardId(pathname)));
+        return await authorizedJson(request, 'card_detail', async () => reader.getCard(safeCardId(pathname)));
       }
 
       if (pathname === '/api/search') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return authorizedJson(request, 'search', async () => reader.search({
+        return await authorizedJson(request, 'search', async () => reader.search({
           query: url.searchParams.get('q'),
           limit: url.searchParams.get('limit')
         }));
@@ -255,12 +255,12 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/graph') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return authorizedJson(request, 'graph', async () => reader.graph());
+        return await authorizedJson(request, 'graph', async () => reader.graph());
       }
 
       if (pathname === '/api/release') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return authorizedJson(request, 'release', async () => reader.release());
+        return await authorizedJson(request, 'release', async () => reader.release());
       }
 
       if (pathname.startsWith('/api/')) {
