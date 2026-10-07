@@ -33,3 +33,6 @@ jobs:
 
       - name: Validate
         run: npm run validate
+
+      - name: Site performance baseline
+        run: npm run site:benchmark
