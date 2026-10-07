@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createAuthService, clearSessionCookie } from './auth.js';
 import { tryLoadSiteConfig } from './config.js';
 import { HttpError, htmlResponse, jsonResponse, methodNotAllowed } from './http.js';
@@ -56,6 +57,15 @@ function assertSameOrigin(request, config) {
   }
 }
 
+function requestUrl(input) {
+  try {
+    if (input instanceof Request) return new URL(input.url);
+    return new URL(String(input));
+  } catch {
+    return null;
+  }
+}
+
 export function createPrivateSiteApp({
   env = process.env,
   fetchImpl = fetch,
@@ -66,11 +76,55 @@ export function createPrivateSiteApp({
 } = {}) {
   const state = tryLoadSiteConfig(env);
   const configured = state.configured && !runtimeError;
-  const store = configured ? assertSessionStore(sessionStore || createMemorySessionStore({ now })) : null;
-  const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
-  const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
-  const configurationError = runtimeError || state.error;
   const performanceEnabled = sitePerformanceEnabled(env);
+  const performanceContext = performanceEnabled ? new AsyncLocalStorage() : null;
+
+  const measuredFetchImpl = performanceEnabled
+    ? async (input, options) => {
+        const context = performanceContext.getStore();
+        if (!context) return fetchImpl(input, options);
+        const url = requestUrl(input);
+        const isGithub = url?.hostname === 'api.github.com' || url?.hostname === 'github.com';
+        const isBlob = isGithub && /\/git\/blobs\//u.test(url.pathname);
+        const started = performance.now();
+        try {
+          return await fetchImpl(input, options);
+        } finally {
+          if (isGithub) {
+            const duration = Math.max(0, performance.now() - started);
+            context.githubCalls += 1;
+            context.githubMs += duration;
+            if (isBlob) {
+              context.blobCalls += 1;
+              context.blobMs += duration;
+            }
+          }
+        }
+      }
+    : fetchImpl;
+
+  const store = configured ? assertSessionStore(sessionStore || createMemorySessionStore({ now })) : null;
+  const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl: measuredFetchImpl, now }) : null;
+  const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl: measuredFetchImpl, now }) : null;
+  const configurationError = runtimeError || state.error;
+
+  async function withUpstreamMeasurements(trace, prefix, task) {
+    if (!performanceEnabled) return task();
+    const upstream = {
+      githubCalls: 0,
+      githubMs: 0,
+      blobCalls: 0,
+      blobMs: 0
+    };
+    try {
+      return await performanceContext.run(upstream, task);
+    } finally {
+      trace.record(prefix + '_github', upstream.githubMs);
+      trace.record(prefix + '_blob', upstream.blobMs);
+      trace.recordValue(prefix + '_github_calls', upstream.githubCalls);
+      trace.recordValue(prefix + '_blob_calls', upstream.blobCalls);
+    }
+  }
 
   async function authorizedJson(request, route, task) {
     const trace = createSitePerformanceTrace({
@@ -79,8 +133,12 @@ export function createPrivateSiteApp({
       logger: performanceLogger
     });
     try {
-      const authorized = await trace.measure('auth', () => auth.authorize(request));
-      const payload = await trace.measure('handler', () => task(authorized));
+      const authorized = await trace.measure('auth', () =>
+        withUpstreamMeasurements(trace, 'auth', () => auth.authorize(request))
+      );
+      const payload = await trace.measure('handler', () =>
+        withUpstreamMeasurements(trace, 'handler', () => task(authorized))
+      );
       const response = jsonResponse(200, payload, trace.headers());
       trace.finish(200);
       return response;
