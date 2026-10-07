@@ -120,7 +120,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 3. GitHub 回報成功後，刪除伺服器工作階段；其中保存的 refresh token 一併移除。
 4. 清除 `__Host-kc_session`。
 
-若 GitHub 使用者存取權杖撤銷失敗，API 回傳錯誤、保留伺服器工作階段與 Cookie，不宣稱登出成功。
+若 GitHub 使用者存取權杖撤銷失敗，API 回傳錯誤、保留伺服器端工作階段與 Cookie，不宣稱登出成功。
 
 管理端若移除使用者對私人 Knowledge Card Workspace 倉庫的資格，不需要依賴安裝存取權杖；下一個私人 API 請求的使用者存取權杖 資格重查會得到 403。
 
@@ -194,6 +194,25 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 需要授權。回傳目前讀取模型的發布投影。第一個發布版本尚未建立時回 `mode: "bootstrap"`；存在目前發布版本時回傳 `release_id`、E／S／P、`manifest` 投影、版本修訂值與發布指標修訂值。
 
+### GET /api/performance
+
+這是選用的私人效能診斷端點，只有 `KC_SITE_PERFORMANCE=1` 時才會記錄資料。請求仍需要有效工作階段並重新驗證 Knowledge Card Workspace 資格；端點只接受固定的瀏覽器端耗時欄位，記錄後回傳 204，不回傳私人資料。
+
+允許記錄的瀏覽器端欄位只有：
+
+- `auth_fetch_ms`
+- `cards_fetch_ms`
+- `radar_render_ms`
+- `bootstrap_ms`
+
+其他查詢參數會被忽略。診斷紀錄不得包含 Knowledge Card 正文、標題、穩定 ID、標籤、來源 URL、Workspace 名稱、發布識別或憑證。
+
+## 效能診斷
+
+效能診斷預設關閉。設定 `KC_SITE_PERFORMANCE=1` 後，已授權的私人 API 會另外記錄粗粒度的 `auth` 與 `handler` 耗時，成功回應也會以 `Server-Timing` 回應標頭提供相同類型的毫秒值。伺服器日誌只記錄事件類型、路由名稱、HTTP 狀態、總耗時與上述耗時，不記錄請求內容、查詢字詞、Card 身分或其他私人資料。
+
+Knowledge Radar 外殼在同一診斷模式下會量測第一次 `/api/auth/session`、第一次 `/api/cards`、Radar DOM 完成後的呈現時間與整體啟動時間，再送到已授權的 `/api/performance`。這些量測只用於判斷延遲分布，不得改變授權順序、發布版本選擇、快取守門或私人 API 回傳內容。
+
 ## Knowledge Card Workspace 倉庫讀取器
 
 讀取器的倉庫由 `KC_WORKSPACE_OWNER`、`KC_WORKSPACE_REPO` 與 `KC_WORKSPACE_REF`（預設 `main`）定位，但私人 API 不直接以目前分支內容拼裝 Card、搜尋與圖譜資料。
@@ -246,7 +265,8 @@ GitHub REST 請求使用 API 版本 `2026-03-10`。
 - Vercel 轉接器只有在共用 REST 工作階段儲存區設定完整時才啟用登入能力，不能退回單一處理程序記憶體模式。
 - 部署平台的逾時、快取或平行讀取最佳化不得降低資格重查、資料大小、雜湊、Schema、所有權與發布一致性的驗證門檻。
 
-環境變數、Node 本機啟動、Vercel 設定與授權後線上回讀的操作步驟，集中在 [私人網站部署指南](../guides/deployment.md)。
+環境變數、Node 本機啟動、Vercel 設定與授權後線上讀回的操作步驟，集中在 [私人網站部署指南](../guides/deployment.md)。
+
 ## 尚未提供的能力
 
 目前私人網站不提供：
