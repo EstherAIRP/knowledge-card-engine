@@ -3,7 +3,13 @@ import { tryLoadSiteConfig } from './config.js';
 import { HttpError, htmlResponse, jsonResponse, methodNotAllowed } from './http.js';
 import { createWorkspaceRepositoryReader } from './workspace-reader.js';
 import { assertSessionStore, createMemorySessionStore } from './session-store.js';
+import {
+  createSitePerformanceTrace,
+  logBrowserPerformance,
+  sitePerformanceEnabled
+} from './performance.js';
 import { renderPrivateSiteShell } from '../../web/src/index.js';
+import { instrumentPrivateSiteShell } from '../../web/src/performance-runtime.js';
 
 export const moduleId = 'server';
 export const moduleKind = 'app';
@@ -55,7 +61,8 @@ export function createPrivateSiteApp({
   fetchImpl = fetch,
   now = () => Date.now(),
   sessionStore = null,
-  runtimeError = null
+  runtimeError = null,
+  performanceLogger = console.info
 } = {}) {
   const state = tryLoadSiteConfig(env);
   const configured = state.configured && !runtimeError;
@@ -63,6 +70,25 @@ export function createPrivateSiteApp({
   const auth = configured ? createAuthService({ config: state.config, sessionStore: store, fetchImpl, now }) : null;
   const reader = configured ? createWorkspaceRepositoryReader({ config: state.config, fetchImpl, now }) : null;
   const configurationError = runtimeError || state.error;
+  const performanceEnabled = sitePerformanceEnabled(env);
+
+  async function authorizedJson(request, route, task) {
+    const trace = createSitePerformanceTrace({
+      enabled: performanceEnabled,
+      route,
+      logger: performanceLogger
+    });
+    try {
+      const authorized = await trace.measure('auth', () => auth.authorize(request));
+      const payload = await trace.measure('handler', () => task(authorized));
+      const response = jsonResponse(200, payload, trace.headers());
+      trace.finish(200);
+      return response;
+    } catch (error) {
+      trace.finish(error instanceof HttpError ? error.status : 500);
+      throw error;
+    }
+  }
 
   return async function handle(request) {
     const url = new URL(request.url);
@@ -85,7 +111,8 @@ export function createPrivateSiteApp({
 
       if (pathname === '/' || /^\/knowledge\/[^/]+$/u.test(pathname)) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        return htmlResponse(200, renderPrivateSiteShell(), {
+        const shell = renderPrivateSiteShell();
+        return htmlResponse(200, performanceEnabled ? instrumentPrivateSiteShell(shell) : shell, {
           'Content-Security-Policy': [
             "default-src 'self'",
             "img-src 'self' https://avatars.githubusercontent.com data:",
@@ -115,8 +142,7 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/auth/session') {
         if (request.method === 'GET') {
-          const authorized = await auth.authorize(request);
-          return jsonResponse(200, {
+          return authorizedJson(request, 'auth_session', async (authorized) => ({
             authenticated: true,
             user: {
               id: authorized.user.id,
@@ -125,7 +151,7 @@ export function createPrivateSiteApp({
               permission: authorized.user.permission
             },
             expires_at: authorized.user.expiresAt
-          });
+          }));
         }
         if (request.method === 'POST') {
           assertSameOrigin(request, config);
@@ -134,26 +160,36 @@ export function createPrivateSiteApp({
         return methodNotAllowed(['GET', 'POST']);
       }
 
-      if (pathname === '/api/cards') {
+      if (pathname === '/api/performance') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
         await auth.authorize(request);
-        const result = await reader.listCards({
+        logBrowserPerformance({
+          enabled: performanceEnabled,
+          searchParams: url.searchParams,
+          logger: performanceLogger
+        });
+        return new Response(null, {
+          status: 204,
+          headers: { 'Cache-Control': 'no-store' }
+        });
+      }
+
+      if (pathname === '/api/cards') {
+        if (request.method !== 'GET') return methodNotAllowed(['GET']);
+        return authorizedJson(request, 'cards_list', async () => reader.listCards({
           limit: url.searchParams.get('limit'),
           cursor: url.searchParams.get('cursor')
-        });
-        return jsonResponse(200, result);
+        }));
       }
 
       if (pathname.startsWith('/api/cards/')) {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.getCard(safeCardId(pathname)));
+        return authorizedJson(request, 'card_detail', async () => reader.getCard(safeCardId(pathname)));
       }
 
       if (pathname === '/api/search') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.search({
+        return authorizedJson(request, 'search', async () => reader.search({
           query: url.searchParams.get('q'),
           limit: url.searchParams.get('limit')
         }));
@@ -161,14 +197,12 @@ export function createPrivateSiteApp({
 
       if (pathname === '/api/graph') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.graph());
+        return authorizedJson(request, 'graph', async () => reader.graph());
       }
 
       if (pathname === '/api/release') {
         if (request.method !== 'GET') return methodNotAllowed(['GET']);
-        await auth.authorize(request);
-        return jsonResponse(200, await reader.release());
+        return authorizedJson(request, 'release', async () => reader.release());
       }
 
       if (pathname.startsWith('/api/')) {
