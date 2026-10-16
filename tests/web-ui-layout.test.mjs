@@ -70,6 +70,25 @@ test('web UI layout contract retains shared frame, reading width, responsive gri
 });
 
 
+test('portaled graph panels retain solid theme backgrounds outside the graph shell', () => {
+  const portalTokens = siteCss.match(
+    /\.knowledge-graph-shell,\s*\.graph-inspector--drawer,\s*\.graph-filter-panel--mobile\s*\{([^}]*)\}/u
+  )?.[1];
+  assert.ok(portalTokens, 'graph panels mounted under document.body must define their own theme tokens');
+
+  for (const declaration of [
+    '--vp-c-text-1: var(--kc-text);',
+    '--vp-c-text-2: var(--kc-muted);',
+    '--vp-c-bg: var(--kc-bg);',
+    '--vp-c-bg-soft: var(--kc-bg-soft);'
+  ]) {
+    assert.ok(portalTokens.includes(declaration), `missing portal token: ${declaration}`);
+  }
+
+  assert.match(siteCss, /\.graph-inspector--drawer\s*\{[^}]*background:\s*var\(--vp-c-bg\)/u);
+  assert.match(siteCss, /\.graph-filter-panel\s*\{[^}]*background:\s*var\(--vp-c-bg-soft\)/u);
+});
+
 test('card detail routing keeps V1-style permalinks reloadable and history-aware', () => {
   const indexSource = read('apps/web/src/index.js');
   const serverSource = read('apps/server/src/index.js');
