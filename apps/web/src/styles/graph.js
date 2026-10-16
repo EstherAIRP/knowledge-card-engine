@@ -149,7 +149,9 @@ export const graphStyles = [
   },
   {
     order: 25,
-    css: String.raw`.knowledge-graph-shell {
+    css: String.raw`.knowledge-graph-shell,
+.graph-inspector--drawer,
+.graph-filter-panel--mobile {
   --vp-c-text-1: var(--kc-text);
   --vp-c-text-2: var(--kc-muted);
   --vp-c-text-3: var(--kc-subtle);
@@ -160,6 +162,8 @@ export const graphStyles = [
   --vp-c-brand-2: var(--kc-brand-2);
   --vp-c-brand-soft: color-mix(in srgb, var(--kc-brand) 12%, transparent);
   --vp-shadow-3: var(--kc-shadow);
+}
+.knowledge-graph-shell {
   padding-top: 20px;
   padding-bottom: 64px;
 }
