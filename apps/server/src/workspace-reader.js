@@ -129,6 +129,14 @@ function cardSummary(card) {
   };
 }
 
+function tagLabelProjection(taxonomy) {
+  const canonical = taxonomy?.tag_policy?.canonical;
+  if (!canonical || typeof canonical !== 'object' || Array.isArray(canonical)) return {};
+  return Object.fromEntries(
+    Object.entries(canonical).map(([id, definition]) => [id, definition.label])
+  );
+}
+
 function relationProjection(cardId, snapshot) {
   if (!snapshot.artifacts) return [];
   const byId = snapshot.byId;
@@ -177,6 +185,7 @@ function cardDetail(card, snapshot) {
   return {
     release_id: snapshot.release?.release_id || null,
     revision: snapshot.revision,
+    tag_labels: tagLabelProjection(snapshot.taxonomy),
     id: card.data.id,
     title: card.data.title,
     summary: card.data.summary,
@@ -477,7 +486,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       if (date !== 0) return date;
       return String(a.data.title).localeCompare(String(b.data.title));
     });
-    return { revision, cards: ordered, byId, entries };
+    return { revision, cards: ordered, byId, entries, taxonomy };
   }
 
   async function verifyPublishedLineage(release, publishedCommit) {
@@ -632,6 +641,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       return {
         release_id: snapshot.release?.release_id || null,
         revision: snapshot.revision,
+        tag_labels: tagLabelProjection(snapshot.taxonomy),
         items: page.map(cardSummary),
         next_cursor: nextOffset < snapshot.cards.length ? encodeCursor(snapshot.revision, nextOffset) : null
       };
@@ -678,6 +688,7 @@ export function createWorkspaceRepositoryReader({ config, fetchImpl = fetch, now
       return {
         release_id: snapshot.release.release_id,
         revision: snapshot.revision,
+        tag_labels: tagLabelProjection(snapshot.taxonomy),
         ...legacyGraphProjection(snapshot)
       };
     },

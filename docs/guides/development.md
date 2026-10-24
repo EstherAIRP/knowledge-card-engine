@@ -42,6 +42,20 @@ npm run source-state:validate -- /path/to/workspace
 npm run research-state:validate -- /path/to/workspace
 ```
 
+Workspace 啟用受控標籤政策後，可先用遷移計畫檔做不寫入演練：
+
+```bash
+npm run tags:migrate -- /path/to/workspace /path/to/tag-migration.yaml
+```
+
+確認報告後才正式寫入：
+
+```bash
+npm run tags:migrate -- /path/to/workspace /path/to/tag-migration.yaml --write
+```
+
+遷移計畫使用 `schema_version: 1` 與 `cards` 對映表；每張 Card 都必須同時提供與目前資料完全相同的 `from.ai`／`from.user`，以及預期的 `to.ai`／`to.user`。寫入前會把別名解析為標準 ID，重新驗證完整 Card 集合，並以可回復的檔案交易一次套用；過期計畫、未登錄標籤或任一 Card 驗證失敗都不會寫入。
+
 若要連同 Engine 版本鎖定與 Workspace 的薄層工作流程一起驗證：
 
 ```bash

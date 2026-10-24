@@ -276,7 +276,7 @@ function analysisFrom(evidence, bundle, variant) {
     resource_kind: 'project',
     navigation_categories: ['Engineering'],
     classification_categories: ['Developer Tools'],
-    tags: ['synthetic', 'research', 'remote-ingest'],
+    tags: ['remote-ingest', 'research', 'synthetic'],
     relevance: { overall: 4, engineering: 5 },
     actions: ['LEARN'],
     status: 'active',

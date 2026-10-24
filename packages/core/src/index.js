@@ -255,6 +255,112 @@ function membershipErrors(values, allowed, field, filePath) {
   return result;
 }
 
+function tagPolicyErrors(taxonomy, filePath) {
+  const policy = taxonomy.tag_policy;
+  if (policy == null) return [];
+
+  const errors = [];
+  const canonical = isPlainObject(policy.canonical) ? policy.canonical : {};
+  const canonicalIds = Object.keys(canonical);
+  const aliases = isPlainObject(policy.aliases) ? policy.aliases : {};
+  const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+
+  if (Number.isInteger(policy.min_per_card)
+      && Number.isInteger(policy.max_per_card)
+      && policy.min_per_card > policy.max_per_card) {
+    errors.push(makeIssue(
+      'TAXONOMY_TAG_POLICY_INVALID',
+      '$.tag_policy',
+      'tag_policy.min_per_card must be <= tag_policy.max_per_card.',
+      filePath
+    ));
+  }
+  if (canonicalIds.length > 256) {
+    errors.push(makeIssue(
+      'TAXONOMY_TAG_POLICY_INVALID',
+      '$.tag_policy.canonical',
+      'tag_policy.canonical may define at most 256 tags.',
+      filePath
+    ));
+  }
+
+  const labels = new Map();
+  for (const id of canonicalIds) {
+    if (!idPattern.test(id)) {
+      errors.push(makeIssue(
+        'TAXONOMY_TAG_POLICY_INVALID',
+        '$.tag_policy.canonical.' + id,
+        'Canonical tag IDs must use lowercase kebab-case.',
+        filePath
+      ));
+    }
+    const label = canonical[id]?.label;
+    if (typeof label === 'string') {
+      const normalized = label.trim().toLocaleLowerCase('en-US');
+      if (normalized !== label.toLocaleLowerCase('en-US')) {
+        errors.push(makeIssue(
+          'TAXONOMY_TAG_POLICY_INVALID',
+          '$.tag_policy.canonical.' + id + '.label',
+          'Canonical tag labels must not contain surrounding whitespace.',
+          filePath
+        ));
+      }
+      if (labels.has(normalized)) {
+        errors.push(makeIssue(
+          'TAXONOMY_TAG_POLICY_INVALID',
+          '$.tag_policy.canonical.' + id + '.label',
+          'Canonical tag labels must be unique ignoring case.',
+          filePath
+        ));
+      } else {
+        labels.set(normalized, id);
+      }
+    }
+  }
+
+  const aliasKeys = new Map();
+  const canonicalSet = new Set(canonicalIds);
+  for (const [alias, target] of Object.entries(aliases)) {
+    const normalizedAlias = alias.trim().toLocaleLowerCase('en-US');
+    if (!alias.trim() || alias !== alias.trim()) {
+      errors.push(makeIssue(
+        'TAXONOMY_TAG_POLICY_INVALID',
+        '$.tag_policy.aliases.' + alias,
+        'Tag aliases must be non-empty and must not contain surrounding whitespace.',
+        filePath
+      ));
+    }
+    if (aliasKeys.has(normalizedAlias)) {
+      errors.push(makeIssue(
+        'TAXONOMY_TAG_POLICY_INVALID',
+        '$.tag_policy.aliases.' + alias,
+        'Tag aliases must be unique ignoring case.',
+        filePath
+      ));
+    } else {
+      aliasKeys.set(normalizedAlias, alias);
+    }
+    if (canonicalSet.has(alias) || canonicalSet.has(normalizedAlias)) {
+      errors.push(makeIssue(
+        'TAXONOMY_TAG_POLICY_INVALID',
+        '$.tag_policy.aliases.' + alias,
+        'Canonical tag IDs must not also be aliases.',
+        filePath
+      ));
+    }
+    if (!canonicalSet.has(target)) {
+      errors.push(makeIssue(
+        'TAXONOMY_TAG_POLICY_INVALID',
+        '$.tag_policy.aliases.' + alias,
+        'Tag alias target "' + target + '" is not a canonical tag ID.',
+        filePath
+      ));
+    }
+  }
+
+  return errors;
+}
+
 export async function validateTaxonomy(taxonomy, filePath = '<taxonomy>') {
   const schema = await loadTaxonomySchema();
   const errors = validateJsonSchema(taxonomy, schema).map((entry) => ({ ...entry, filePath }));
@@ -266,7 +372,23 @@ export async function validateTaxonomy(taxonomy, filePath = '<taxonomy>') {
   if (JSON.stringify(scaleKeys) !== JSON.stringify(['1', '2', '3', '4', '5'])) {
     errors.push(makeIssue('TAXONOMY_SCALE_INVALID', '$.relevance_scale', 'Relevance scale must define exactly scores 1 through 5.', filePath));
   }
+  errors.push(...tagPolicyErrors(taxonomy, filePath));
   return errors;
+}
+
+export function resolveControlledTag(taxonomy, value) {
+  const policy = taxonomy?.tag_policy;
+  if (!isPlainObject(policy) || typeof value !== 'string') return null;
+  if (Object.hasOwn(policy.canonical || {}, value)) return value;
+  if (Object.hasOwn(policy.aliases || {}, value)) return policy.aliases[value];
+
+  const normalized = value.toLocaleLowerCase('en-US');
+  const canonicalMatch = Object.keys(policy.canonical || {})
+    .find((id) => id.toLocaleLowerCase('en-US') === normalized);
+  if (canonicalMatch) return canonicalMatch;
+  const aliasMatch = Object.keys(policy.aliases || {})
+    .find((alias) => alias.toLocaleLowerCase('en-US') === normalized);
+  return aliasMatch ? policy.aliases[aliasMatch] : null;
 }
 
 function bodyContractErrors(card) {
@@ -309,6 +431,7 @@ function taxonomyContractErrors(card, taxonomy) {
   const actions = new Set(Object.keys(taxonomy.actions || {}));
   const statuses = new Set(taxonomy.statuses || []);
   const dimensions = new Set(Object.keys(taxonomy.relevance_dimensions || {}));
+  const tagPolicy = isPlainObject(taxonomy.tag_policy) ? taxonomy.tag_policy : null;
 
   if (card.data?.source?.type) errors.push(...membershipErrors([card.data.source.type], sourceTypes, '$.source.type', card.filePath));
 
@@ -329,6 +452,41 @@ function taxonomyContractErrors(card, taxonomy) {
   for (const [field, wrapper, allowed] of listWrappers) {
     if (Array.isArray(wrapper?.ai)) errors.push(...membershipErrors(wrapper.ai, allowed, field + '.ai', card.filePath));
     if (Array.isArray(wrapper?.user)) errors.push(...membershipErrors(wrapper.user, allowed, field + '.user', card.filePath));
+  }
+
+  if (tagPolicy) {
+    const allowedTags = new Set(Object.keys(tagPolicy.canonical || {}));
+    const tagWrapper = card.data?.classification?.tags;
+    for (const [owner, values] of [['ai', tagWrapper?.ai], ['user', tagWrapper?.user]]) {
+      if (!Array.isArray(values)) continue;
+      const field = '$.classification.tags.' + owner;
+      errors.push(...membershipErrors(values, allowedTags, field, card.filePath));
+      if (Number.isInteger(tagPolicy.min_per_card) && values.length < tagPolicy.min_per_card) {
+        errors.push(makeIssue(
+          'TAG_COUNT_INVALID',
+          field,
+          'Controlled tags require at least ' + tagPolicy.min_per_card + ' tag(s).',
+          card.filePath
+        ));
+      }
+      if (Number.isInteger(tagPolicy.max_per_card) && values.length > tagPolicy.max_per_card) {
+        errors.push(makeIssue(
+          'TAG_COUNT_INVALID',
+          field,
+          'Controlled tags allow at most ' + tagPolicy.max_per_card + ' tag(s).',
+          card.filePath
+        ));
+      }
+      const sorted = [...values].sort((left, right) => left.localeCompare(right, 'en'));
+      if (JSON.stringify(values) !== JSON.stringify(sorted)) {
+        errors.push(makeIssue(
+          'TAG_ORDER_INVALID',
+          field,
+          'Controlled tag IDs must be sorted lexically.',
+          card.filePath
+        ));
+      }
+    }
   }
 
   const aiDimensions = new Set(Object.keys(card.data?.relevance?.ai || {}));

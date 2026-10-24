@@ -38,3 +38,35 @@ source_types:
 resource_kinds:
   - project
   - article
+
+tag_policy:
+  min_per_card: 2
+  max_per_card: 4
+  canonical:
+    contract-test:
+      label: Contract Testing
+      description: Executable checks that protect a data or behavior contract.
+    github:
+      label: GitHub
+      description: Synthetic coverage for GitHub-backed source flows.
+    remote-ingest:
+      label: Remote Ingest
+      description: Synthetic coverage for controlled remote ingestion handoffs.
+    research:
+      label: Research
+      description: Synthetic coverage for research-bound analysis flows.
+    shared-tag:
+      label: Shared Tag
+      description: Synthetic shared tag used by release reader tests.
+    synthetic:
+      label: Synthetic Data
+      description: Deliberately artificial data used without exposing private information.
+    tag-governance:
+      label: Tag Governance
+      description: Controlled vocabulary and validation rules for stable tags.
+    threads:
+      label: Threads
+      description: Synthetic coverage for Threads source flows.
+  aliases:
+    contract-testing: contract-test
+    synthetic-data: synthetic

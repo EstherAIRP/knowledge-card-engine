@@ -97,7 +97,7 @@ Agent 只處理交接結果明確要求的下一步，例如提供必要判定�
 
 如果本輪有效證據後來改變，先前依舊證據形成的理解與分析不得沿用；必須重新閱讀目前有效證據。
 
-整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md)、[Knowledge Card 契約](../docs/specs/card.md) 與 Workspace 語言政策，把既有理解整理成正式分析結果。更新既有 Card 時，也是在形成本輪理解後才讀舊 Card；舊 AI 正文不是本輪事實證據。
+整體理解形成後，才讀 [Knowledge Card 寫作樣式](./CARD_STYLE.md)、[Knowledge Card 契約](../docs/specs/card.md)、Workspace 語言政策與 `config/taxonomy.yaml`，把既有理解整理成正式分析結果。Workspace 若定義 `tag_policy`，分析結果的 `tags` 只能選用 `canonical` 中的標準 ID，數量必須在政策範圍內並以 ID 字典順序輸出；不得把 `aliases` 或臨時新詞寫入 Card。更新既有 Card 時，也是在形成本輪理解後才讀舊 Card；舊 AI 正文不是本輪事實證據。
 
 分析版本、研究計畫、證據包、摘要值綁定、品質門檻與研究追溯，全部以 [分析與研究契約](../docs/specs/analysis.md) 為準。本文件不重複欄位或版本規則。
 

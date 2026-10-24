@@ -26,8 +26,8 @@ classification:
     user: null
   tags:
     ai:
-      - synthetic
       - contract-test
+      - synthetic
     user: null
 relevance:
   ai:

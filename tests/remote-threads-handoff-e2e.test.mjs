@@ -82,7 +82,7 @@ function analysisFrom(evidence) {
     resource_kind: 'article',
     navigation_categories: ['Engineering'],
     classification_categories: ['Developer Tools'],
-    tags: ['synthetic', 'threads', 'remote-ingest'],
+    tags: ['remote-ingest', 'synthetic', 'threads'],
     relevance: { overall: 3, engineering: 4 },
     actions: ['LEARN'],
     status: 'active',

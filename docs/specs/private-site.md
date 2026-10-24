@@ -158,7 +158,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 - `limit`：1–100，預設 50
 - `cursor`：由伺服器產生、綁定倉庫版本的分頁游標（cursor）
 
-只回傳 Knowledge Card 摘要，不回正文。摘要目前包含穩定 ID、`title`、`summary`、標準網址、`source type`、`effective resource kind`／`navigation`／`tags`／`relevance`／`actions`／`status`，以及建立、更新與最近檢查日期。這些欄位供已授權的 Knowledge Radar 首頁呈現、排序與瀏覽器端篩選；正文仍只由 Knowledge Card 詳細資料 API 提供。
+只回傳 Knowledge Card 摘要，不回正文。摘要目前包含穩定 ID、`title`、`summary`、標準網址、`source type`、`effective resource kind`／`navigation`／`tags`／`relevance`／`actions`／`status`，以及建立、更新與最近檢查日期。若 taxonomy 定義 `tag_policy`，回應另含 canonical tag ID 到顯示名稱的 `tag_labels` 對照；`tags` 仍保留穩定 ID，介面以顯示名稱呈現、以 ID 篩選。這些欄位供已授權的 Knowledge Radar 首頁呈現、排序與瀏覽器端篩選；正文仍只由 Knowledge Card 詳細資料 API 提供。
 
 分頁游標綁定 Knowledge Card Workspace 提交 SHA；如果下一頁請求時設定的版本參照（ref）已移到另一個版本，回 409 `DATA_VERSION_CHANGED`，要求從第一頁重新讀取，避免跨版本混頁。
 
@@ -172,6 +172,8 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 - 有效所有權值
 - 關聯／Concept 投影
 - Markdown 正文
+
+若 taxonomy 定義 `tag_policy`，回應也包含與列表相同的 `tag_labels` 對照。
 
 不存在的 id 回 404；非法 id 回 400。
 
@@ -188,7 +190,7 @@ Knowledge Card Engine 另提供 `createRestSessionStore`，使用相容 Redis �
 
 ### GET /api/graph
 
-需要授權。只回傳目前發布版本的圖譜顯示投影：Knowledge Card／Concept 節點、具型別邊、語意鄰近項目與版面方法，不提供任意 Knowledge Card Workspace 路徑或原始倉庫資料傾印。
+需要授權。只回傳目前發布版本的圖譜顯示投影：Knowledge Card／Concept 節點、具型別邊、語意鄰近項目、版面方法與 `tag_labels` 顯示名稱對照，不提供任意 Knowledge Card Workspace 路徑或原始倉庫資料傾印。圖譜篩選仍使用 canonical tag ID。
 
 ### GET /api/release
 

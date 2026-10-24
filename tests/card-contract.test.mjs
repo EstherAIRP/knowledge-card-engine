@@ -87,6 +87,40 @@ test('taxonomy rejects controlled values and relevance dimension drift', async (
   unknownUserDimension.data = structuredClone(current.card.data);
   unknownUserDimension.data.relevance.user = { secret: 5 };
   assert.ok((await validateCard(unknownUserDimension, current.taxonomy)).some((item) => item.code === 'TAXONOMY_DIMENSION_INVALID'));
+
+  const unknownTag = structuredClone(current.card);
+  unknownTag.data = structuredClone(current.card.data);
+  unknownTag.data.classification.tags.ai = ['contract-test', 'not-registered'];
+  assert.ok((await validateCard(unknownTag, current.taxonomy)).some((item) => item.code === 'TAXONOMY_VALUE_INVALID'));
+
+  const tooFewTags = structuredClone(current.card);
+  tooFewTags.data = structuredClone(current.card.data);
+  tooFewTags.data.classification.tags.ai = ['contract-test'];
+  assert.ok((await validateCard(tooFewTags, current.taxonomy)).some((item) => item.code === 'TAG_COUNT_INVALID'));
+
+  const unsortedTags = structuredClone(current.card);
+  unsortedTags.data = structuredClone(current.card.data);
+  unsortedTags.data.classification.tags.ai = ['synthetic', 'contract-test'];
+  assert.ok((await validateCard(unsortedTags, current.taxonomy)).some((item) => item.code === 'TAG_ORDER_INVALID'));
+});
+
+test('controlled tag policy validates canonical IDs, labels, aliases, and bounds', async () => {
+  const current = await fixture();
+
+  const badBounds = structuredClone(current.taxonomy);
+  badBounds.tag_policy.min_per_card = 5;
+  assert.ok((await validateTaxonomy(badBounds)).some((item) => item.code === 'TAXONOMY_TAG_POLICY_INVALID'));
+
+  const badId = structuredClone(current.taxonomy);
+  badId.tag_policy.canonical['Bad Tag'] = {
+    label: 'Bad Tag',
+    description: 'Invalid canonical ID.'
+  };
+  assert.ok((await validateTaxonomy(badId)).some((item) => item.code === 'TAXONOMY_TAG_POLICY_INVALID'));
+
+  const badAlias = structuredClone(current.taxonomy);
+  badAlias.tag_policy.aliases.unknown = 'missing-tag';
+  assert.ok((await validateTaxonomy(badAlias)).some((item) => item.code === 'TAXONOMY_TAG_POLICY_INVALID'));
 });
 
 test('Card structural schema rejects missing required fields', async () => {
