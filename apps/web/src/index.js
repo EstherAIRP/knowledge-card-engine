@@ -231,6 +231,11 @@ export function renderPrivateSiteShell() {
     return response.json();
   }
 
+  function displayTag(tag, labels) {
+    const label = labels && typeof labels[tag] === 'string' ? labels[tag].trim() : '';
+    return label || tag;
+  }
+
   function plainMarkdownText(value) {
     return String(value || '')
       .replace(/\[([^\]]+)\]\([^)]+\)/gu, '$1')
@@ -682,7 +687,7 @@ export function renderPrivateSiteShell() {
     tags.className = 'knowledge-tags';
     for (const tag of detail.tags || []) {
       const badge = document.createElement('span');
-      badge.textContent = '#' + tag;
+      badge.textContent = '#' + displayTag(tag, detail.tag_labels);
       tags.append(badge);
     }
     if (tags.childElementCount) head.append(tags);
@@ -953,6 +958,7 @@ export function renderPrivateSiteShell() {
     renderLoading('正在載入 Knowledge Cards', '讀取目前 release 的卡片、分類與 metadata…');
     const payload = await api('/api/cards?limit=100');
     const cards = payload.items || [];
+    const tagLabels = payload.tag_labels || {};
 
     const view = document.createElement('main');
     view.className = 'radar-view page-shell';
@@ -1074,10 +1080,10 @@ export function renderPrivateSiteShell() {
     tagAll.value = 'ALL';
     tagAll.textContent = '全部';
     tag.append(tagAll);
-    for (const [item, count] of [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-TW')).slice(0, 60)) {
+    for (const [item, count] of [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || displayTag(a[0], tagLabels).localeCompare(displayTag(b[0], tagLabels), 'zh-TW')).slice(0, 60)) {
       const option = document.createElement('option');
       option.value = item;
-      option.textContent = item + ' (' + count + ')';
+      option.textContent = displayTag(item, tagLabels) + ' (' + count + ')';
       tag.append(option);
     }
 
@@ -1156,6 +1162,7 @@ export function renderPrivateSiteShell() {
           card.status,
           ...(card.navigation_categories || []),
           ...(card.tags || []),
+          ...(card.tags || []).map((item) => displayTag(item, tagLabels)),
           ...(card.actions || [])
         ].filter(Boolean).join(' ').toLocaleLowerCase('zh-TW');
         return haystack.includes(needle);
@@ -1235,7 +1242,7 @@ export function renderPrivateSiteShell() {
         for (const item of (card.tags || []).slice(0, 6)) {
           const button = document.createElement('button');
           button.type = 'button';
-          button.textContent = '#' + item;
+          button.textContent = '#' + displayTag(item, tagLabels);
           button.addEventListener('click', (event) => {
             event.stopPropagation();
             tag.value = item;

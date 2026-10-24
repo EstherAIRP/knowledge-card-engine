@@ -42,6 +42,12 @@ function renderLegacyGraph(graph, options = {}) {
 
   const palette = ['#2563eb','#7c3aed','#0891b2','#059669','#ca8a04','#ea580c','#dc2626','#db2777','#4f46e5','#475569'];
   const relevanceColors = {1:'#cbd5e1',2:'#94a3b8',3:'#38bdf8',4:'#2563eb',5:'#7c3aed'};
+  const tagLabels = graph.tag_labels || {};
+
+  function displayTag(tag) {
+    const label = typeof tagLabels[tag] === 'string' ? tagLabels[tag].trim() : '';
+    return label || tag;
+  }
 
   function stableHash(value) {
     let hash = 2166136261;
@@ -175,7 +181,7 @@ function renderLegacyGraph(graph, options = {}) {
   function nodeMatchesSearch(node) {
     const needle = String(state.query || '').trim().toLocaleLowerCase('zh-TW');
     if (!needle) return false;
-    return [node.label,node.description,node.conceptType,...(node.tags||[]),...(node.categories||[]),...(node.semanticCategories||[]),...(node.actions||[]),node.sourceType,node.resourceKind]
+    return [node.label,node.description,node.conceptType,...(node.tags||[]),...(node.tags||[]).map(displayTag),...(node.categories||[]),...(node.semanticCategories||[]),...(node.actions||[]),node.sourceType,node.resourceKind]
       .filter(Boolean).join(' ').toLocaleLowerCase('zh-TW').includes(needle);
   }
   function matchingResults() {
@@ -422,7 +428,7 @@ function renderLegacyGraph(graph, options = {}) {
     const many=(key)=>[...new Set(cards.flatMap((node)=>node[key]||[]))].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'zh-TW'));
     const one=(key)=>[...new Set(cards.map((node)=>node[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'zh-TW'));
     const tags=new Map();cards.forEach((node)=>(node.tags||[]).forEach((tag)=>tags.set(tag,(tags.get(tag)||0)+1)));
-    return {categories:many('categories'),actions:many('actions'),tags:[...tags.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'zh-TW')),sourceTypes:one('sourceType'),resourceKinds:one('resourceKind'),relationTypes:[...new Set((graph.edges||[]).filter((edge)=>edge.kind==='card-card').map((edge)=>edge.type).filter(Boolean))].sort()};
+    return {categories:many('categories'),actions:many('actions'),tags:[...tags.entries()].sort((a,b)=>b[1]-a[1]||displayTag(a[0]).localeCompare(displayTag(b[0]),'zh-TW')),sourceTypes:one('sourceType'),resourceKinds:one('resourceKind'),relationTypes:[...new Set((graph.edges||[]).filter((edge)=>edge.kind==='card-card').map((edge)=>edge.type).filter(Boolean))].sort()};
   }
 
   function renderFilterPanel(){
@@ -439,7 +445,7 @@ function renderLegacyGraph(graph, options = {}) {
       items.forEach((item)=>{const label=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.checked=state.filters[key].includes(item);input.addEventListener('change',()=>{const list=state.filters[key],i=list.indexOf(item);if(i>=0)list.splice(i,1);else list.push(item);render();});label.append(input,document.createTextNode(item));opts.append(label);});details.append(opts);panel.append(details);
     }
     group('分類','categories',facets.categories);group('建議動作','actions',facets.actions);group('來源','sourceTypes',facets.sourceTypes);group('資源','resourceKinds',facets.resourceKinds);group('關係','relationTypes',facets.relationTypes);
-    if(facets.tags.length){const details=document.createElement('details');details.className='graph-filter-group';details.open=true;const summary=document.createElement('summary');summary.textContent='標籤';details.append(summary);const tags=document.createElement('div');tags.className='graph-filter-tags';facets.tags.slice(0,50).forEach(([tag,count])=>{const button=document.createElement('button');button.type='button';button.classList.toggle('active',state.filters.tags.includes(tag));button.textContent=tag+' '+count;button.addEventListener('click',()=>{const list=state.filters.tags,i=list.indexOf(tag);if(i>=0)list.splice(i,1);else list.push(tag);render();});tags.append(button);});details.append(tags);panel.append(details);}
+    if(facets.tags.length){const details=document.createElement('details');details.className='graph-filter-group';details.open=true;const summary=document.createElement('summary');summary.textContent='標籤';details.append(summary);const tags=document.createElement('div');tags.className='graph-filter-tags';facets.tags.slice(0,50).forEach(([tag,count])=>{const button=document.createElement('button');button.type='button';button.classList.toggle('active',state.filters.tags.includes(tag));button.textContent=displayTag(tag)+' '+count;button.addEventListener('click',()=>{const list=state.filters.tags,i=list.indexOf(tag);if(i>=0)list.splice(i,1);else list.push(tag);render();});tags.append(button);});details.append(tags);panel.append(details);}
     const rel=document.createElement('details');rel.className='graph-filter-group';rel.open=true;const relSummary=document.createElement('summary');relSummary.textContent='最低 Relevance';const range=document.createElement('input');range.type='range';range.min='1';range.max='5';range.step='1';range.value=String(state.filters.minimumRelevance);range.addEventListener('input',()=>{state.filters.minimumRelevance=Number(range.value);render();});rel.append(relSummary,range);panel.append(rel);
     const footer=document.createElement('div');footer.className='graph-filter-panel__footer';const reset=document.createElement('button');reset.type='button';reset.className='graph-filter-reset';reset.textContent='重設';reset.addEventListener('click',()=>{Object.assign(state.filters,{categories:[],actions:[],tags:[],sourceTypes:[],resourceKinds:[],relationTypes:[],minimumRelevance:1,semanticEnabled:false,semanticMode:'top',semanticTopN:6,semanticMaxDistance:.3,displayMode:'dim'});render();});const fit=document.createElement('button');fit.type='button';fit.className='graph-filter-fit';fit.textContent='符合結果';fit.addEventListener('click',()=>fitNodesToResults());footer.append(reset,fit);panel.append(footer);
     if(docked)explorer.prepend(panel);else{const backdrop=document.createElement('div');backdrop.className='graph-filter-backdrop';backdrop.addEventListener('click',()=>{state.filterPanelOpen=false;render();});document.body.append(backdrop,panel);panel.focus({preventScroll:true});}
@@ -447,7 +453,7 @@ function renderLegacyGraph(graph, options = {}) {
 
   function renderChips(){
     chips.replaceChildren();const groups=[['categories','分類'],['actions','建議動作'],['tags','標籤'],['sourceTypes','來源'],['resourceKinds','資源'],['relationTypes','關係']];
-    groups.forEach(([key,label])=>state.filters[key].forEach((value)=>{const b=document.createElement('button');b.type='button';b.textContent=label+': '+value+' ×';b.addEventListener('click',()=>{const i=state.filters[key].indexOf(value);if(i>=0)state.filters[key].splice(i,1);render();});chips.append(b);}));
+    groups.forEach(([key,label])=>state.filters[key].forEach((value)=>{const b=document.createElement('button');b.type='button';b.textContent=label+': '+(key==='tags'?displayTag(value):value)+' ×';b.addEventListener('click',()=>{const i=state.filters[key].indexOf(value);if(i>=0)state.filters[key].splice(i,1);render();});chips.append(b);}));
     if(Number(state.filters.minimumRelevance)>1){const b=document.createElement('button');b.type='button';b.textContent='Relevance ≥ '+state.filters.minimumRelevance+' ×';b.addEventListener('click',()=>{state.filters.minimumRelevance=1;render();});chips.append(b);}
     if(activeFilterCount()||state.query){const count=document.createElement('span');count.className='graph-filter-result-count';count.textContent='符合條件 '+matchingResults().cardIds.size+' 張';chips.append(count);}
   }

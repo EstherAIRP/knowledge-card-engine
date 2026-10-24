@@ -369,6 +369,8 @@ test('authorized card APIs use installation credentials, validate the collection
   assert.equal('body' in page.items[0], false);
   assert.equal(page.items[0].source_type, 'github');
   assert.deepEqual(page.items[0].tags, ['contract-test', 'synthetic']);
+  assert.equal(page.tag_labels['contract-test'], 'Contract Testing');
+  assert.equal(page.tag_labels.synthetic, 'Synthetic Data');
   assert.deepEqual(page.items[0].actions, ['LEARN', 'REFERENCE']);
   assert.equal(page.items[0].relevance.overall, 3);
   assert.equal(page.items[0].created_at, '2026-09-18');
@@ -384,6 +386,7 @@ test('authorized card APIs use installation credentials, validate the collection
   assert.equal(card.id, 'synthetic-example-project');
   assert.match(card.body, /Synthetic Example Project/u);
   assert.equal(card.source.identity, 'github:example/synthetic-example');
+  assert.equal(card.tag_labels['contract-test'], 'Contract Testing');
 
   const badPath = await h.app(new Request('https://cards.example.test/api/cards/profile%2Fprivate', {
     headers: { Cookie: sessionCookie }
