@@ -368,7 +368,7 @@ test('authorized card APIs use installation credentials, validate the collection
   assert.equal(page.items.length, 1);
   assert.equal('body' in page.items[0], false);
   assert.equal(page.items[0].source_type, 'github');
-  assert.deepEqual(page.items[0].tags, ['synthetic', 'contract-test']);
+  assert.deepEqual(page.items[0].tags, ['contract-test', 'synthetic']);
   assert.deepEqual(page.items[0].actions, ['LEARN', 'REFERENCE']);
   assert.equal(page.items[0].relevance.overall, 3);
   assert.equal(page.items[0].created_at, '2026-09-18');

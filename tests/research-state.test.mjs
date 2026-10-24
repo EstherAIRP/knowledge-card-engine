@@ -180,7 +180,7 @@ function analysisTemplate({ title = 'Research Project', summary = 'Synthetic res
     resource_kind: 'project',
     navigation_categories: ['Engineering'],
     classification_categories: ['Developer Tools'],
-    tags: ['synthetic', 'research'],
+    tags: ['research', 'synthetic'],
     relevance: { overall: 4, engineering: 5 },
     actions: ['LEARN'],
     status: 'active',

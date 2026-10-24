@@ -32,7 +32,7 @@ Knowledge Card 是工作區中的 Markdown 文件。合法卡片必須同時符�
 | `summary` | 1–600 字元。 |
 | `navigation.categories` | `ai` 值為非空唯一字串陣列；`user` 值為 `null` 或非空唯一字串陣列；值需存在於 `navigation_categories`。 |
 | `classification.categories` | 所有權形狀與 `navigation.categories` 相同；值需存在於分類體系 `categories`。 |
-| `classification.tags` | `ai` 值為唯一字串陣列；`user` 值為 `null` 或唯一字串陣列；標籤目前不是分類體系受控值。 |
+| `classification.tags` | `ai` 值為唯一字串陣列；`user` 值為 `null` 或唯一字串陣列。Workspace 若定義 `tag_policy`，兩者都必須使用已登錄的標準標籤 ID，並符合數量與排序規則。 |
 | `relevance` | `ai` 與 `user` 都是「維度 → 1–5 整數」；`ai` 必須完整覆蓋所有分類體系相關性維度，`user` 只能覆寫已定義維度。 |
 | `actions` | `ai` 值為非空唯一字串陣列；`user` 值為 `null` 或唯一字串陣列；值需是分類體系 `actions` 的鍵。 |
 | `status` | `{ ai, user }` 所有權包裝結構；值需存在於分類體系 `statuses`。 |
@@ -53,6 +53,31 @@ Schema 設定 `additionalProperties: false`，因此未定義的前置中繼資�
 - `resource_kinds`
 
 `relevance_dimensions` 必須包含 `overall`；`relevance_scale` 必須且只能定義 1、2、3、4、5。
+
+### 受控標籤政策
+
+Workspace 可在 `config/taxonomy.yaml` 定義 `tag_policy`。這是向後相容的選用政策；一旦存在，全部 Card 必須遵守，不得只對新 Card 套用。
+
+```yaml
+tag_policy:
+  min_per_card: 2
+  max_per_card: 8
+  canonical:
+    agent-orchestration:
+      label: Agent 編排
+      description: 多步驟或多 Agent 之間的任務分配、協調與狀態控制。
+  aliases:
+    Agent orchestration: agent-orchestration
+```
+
+- `canonical` 的鍵是 Card 實際儲存的穩定標籤 ID，只能使用小寫英數與單一連字號分隔。
+- `label` 是介面與人工維護用名稱；`description` 說明適用邊界。ID 是資料契約，不因顯示語言改名。
+- `aliases` 只供受控遷移與舊值辨識，Card 不得保存別名。別名必須指向已登錄 ID，且不得與標準 ID 重複。
+- `classification.tags.ai` 與非 `null` 的 `classification.tags.user` 都必須介於 `min_per_card` 與 `max_per_card`，並以 ID 字典順序儲存。
+- 標籤用於跨 Card 重用的技術、機制、能力或生態關聯。單一專案名稱、版本、當下狀態、實作細節、同義改寫，以及已由 navigation／category／action／status 表達的資訊，不應另建標籤。
+- 新概念若必須成為標籤，先在 `canonical` 加入 ID、顯示名稱與清楚邊界，通過完整 Workspace 驗證後才能用於 Card。Agent 不得在分析結果中臨時自創標籤。
+
+未定義 `tag_policy` 的舊 Workspace 仍可使用自由字串標籤；此相容模式不提供標籤收旂或數量防護。
 
 ## AI 與使用者所有權
 
@@ -165,6 +190,7 @@ Card 驗證會同時檢查：
 
 - 前置中繼資料是否符合 Schema。
 - 分類體系受控值與成員資格。
+- 受控標籤的成員資格、數量、排序與別名目標。
 - H1 與頂層正文段落順序。
 - 日期與所有權規則。
 - `id`、`source.identity` 與 `canonical_url` 的集合唯一性。

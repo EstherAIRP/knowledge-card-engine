@@ -66,7 +66,7 @@ function analysisTemplate(evidence, overrides = {}) {
     resource_kind: 'project',
     navigation_categories: ['Engineering'],
     classification_categories: ['Developer Tools'],
-    tags: ['synthetic', 'github'],
+    tags: ['github', 'synthetic'],
     relevance: { overall: 3, engineering: 4 },
     actions: ['LEARN'],
     status: 'active',

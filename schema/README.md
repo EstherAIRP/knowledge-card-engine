@@ -5,7 +5,7 @@
 - `workspace.schema.json`：定義 `workspace.yaml` 的結構、Workspace ID 與標準路徑欄位。
 - `engine-lock.schema.json`：定義 `engine.lock.json` 中 Knowledge Card Engine 倉庫、提交版本與 Workspace 結構版本鎖定。
 - `knowledge-card.schema.json`：定義 Knowledge Card 前置中繼資料（frontmatter）的結構、基本型別、日期／URI 與所有權包裝結構。
-- `taxonomy.schema.json`：定義 Knowledge Card Workspace `config/taxonomy.yaml` 的結構。
+- `taxonomy.schema.json`：定義 Knowledge Card Workspace `config/taxonomy.yaml` 的結構，包含選用的受控標籤登錄表、數量與別名政策。
 - `threads-continuation-judgement.schema.json`：定義 Threads 語意續篇／根貼文判定的機器輸出形狀；接受門檻與證據相關守門仍由受信任的驗證程式負責。
 
 前四個 Workspace／Card 相關 Schema 目前都使用 `schema_version: 1`。Threads 判定 Schema 不含 `schema_version` 欄位，不能套用相同版本敘述。

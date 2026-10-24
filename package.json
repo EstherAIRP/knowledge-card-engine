@@ -17,6 +17,7 @@
     "ui:verify": "node --test tests/web-ui-layout.test.mjs",
     "workspace:validate": "node scripts/validate-workspace.mjs",
     "cards:validate": "node scripts/validate-cards.mjs",
+    "tags:migrate": "node scripts/migrate-tags.mjs",
     "source-state:validate": "node scripts/validate-source-state.mjs",
     "research-state:validate": "node scripts/validate-research-state.mjs",
     "ingest:github": "node scripts/ingest-github.mjs",
