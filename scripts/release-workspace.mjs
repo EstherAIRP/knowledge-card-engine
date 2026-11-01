@@ -109,7 +109,7 @@ async function commandBuild(workspaceRoot, flags) {
   const mode = flags.get('mode') || 'incremental';
   if (!['incremental', 'full'].includes(mode)) throw new Error('--mode must be incremental or full.');
 
-  const { workspace, cards } = await loadValidatedWorkspace(workspaceRoot, engineSha);
+  const { workspace, taxonomy, cards } = await loadValidatedWorkspace(workspaceRoot, engineSha);
   const [relationConfig, relationOverrides, conceptConfig] = await Promise.all([
     readYamlOptional(path.join(workspace.paths.config, 'relation-config.yaml')),
     readYamlOptional(path.join(workspace.paths.config, 'relation-overrides.yaml')),
@@ -128,6 +128,7 @@ async function commandBuild(workspaceRoot, flags) {
     relationConfig,
     relationOverrides,
     conceptConfig,
+    taxonomy,
     previous,
     fullRebuild: mode === 'full'
   });

@@ -19,6 +19,7 @@ import {
   fallbackClassifyCandidate,
   materializeClassifiedRelation,
   relationPairKey,
+  relevanceDimensionsFromTaxonomy,
   validateClassifierOutput
 } from './semantic-relations.js';
 
@@ -536,13 +537,15 @@ export async function buildRelationIndex(cards, vectorIndex, {
   generatedAt,
   config = {},
   overrides = {},
+  taxonomy,
   previous = null,
   fullRebuild = false,
   classifyRelation = null
 }) {
+  const relevanceDimensions = relevanceDimensionsFromTaxonomy(taxonomy);
   const cardIds = new Set(cards.map((card) => card.data.id));
   const cardMap = new Map(cards.map((card) => [card.data.id, card]));
-  const candidates = buildSemanticCandidates(cards, vectorIndex, config, cosineSimilarity);
+  const candidates = buildSemanticCandidates(cards, vectorIndex, config, cosineSimilarity, relevanceDimensions);
   const candidateConfig = config.candidate || {};
   const classifierConfig = config.classifier || {};
   const fallbackTopK = Math.max(1, Number(candidateConfig.fallback_top_k ?? 3));
@@ -1011,6 +1014,7 @@ export async function buildGeneratedArtifacts(cards, {
   relationConfig = {},
   relationOverrides = {},
   conceptConfig = {},
+  taxonomy,
   previous = {},
   fullRebuild = false,
   embedTexts = null,
@@ -1037,6 +1041,7 @@ export async function buildGeneratedArtifacts(cards, {
     generatedAt,
     config: relationConfig,
     overrides: relationOverrides,
+    taxonomy,
     previous: fullRebuild ? previous.relations : previous.relations,
     fullRebuild,
     classifyRelation

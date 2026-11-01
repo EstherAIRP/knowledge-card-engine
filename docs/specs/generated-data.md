@@ -60,6 +60,8 @@ data/graph.json
 - 分類體系訊號：生效後的 categories × 0.45、tags × 0.30、高相關度維度 × 0.20、actions × 0.05。
 - 語意：E5 原始餘弦相似度經 `0.70..0.95 → 0..1` 正規化。
 
+高相關度維度取自 Workspace `config/taxonomy.yaml` 的 `relevance_dimensions`，排除 `overall`，只計入生效分數 ≥ 4 的維度；Engine 不內建任何 Workspace 專屬的維度名稱。生成資料建置缺少 `relevance_dimensions` 時必須失敗，不得把這項訊號靜默當成 0。
+
 分類訊號與語意訊號以 0.40／0.60 組合。候選發現與正式發布分成兩階段：預設候選訊號門檻為分類分數 ≥ 0.08 或語意分數 ≥ 0.20，且組合分數 ≥ 0.30；未使用外部分類器時，只有組合分數 ≥ 0.48 且通過 `fallback_top_k` 的候選會成為正式關聯。
 
 關聯分類器是選用能力。若私人 Workspace 沒有明確啟用並提供核准的外部模型供應器與憑證，新候選會使用確定性的語意備援判定；備援結果不會冒充 LLM 判定，也不會自行產生方向性的 `depends_on`／`extends`。

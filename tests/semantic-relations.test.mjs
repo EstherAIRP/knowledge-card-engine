@@ -9,6 +9,7 @@ import {
 import {
   buildEmbeddingText,
   normalizeSemanticSimilarity,
+  relevanceDimensionsFromTaxonomy,
   scoreTaxonomyPair
 } from '../packages/graph/src/semantic-relations.js';
 
@@ -130,6 +131,18 @@ function localConfig(model = 'Xenova/multilingual-e5-small') {
   };
 }
 
+function taxonomyWith(...dimensions) {
+  return {
+    relevance_dimensions: Object.fromEntries(['overall', ...dimensions].map((key) => [
+      key,
+      { label: key, description: 'Synthetic ' + key + ' relevance.' }
+    ]))
+  };
+}
+
+const TAXONOMY = taxonomyWith('example_domain');
+const RELEVANCE_DIMENSIONS = relevanceDimensionsFromTaxonomy(TAXONOMY);
+
 function unitVector(dimensions, index) {
   const vector = Array.from({ length: dimensions }, () => 0);
   vector[index] = 1;
@@ -144,7 +157,7 @@ test('V1 embedding text ignores navigation and only includes selected semantic s
     tags: ['memory'],
     navigation: ['Agent / Harness'],
     actions: ['LEARN'],
-    relevance: { ai_rd: 5 },
+    relevance: { example_domain: 5 },
     sections: {
       '一句話介紹': 'intro',
       '核心概念': 'core',
@@ -160,7 +173,7 @@ test('V1 embedding text ignores navigation and only includes selected semantic s
     tags: ['memory'],
     navigation: ['Research / Science'],
     actions: ['LEARN'],
-    relevance: { ai_rd: 5 },
+    relevance: { example_domain: 5 },
     sections: {
       '一句話介紹': 'intro',
       '核心概念': 'core',
@@ -173,7 +186,7 @@ test('V1 embedding text ignores navigation and only includes selected semantic s
   const text = buildEmbeddingText(first);
   assert.match(text, /Title: Alpha/u);
   assert.match(text, /Categories: Agent/u);
-  assert.match(text, /Relevance: ai rd=5/u);
+  assert.match(text, /Relevance: example domain=5/u);
   assert.match(text, /核心概念: core/u);
   assert.doesNotMatch(text, /Agent \/ Harness/u);
   assert.doesNotMatch(text, /must-not-be-in-embedding/u);
@@ -185,15 +198,15 @@ test('V1 taxonomy score restores category tag relevance and action weights', () 
     categories: ['Agent'],
     tags: ['memory'],
     actions: ['LEARN'],
-    relevance: { ai_rd: 5 }
+    relevance: { example_domain: 5 }
   });
   const right = card('right', {
     categories: ['Agent'],
     tags: ['memory'],
     actions: ['LEARN'],
-    relevance: { ai_rd: 4 }
+    relevance: { example_domain: 4 }
   });
-  const score = scoreTaxonomyPair(left, right);
+  const score = scoreTaxonomyPair(left, right, RELEVANCE_DIMENSIONS);
   assert.equal(score.score, 1);
   assert.deepEqual(score.metrics, {
     categories: 1,
@@ -204,9 +217,79 @@ test('V1 taxonomy score restores category tag relevance and action weights', () 
 
   const categoryOnly = scoreTaxonomyPair(
     card('a', { categories: ['Agent'], actions: [] }),
-    card('b', { categories: ['Agent'], actions: [] })
+    card('b', { categories: ['Agent'], actions: [] }),
+    RELEVANCE_DIMENSIONS
   );
   assert.equal(categoryOnly.score, 0.45);
+});
+
+test('high-relevance signal uses Workspace taxonomy dimensions and excludes overall', () => {
+  const dimensions = relevanceDimensionsFromTaxonomy(taxonomyWith('alpha_focus', 'beta_focus'));
+  assert.deepEqual(dimensions, ['alpha_focus', 'beta_focus']);
+
+  const score = scoreTaxonomyPair(
+    card('left', { categories: ['Agent'], actions: [], relevance: { overall: 5, alpha_focus: 5, beta_focus: 3 } }),
+    card('right', { categories: ['Agent'], actions: [], relevance: { overall: 5, alpha_focus: 4, beta_focus: 5 } }),
+    dimensions
+  );
+  assert.equal(score.metrics.relevance, 0.5);
+  assert.deepEqual(score.shared.relevance, ['alpha_focus']);
+  assert.ok(score.signals.includes('relevance:alpha_focus'));
+  assert.equal(score.signals.includes('relevance:overall'), false);
+  assert.equal(score.score, 0.55);
+});
+
+test('relation scores follow taxonomy dimension keys instead of a built-in list', async () => {
+  const vectorIndex = {
+    input_hash: '3'.repeat(64),
+    provider: 'fixture',
+    model: 'fixture',
+    entries: [
+      { card_id: 'alpha', input_hash: 'f'.repeat(64), vector: [1, 0] },
+      { card_id: 'beta', input_hash: '0'.repeat(64), vector: [1, 0] }
+    ]
+  };
+  const pairWith = (key) => [
+    card('alpha', { categories: ['Agent'], tags: ['memory'], relevance: { overall: 3, [key]: 5 } }),
+    card('beta', { categories: ['Agent'], tags: ['memory'], relevance: { overall: 3, [key]: 4 } })
+  ];
+  const edgeFor = async (cards, taxonomy) => {
+    const relations = await buildRelationIndex(cards, vectorIndex, {
+      engineSha: ENGINE_SHA,
+      sourceSha: SOURCE_SHA,
+      generatedAt: GENERATED_AT,
+      config: localConfig(),
+      taxonomy
+    });
+    return relations.edges.find((edge) => edge.pair_id === 'alpha::beta');
+  };
+
+  const custom = await edgeFor(pairWith('gamma_lab'), taxonomyWith('gamma_lab', 'delta_ops'));
+  const renamed = await edgeFor(pairWith('example_domain'), TAXONOMY);
+  const undeclared = await edgeFor(pairWith('gamma_lab'), TAXONOMY);
+
+  assert.deepEqual(custom.evidence.shared_relevance, ['gamma_lab']);
+  assert.ok(custom.signals.includes('relevance:gamma_lab'));
+  assert.equal(custom.scores.taxonomy, 1);
+  assert.deepEqual(custom.scores, renamed.scores);
+  assert.equal(custom.score, renamed.score);
+  assert.deepEqual(undeclared.evidence.shared_relevance, []);
+  assert.equal(undeclared.scores.taxonomy, 0.8);
+});
+
+test('relation scoring fails closed without Workspace relevance dimensions', async () => {
+  const cards = [card('alpha'), card('beta')];
+  assert.throws(() => relevanceDimensionsFromTaxonomy({}), /taxonomy\.relevance_dimensions/u);
+  assert.throws(() => scoreTaxonomyPair(cards[0], cards[1]), /relevance dimensions/u);
+  await assert.rejects(
+    () => buildRelationIndex(cards, { entries: [] }, {
+      engineSha: ENGINE_SHA,
+      sourceSha: SOURCE_SHA,
+      generatedAt: GENERATED_AT,
+      config: localConfig()
+    }),
+    /taxonomy\.relevance_dimensions/u
+  );
 });
 
 test('multilingual E5 cosine normalization preserves the V1 0.70 to 0.95 range', () => {
@@ -329,7 +412,8 @@ test('candidate discovery and fallback publication remain separate gates', async
     engineSha: ENGINE_SHA,
     sourceSha: SOURCE_SHA,
     generatedAt: GENERATED_AT,
-    config
+    config,
+    taxonomy: TAXONOMY
   });
 
   const alphaBeta = relations.classifications['alpha::beta'];
@@ -348,8 +432,8 @@ test('candidate discovery and fallback publication remain separate gates', async
 
 test('LLM classification cache is keyed by candidate evidence and reused', async () => {
   const cards = [
-    card('alpha', { categories: ['Agent'], tags: ['memory'], relevance: { ai_rd: 5 } }),
-    card('beta', { categories: ['Agent'], tags: ['memory'], relevance: { ai_rd: 5 } })
+    card('alpha', { categories: ['Agent'], tags: ['memory'], relevance: { example_domain: 5 } }),
+    card('beta', { categories: ['Agent'], tags: ['memory'], relevance: { example_domain: 5 } })
   ];
   const vectorIndex = {
     input_hash: '2'.repeat(64),
@@ -387,6 +471,7 @@ test('LLM classification cache is keyed by candidate evidence and reused', async
     sourceSha: SOURCE_SHA,
     generatedAt: GENERATED_AT,
     config,
+    taxonomy: TAXONOMY,
     classifyRelation
   });
   assert.equal(calls, 1);
@@ -397,6 +482,7 @@ test('LLM classification cache is keyed by candidate evidence and reused', async
     sourceSha: SOURCE_SHA,
     generatedAt: GENERATED_AT,
     config,
+    taxonomy: TAXONOMY,
     previous: first,
     classifyRelation
   });

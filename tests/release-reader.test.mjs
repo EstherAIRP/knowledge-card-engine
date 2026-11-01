@@ -61,12 +61,13 @@ async function fixture() {
 
   const first = parseCardDocument(firstText, 'content/knowledge/2026/synthetic-example-project.md');
   const second = parseCardDocument(secondText, 'content/knowledge/2026/synthetic-second-project.md');
-  parseTaxonomyDocument(taxonomyText);
+  const taxonomy = parseTaxonomyDocument(taxonomyText);
 
   const artifacts = await buildGeneratedArtifacts([first, second], {
     engineSha: E,
     sourceSha: S,
     generatedAt: AT,
+    taxonomy,
     relationConfig: {
       candidate: { min_taxonomy_score: 0.08, top_k: 12, fallback_top_k: 3 },
       semantic: {
@@ -281,6 +282,7 @@ test('release-pinned reader keeps cards search graph and release on one publishe
   assert.equal(detail.relations.length > 0, true);
   assert.equal(typeof detail.relations[0].other_summary, 'string');
   assert.equal('evidence' in detail.relations[0], true);
+  assert.deepEqual(detail.relations[0].evidence.shared_relevance, ['engineering']);
   assert.equal(typeof detail.relations[0].manual, 'boolean');
   assert.equal('note' in detail.relations[0], true);
 });

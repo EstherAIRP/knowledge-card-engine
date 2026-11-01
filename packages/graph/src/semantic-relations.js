@@ -17,13 +17,7 @@ const EMBEDDING_SECTIONS = Object.freeze([
   '技術亮點'
 ]);
 
-const RELEVANCE_DIMENSIONS = Object.freeze([
-  'ai_rd',
-  'aoi_ai',
-  'llm_agent',
-  'sillytavern_ai_rpg',
-  'image_gen'
-]);
+const OVERALL_RELEVANCE_DIMENSION = 'overall';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -82,9 +76,23 @@ function sharedValues(leftValues, rightValues) {
     .map((key) => left.get(key));
 }
 
-function highRelevanceDimensions(card) {
+export function relevanceDimensionsFromTaxonomy(taxonomy) {
+  const dimensions = taxonomy?.relevance_dimensions;
+  if (!dimensions || typeof dimensions !== 'object' || Array.isArray(dimensions)) {
+    throw new TypeError('Relation scoring requires taxonomy.relevance_dimensions.');
+  }
+  return Object.freeze(Object.keys(dimensions).filter((key) => key !== OVERALL_RELEVANCE_DIMENSION));
+}
+
+function assertRelevanceDimensions(relevanceDimensions) {
+  if (!Array.isArray(relevanceDimensions)) {
+    throw new TypeError('Relation scoring requires relevance dimensions from the Workspace taxonomy.');
+  }
+}
+
+function highRelevanceDimensions(card, relevanceDimensions) {
   const relevance = effectiveRelevance(card?.data?.relevance);
-  return RELEVANCE_DIMENSIONS.filter((key) => Number(relevance?.[key] ?? 0) >= 4);
+  return relevanceDimensions.filter((key) => Number(relevance?.[key] ?? 0) >= 4);
 }
 
 export function buildEmbeddingText(card, { maxChars = 12000 } = {}) {
@@ -127,7 +135,8 @@ export function embeddingContentHash(text, { provider, model, method } = {}) {
     .digest('hex');
 }
 
-export function scoreTaxonomyPair(leftCard, rightCard) {
+export function scoreTaxonomyPair(leftCard, rightCard, relevanceDimensions) {
+  assertRelevanceDimensions(relevanceDimensions);
   const leftId = leftCard?.data?.id;
   const rightId = rightCard?.data?.id;
   if (!leftId || !rightId || leftId === rightId) return null;
@@ -138,8 +147,8 @@ export function scoreTaxonomyPair(leftCard, rightCard) {
   const rightTags = effectiveOwnershipValue(rightCard.data?.classification?.tags) ?? [];
   const leftActions = effectiveOwnershipValue(leftCard.data?.actions) ?? [];
   const rightActions = effectiveOwnershipValue(rightCard.data?.actions) ?? [];
-  const leftHighRelevance = highRelevanceDimensions(leftCard);
-  const rightHighRelevance = highRelevanceDimensions(rightCard);
+  const leftHighRelevance = highRelevanceDimensions(leftCard, relevanceDimensions);
+  const rightHighRelevance = highRelevanceDimensions(rightCard, relevanceDimensions);
 
   const metrics = {
     categories: jaccard(leftCategories, rightCategories),
@@ -206,7 +215,8 @@ export function combineTaxonomySemantic(taxonomyScore, semanticScore, config = {
   return Number(((taxonomy * taxonomyWeight + semantic * semanticWeight) / weightSum).toFixed(4));
 }
 
-export function buildSemanticCandidates(cards, vectorIndex, config, cosineSimilarity) {
+export function buildSemanticCandidates(cards, vectorIndex, config, cosineSimilarity, relevanceDimensions) {
+  assertRelevanceDimensions(relevanceDimensions);
   const vectorById = new Map(
     (vectorIndex?.entries || [])
       .filter((entry) => entry?.card_id && Array.isArray(entry.vector))
@@ -222,7 +232,7 @@ export function buildSemanticCandidates(cards, vectorIndex, config, cosineSimila
   const candidates = [];
   for (let left = 0; left < cards.length; left += 1) {
     for (let right = left + 1; right < cards.length; right += 1) {
-      const taxonomy = scoreTaxonomyPair(cards[left], cards[right]);
+      const taxonomy = scoreTaxonomyPair(cards[left], cards[right], relevanceDimensions);
       if (!taxonomy) continue;
 
       const leftVector = vectorById.get(taxonomy.source);

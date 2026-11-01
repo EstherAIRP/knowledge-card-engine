@@ -162,6 +162,12 @@ function build(cards, options = {}) {
         }
       }]
     },
+    taxonomy: {
+      relevance_dimensions: {
+        overall: { label: 'Overall', description: 'Overall synthetic relevance.' },
+        example_domain: { label: 'Example Domain', description: 'Synthetic domain relevance.' }
+      }
+    },
     ...options
   });
 }
