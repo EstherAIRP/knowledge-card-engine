@@ -186,7 +186,7 @@ export function normalizeResearchPlanEvidenceKinds(plan) {
         ...question,
         evidence_kinds: question.evidence_kinds.map((kind) => {
           if (typeof kind !== 'string') return kind;
-          const normalized = kind.trim().toLowerCase().replace(/[\\s-]+/gu, '_');
+          const normalized = kind.trim().toLowerCase().replace(/[\s-]+/gu, '_');
           return RESEARCH_EVIDENCE_KINDS.includes(normalized) ? normalized : kind;
         })
       }];
