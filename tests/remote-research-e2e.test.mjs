@@ -45,7 +45,7 @@ async function writeRequest(root) {
   });
 }
 
-function runHandoff(root, variant, { expectSuccess = true } = {}) {
+function runHandoff(root, variant, { expectSuccess = true, githubActions = false } = {}) {
   resultCounter += 1;
   const resultFile = path.join(
     os.tmpdir(),
@@ -65,7 +65,7 @@ function runHandoff(root, variant, { expectSuccess = true } = {}) {
       encoding: 'utf8',
       env: {
         ...process.env,
-        GITHUB_ACTIONS: 'false',
+        GITHUB_ACTIONS: githubActions ? 'true' : 'false',
         KC_RESEARCH_FIXTURE_VARIANT: String(variant)
       }
     }
@@ -562,5 +562,60 @@ test('synthetic GitHub Remote Ingest accepts basic analysis without a research e
     await assert.rejects(fs.access(handoffDir(root)), (error) => error.code === 'ENOENT');
   } finally {
     await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('synthetic Remote Ingest allows same-input Agent revisions but rejects protected evidence edits', async () => {
+  function git(root, ...args) {
+    const run = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+  }
+
+  const prepare = async () => {
+    const root = await tempWorkspace();
+    await writeRequest(root);
+    assert.equal(runHandoff(root, 1).result.stage, 'research-prepared');
+    git(root, 'init', '-q');
+    git(root, 'config', 'user.name', 'github-actions[bot]');
+    git(root, 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com');
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'prepare synthetic runner handoff');
+    git(root, 'config', 'user.name', 'Synthetic Agent');
+    git(root, 'config', 'user.email', 'agent@example.invalid');
+    return root;
+  };
+
+  const acceptedRoot = await prepare();
+  const rejectedRoot = await prepare();
+  try {
+    const planPath = path.join(handoffDir(acceptedRoot), 'research-plan.json');
+    const evidence = await readJson(path.join(handoffDir(acceptedRoot), 'evidence.json'));
+    await writeJson(planPath, researchPlan(evidence));
+    git(acceptedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(acceptedRoot, 'commit', '-qm', 'draft research plan');
+    const refined = await readJson(planPath);
+    refined.plan.questions.problem.rationale += ' Refined in an additional Agent commit.';
+    await writeJson(planPath, refined);
+    git(acceptedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(acceptedRoot, 'commit', '-qm', 'refine research plan');
+    const applied = runHandoff(acceptedRoot, 1, { githubActions: true });
+    assert.equal(applied.result.stage, 'research-expanded');
+    assert.equal(applied.result.research_round, 1);
+
+    const evidencePath = path.join(handoffDir(rejectedRoot), 'evidence.json');
+    const rejectedEvidence = await readJson(evidencePath);
+    const plan = researchPlan(rejectedEvidence);
+    rejectedEvidence.repository.description = 'Synthetic attempt to change runner-managed evidence.';
+    await writeJson(evidencePath, rejectedEvidence);
+    git(rejectedRoot, 'add', 'state/ingestion/evidence.json');
+    git(rejectedRoot, 'commit', '-qm', 'tamper with runner evidence');
+    await writeJson(path.join(handoffDir(rejectedRoot), 'research-plan.json'), plan);
+    git(rejectedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(rejectedRoot, 'commit', '-qm', 'submit research plan');
+    const denied = runHandoff(rejectedRoot, 1, { expectSuccess: false, githubActions: true });
+    assert.equal(denied.result.code, 'REMOTE_INGEST_INPUT_COMMIT_INVALID');
+  } finally {
+    await fs.rm(acceptedRoot, { recursive: true, force: true });
+    await fs.rm(rejectedRoot, { recursive: true, force: true });
   }
 });
