@@ -85,7 +85,7 @@ knowledge-card-engine/
 
 Knowledge Card Engine 提供整套 Knowledge Card 共用能力：
 
-- **來源收錄**：解析與正規化來源，建立可驗證的來源證據。目前正式支援 GitHub repository 與 Threads。
+- **來源收錄**：解析與正規化來源，建立可驗證的來源證據。目前正式支援 GitHub repository、Threads 與可公開安全擷取的 HTML 網頁。
 - **研究與分析**：在來源需要更多脈絡時進行受限研究，再將最終證據整理成結構化分析。
 - **Knowledge Card 建立與更新**：判定來源應建立新卡片或更新既有卡片，並保護穩定欄位、使用者覆寫與備註。
 - **Workspace 驗證**：驗證 Workspace 結構、Knowledge Card、分類體系、來源狀態與其他正式資料。

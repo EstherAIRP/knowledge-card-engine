@@ -1,13 +1,14 @@
 # 來源收錄契約
 
-目前正式支援兩種來源供應者：
+目前正式支援三種來源供應者：
 
 | 來源供應者 | 可接受輸入 | 穩定來源身分 | Card 來源類型 | 已接受證據 |
 | --- | --- | --- | --- | --- |
 | GitHub 倉庫 | GitHub 倉庫 URL 與其子路徑 | `github:{owner-lower}/{repo-lower}` | `github` | 倉庫中繼資料 + 非空 README |
 | Threads | `threads.com`／`threads.net` 的貼文、`/share/*`、`/t/*` | `threads:{root_shortcode}` | `article` | 已解析至根貼文，且通過結構完整性或受控高信心語意復原的有序貼文集合 |
+| 公開 HTML 網頁 | 一般公開 HTTP(S) 文章與技術文件 | `url:{final-canonical-url}` | 依 URL 推定 `article`、`documentation` 等受控來源類型 | 經受限安全擷取的非空標題、正文與摘要值 |
 
-其他 HTTP(S) URL 目前只有通用網址正規化輔助函式，沒有通用內容擷取器；不能因 URL 可被正規化就視為可正式收錄。
+公開網頁僅接受不需登入的 UTF-8 HTML；PDF、須執行 JavaScript 才能取得正文的頁面、無法取得完整正文的網頁及超出擷取上限的文件均不得正式收錄。網址可被正規化不代表內容一定可被接受。
 
 ## 共通資料流
 
@@ -75,6 +76,16 @@ https://threads.com/@user/post/{root_shortcode}
 ### 通用 HTTP(S)
 
 通用網址正規化會移除 URL 片段、移除 `www.`、刪除已知追蹤查詢參數、保留其他具有語意的查詢參數，並產生 `url:{canonical-url}` 來源識別。這不代表該來源已有可建立已接受證據的來源供應者。
+
+## 公開 HTML 網頁已接受證據
+
+`generic` 供應者沿用通用網址正規化；擷取成功後以最終重新導向網址重新計算穩定來源識別及建議 Card ID。`requested_url` 保存原始請求經正規化後的網址，正式`canonical_url` 與`source_identity` 以最終網址為準。此供應者不跨入 GitHub／Threads 專屬來源身分，也不信任頁面自稱的 canonical 標籤變更來源身分。
+
+擷取器只允許一般公開 HTTP(S) 主機名稱，不接受網址帳密、IP 位址、非標準連接埠、內部名稱或非 HTTP(S) 轉向。每次請求與重新導向都必須重新檢查 DNS 回應，拒絕含任一非公開 IP 的集合，並將實際連線固定到驗證過的 IP，避免檢查後重新解析造成的內網存取風險。最多三次重新導向，單次網頁回應最多 4 MiB，最終文字最多 512 KiB；不帶登入 Cookie，不執行頁面 JavaScript，也不自動載入其他來源。
+
+公開 HTML 證據需通過 `validateGenericWebEvidence`：驗證標題及具有足夠內容的正文、UTF-8 位元組數、文字 SHA-256、正式來源身分、擷取時間及`evidence_digest`。不完整或疑似登入頁應拒絕，不以搜尋摘要或模型記憶代替已接受全文。`analysis_version: 1` 以證據摘要值綁定分析，沿用既有 Workspace 寫入器與集合驗證。已接受來源狀態位於`state/sources/web/`，只保存標題、正文摘要值與位元組數，不永久保存正文全文。Remote Ingest 交接中的`evidence.json` 可保存本輪全文，成功套用後必須刪除交接檔。
+
+目前的正文擷取採 HTML 主內容區域（`main`／`article`）優先；若頁面缺少結構或主要內容由動態載入產生，可能無法驗證完整性，此時必須回報失敗，不得推測內容已完整。
 
 ## GitHub 已接受證據
 

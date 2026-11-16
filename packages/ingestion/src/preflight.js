@@ -3,7 +3,7 @@ import { canonicalizeSource, resolveIngestionTarget } from './index.js';
 export function resolveIngestionPreflightTarget(cards, rawUrl) {
   const canonical = canonicalizeSource(rawUrl);
 
-  if (!['github', 'threads'].includes(canonical.provider)) {
+  if (!['github', 'threads', 'generic'].includes(canonical.provider)) {
     const error = new Error(`Unsupported ingestion provider for preflight: ${canonical.provider}.`);
     error.code = 'SOURCE_PROVIDER_UNSUPPORTED';
     throw error;
