@@ -5,6 +5,7 @@ import {
   ANALYSIS_SECTIONS,
   RESEARCH_COVERAGE_DIMENSIONS,
   RESEARCH_QUESTION_IDS,
+  normalizeResearchPlanEvidenceKinds,
   bindAnalysisToEvidence,
   bindResearchAnalysisToEvidence,
   computeAnalysisEvidenceDigest,
@@ -338,4 +339,19 @@ test('research contracts currently fail closed for providers without a research 
     () => validateResearchPlan(plan, threadsEvidence),
     (error) => error.code === 'ANALYSIS_RESEARCH_PROVIDER_UNSUPPORTED'
   );
+});
+
+test('handoff normalizes known evidence-kind spellings without weakening strict validation', () => {
+  const raw = researchPlan();
+  raw.questions.architecture.evidence_kinds = ['README', 'API', 'background job', 'data model'];
+  const normalized = normalizeResearchPlanEvidenceKinds(raw);
+  assert.deepEqual(normalized.questions.architecture.evidence_kinds, ['readme', 'api', 'background_job', 'data_model']);
+  assert.deepEqual(raw.questions.architecture.evidence_kinds, ['README', 'API', 'background job', 'data model']);
+  assert.doesNotThrow(() => validateResearchPlan(normalized, sourceEvidence));
+  assert.throws(() => validateResearchPlan(raw, sourceEvidence), (error) => error.code === 'ANALYSIS_RESEARCH_INVALID');
+
+  raw.questions.architecture.evidence_kinds = ['unsupported-unknown-kind'];
+  const rejected = normalizeResearchPlanEvidenceKinds(raw);
+  assert.equal(rejected.questions.architecture.evidence_kinds[0], 'unsupported-unknown-kind');
+  assert.throws(() => validateResearchPlan(rejected, sourceEvidence), (error) => error.code === 'ANALYSIS_RESEARCH_INVALID');
 });
