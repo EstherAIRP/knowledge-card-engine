@@ -95,6 +95,8 @@ npm run ingest:handoff -- /path/to/workspace --result-file=/tmp/ingest-result.js
 
 Remote Ingest 只讀取 Workspace 狀態目錄中的固定交接檔，並依執行結果指出下一個合法步驟。Agent 應直接依目前分支上的交接資料接手，不自行建立另一套收錄或寫入流程。
 
+GitHub 取得已接受來源證據後，可在資料足夠時直接提交綁定來源摘要值的 `analysis_version: 1` 分析；需要查證實作與架構時再交付研究計畫、擴充證據並提交 `analysis_version: 2`。Remote Ingest 在研究計畫輸入邊界可正規化已知證據類型名稱，未知類型、來源版本不一致或來源路徑不安全仍會拒絕。交接若需修訂，可在同一階段連續修改同一 Agent 輸入檔，不得變更執行器管理的來源與研究證據。
+
 來源支援範圍、已接受證據、GitHub 受控擷取、Threads 完整性與交接規則見 [來源收錄契約](../specs/ingestion.md)；研究計畫、分析證據與分析版本見 [分析與研究契約](../specs/analysis.md)。
 
 ## 私人網站
