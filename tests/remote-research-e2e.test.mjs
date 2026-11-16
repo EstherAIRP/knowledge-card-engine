@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import {
   ANALYSIS_SECTIONS,
   RESEARCH_QUESTION_IDS,
+  bindAnalysisToEvidence,
   bindResearchAnalysisToEvidence
 } from '../packages/analysis/src/index.js';
 import { loadCardDocuments, parseCardDocument } from '../packages/core/src/index.js';
@@ -44,7 +45,7 @@ async function writeRequest(root) {
   });
 }
 
-function runHandoff(root, variant, { expectSuccess = true } = {}) {
+function runHandoff(root, variant, { expectSuccess = true, githubActions = false } = {}) {
   resultCounter += 1;
   const resultFile = path.join(
     os.tmpdir(),
@@ -64,7 +65,7 @@ function runHandoff(root, variant, { expectSuccess = true } = {}) {
       encoding: 'utf8',
       env: {
         ...process.env,
-        GITHUB_ACTIONS: 'false',
+        GITHUB_ACTIONS: githubActions ? 'true' : 'false',
         KC_RESEARCH_FIXTURE_VARIANT: String(variant)
       }
     }
@@ -87,10 +88,10 @@ function runHandoff(root, variant, { expectSuccess = true } = {}) {
 
 function researchPlan(evidence) {
   const requests = {
-    problem: { evidence_kinds: ['readme'], path_hints: ['README.md'] },
+    problem: { evidence_kinds: ['README'], path_hints: ['README.md'] },
     core_model: { evidence_kinds: ['documentation'], path_hints: ['docs/architecture.md'] },
     architecture: { evidence_kinds: ['documentation'], path_hints: ['docs/architecture.md'] },
-    flow: { evidence_kinds: ['background_job'], path_hints: ['src/jobs.js'] },
+    flow: { evidence_kinds: ['background job'], path_hints: ['src/jobs.js'] },
     implementation_support: { evidence_kinds: ['auth', 'source'], path_hints: ['src/auth.js'] },
     technical_mechanisms: { evidence_kinds: ['background_job', 'source'], path_hints: ['src/jobs.js'] },
     tradeoffs: { evidence_kinds: ['documentation', 'security'], path_hints: ['SECURITY.md'] },
@@ -297,7 +298,9 @@ async function prepareInitialResearch(root, variant) {
 
   const prepared = runHandoff(root, variant);
   assert.equal(prepared.result.stage, 'research-prepared');
-  assert.equal(prepared.result.waiting_for, 'research-plan');
+  assert.equal(prepared.result.waiting_for, 'research-plan-or-analysis');
+  assert.deepEqual(prepared.result.analysis_handoff.input_paths, ['state/ingestion/evidence.json']);
+  assert.equal(prepared.result.analysis_handoff.analysis_evidence_digest, null);
   assert.equal(prepared.result.analysis_evidence_digest, null);
 
   const evidence = await readJson(evidencePath);
@@ -415,7 +418,7 @@ test('synthetic GitHub Remote Ingest invalidates first-round analysis after a se
   }
 });
 
-test('synthetic GitHub Remote Ingest requires Agent-selected research before analysis, rejects stale analysis, and preserves ownership on update', async () => {
+test('synthetic GitHub Remote Ingest keeps research-bound analysis fresh and preserves ownership on update', async () => {
   const root = await tempWorkspace();
   try {
     await writeRequest(root);
@@ -517,5 +520,102 @@ test('synthetic GitHub Remote Ingest requires Agent-selected research before ana
     await assert.rejects(fs.access(handoffDir(root)), (error) => error.code === 'ENOENT');
   } finally {
     await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('synthetic GitHub Remote Ingest accepts basic analysis without a research expansion', async () => {
+  const root = await tempWorkspace();
+  try {
+    await writeRequest(root);
+    const prepared = runHandoff(root, 1);
+    assert.equal(prepared.result.stage, 'research-prepared');
+    assert.equal(prepared.result.waiting_for, 'research-plan-or-analysis');
+
+    const evidence = await readJson(path.join(handoffDir(root), 'evidence.json'));
+    const analysis = bindAnalysisToEvidence({
+      title: 'Basic GitHub Handoff',
+      summary: 'Synthetic evidence-bound basic GitHub analysis with no research expansion.',
+      resource_kind: 'project',
+      navigation_categories: ['Engineering'],
+      classification_categories: ['Developer Tools'],
+      tags: ['github', 'synthetic'],
+      relevance: { overall: 4, engineering: 5 },
+      actions: ['LEARN'],
+      status: 'active',
+      sections: Object.fromEntries(ANALYSIS_SECTIONS.map((heading) => [
+        heading,
+        `Accepted README and repository metadata support basic analysis for ${heading}.`
+      ]))
+    }, evidence);
+
+    await writeJson(path.join(handoffDir(root), 'analysis.json'), analysis);
+    const applied = runHandoff(root, 1);
+    assert.equal(applied.result.stage, 'applied');
+    assert.equal(applied.result.analysis_version, 1);
+    assert.equal(applied.result.mode, 'create');
+    assert.equal(applied.result.research_state_path, null);
+
+    const cards = await loadCardDocuments(path.join(root, 'content', 'knowledge'));
+    assert.equal(cards.filter((card) => card.data.source.identity === evidence.source_identity).length, 1);
+    const sourceState = await readJson(path.join(root, applied.result.source_state_path));
+    assert.equal(sourceState.evidence_digest, evidence.evidence_digest);
+    await assert.rejects(fs.access(handoffDir(root)), (error) => error.code === 'ENOENT');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('synthetic Remote Ingest allows same-input Agent revisions but rejects protected evidence edits', async () => {
+  function git(root, ...args) {
+    const run = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+  }
+
+  const prepare = async () => {
+    const root = await tempWorkspace();
+    await writeRequest(root);
+    assert.equal(runHandoff(root, 1).result.stage, 'research-prepared');
+    git(root, 'init', '-q');
+    git(root, 'config', 'user.name', 'github-actions[bot]');
+    git(root, 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com');
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'prepare synthetic runner handoff');
+    git(root, 'config', 'user.name', 'Synthetic Agent');
+    git(root, 'config', 'user.email', 'agent@example.invalid');
+    return root;
+  };
+
+  const acceptedRoot = await prepare();
+  const rejectedRoot = await prepare();
+  try {
+    const planPath = path.join(handoffDir(acceptedRoot), 'research-plan.json');
+    const evidence = await readJson(path.join(handoffDir(acceptedRoot), 'evidence.json'));
+    await writeJson(planPath, researchPlan(evidence));
+    git(acceptedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(acceptedRoot, 'commit', '-qm', 'draft research plan');
+    const refined = await readJson(planPath);
+    refined.plan.questions.problem.rationale += ' Refined in an additional Agent commit.';
+    await writeJson(planPath, refined);
+    git(acceptedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(acceptedRoot, 'commit', '-qm', 'refine research plan');
+    const applied = runHandoff(acceptedRoot, 1, { githubActions: true });
+    assert.equal(applied.result.stage, 'research-expanded');
+    assert.equal(applied.result.research_round, 1);
+
+    const evidencePath = path.join(handoffDir(rejectedRoot), 'evidence.json');
+    const rejectedEvidence = await readJson(evidencePath);
+    const plan = researchPlan(rejectedEvidence);
+    rejectedEvidence.repository.description = 'Synthetic attempt to change runner-managed evidence.';
+    await writeJson(evidencePath, rejectedEvidence);
+    git(rejectedRoot, 'add', 'state/ingestion/evidence.json');
+    git(rejectedRoot, 'commit', '-qm', 'tamper with runner evidence');
+    await writeJson(path.join(handoffDir(rejectedRoot), 'research-plan.json'), plan);
+    git(rejectedRoot, 'add', 'state/ingestion/research-plan.json');
+    git(rejectedRoot, 'commit', '-qm', 'submit research plan');
+    const denied = runHandoff(rejectedRoot, 1, { expectSuccess: false, githubActions: true });
+    assert.equal(denied.result.code, 'REMOTE_INGEST_INPUT_COMMIT_INVALID');
+  } finally {
+    await fs.rm(acceptedRoot, { recursive: true, force: true });
+    await fs.rm(rejectedRoot, { recursive: true, force: true });
   }
 });

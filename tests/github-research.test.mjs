@@ -38,7 +38,11 @@ const files = {
   'src/auth.js': { sha: '5'.repeat(40), text: 'export function authorize(session) { return Boolean(session?.user); }\n' },
   'src/jobs.js': { sha: '6'.repeat(40), text: 'export async function runJob(queue, payload) { return queue.add(payload); }\n' },
   'src/session-store.js': { sha: '8'.repeat(40), text: 'export function readSession(store, id) { return store.get(id); }\n' },
-  'skills/core/SKILL.md': { sha: '9'.repeat(40), text: '# Core Skill\n\nThis primary-source skill defines the repository workflow model.\n' }
+  'skills/core/SKILL.md': { sha: '9'.repeat(40), text: '# Core Skill\n\nThis primary-source skill defines the repository workflow model.\n' },
+  'src/Panel.svelte': { sha: 'a'.repeat(40), text: '<script>export let title</script><h1>{title}</h1>' },
+  'src/config.cts': { sha: 'b'.repeat(40), text: 'export = { enabled: true };' },
+  'build.ps1': { sha: 'c'.repeat(40), text: 'Write-Output "synthetic build"' },
+  '_headers': { sha: 'd'.repeat(40), text: '/assets/*\n  Cache-Control: max-age=3600' }
 };
 
 function fileEntry(path, type = 'blob') {
@@ -384,7 +388,7 @@ test('GitHub bounded research expansion accumulates evidence across at most two 
   assert.equal(stopped.remaining.rounds, 0);
 });
 
-test('GitHub research retry rejects stale plans, repeated paths, and evidence unrelated to needs_evidence questions', async () => {
+test('GitHub research retry rejects stale plans and repeated paths but reports safe selection mismatches', async () => {
   const fetchImpl = githubResearchFetch();
   const evidence = await acceptedEvidence(fetchImpl);
   const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
@@ -428,17 +432,17 @@ test('GitHub research retry rejects stale plans, repeated paths, and evidence un
       }
     }
   }), evidence);
-  await assert.rejects(
-    fetchGitHubResearchExpansion(
-      evidence,
-      discovery,
-      unrelatedPlan,
-      first.progress,
-      ['src/auth.js'],
-      { previousBundle: first.bundle, fetchImpl }
-    ),
-    (error) => error.code === 'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED'
+  const unmatched = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    unrelatedPlan,
+    first.progress,
+    ['src/auth.js'],
+    { previousBundle: first.bundle, fetchImpl }
   );
+  assert.deepEqual(unmatched.unmatched_selected_paths, ['src/auth.js']);
+  assert.ok(unmatched.bundle.items.some((item) => item.path === 'src/auth.js'));
+  assert.equal(validateAnalysisEvidenceBundle(unmatched.bundle, evidence), unmatched.bundle);
 
   const repeatPlan = bindPlan(researchPlan({
     priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
@@ -574,5 +578,25 @@ test('GitHub research progress is derived from the current cumulative bundle and
   assert.throws(
     () => validateGitHubResearchProgress(tampered, evidence, discovery, first.bundle),
     (error) => error.code === 'GITHUB_RESEARCH_PROGRESS_INVALID'
+  );
+});
+
+test('GitHub selected research supports common UTF-8 source formats without weakening path checks', async () => {
+  const fetchImpl = githubResearchFetch();
+  const evidence = await acceptedEvidence(fetchImpl);
+  const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
+
+  const paths = ['src/Panel.svelte', 'src/config.cts', 'build.ps1', '_headers'];
+  const bundle = await fetchGitHubResearchEvidence(evidence, discovery, paths, { fetchImpl });
+  assert.deepEqual(bundle.items.map((item) => item.path), [...paths].sort());
+  assert.equal(validateAnalysisEvidenceBundle(bundle, evidence), bundle);
+
+  await assert.rejects(
+    fetchGitHubResearchEvidence(evidence, discovery, ['../_headers'], { fetchImpl }),
+    (error) => error.code === 'GITHUB_RESEARCH_PATH_INVALID'
+  );
+  await assert.rejects(
+    fetchGitHubResearchEvidence(evidence, discovery, ['logo.png'], { fetchImpl }),
+    (error) => error.code === 'GITHUB_RESEARCH_PATH_UNSUPPORTED'
   );
 });

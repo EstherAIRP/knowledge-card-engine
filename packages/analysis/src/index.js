@@ -174,6 +174,26 @@ function validateSourceResearchBinding(value, evidence, field = 'research') {
   }
 }
 
+// Normalize only known presentation variants at the Remote Ingest boundary.
+// The canonical research validator remains strict and rejects unknown kinds.
+export function normalizeResearchPlanEvidenceKinds(plan) {
+  if (!isPlainObject(plan) || !isPlainObject(plan.questions)) return plan;
+  return {
+    ...plan,
+    questions: Object.fromEntries(Object.entries(plan.questions).map(([id, question]) => {
+      if (!isPlainObject(question) || !Array.isArray(question.evidence_kinds)) return [id, question];
+      return [id, {
+        ...question,
+        evidence_kinds: question.evidence_kinds.map((kind) => {
+          if (typeof kind !== 'string') return kind;
+          const normalized = kind.trim().toLowerCase().replace(/[\s-]+/gu, '_');
+          return RESEARCH_EVIDENCE_KINDS.includes(normalized) ? normalized : kind;
+        })
+      }];
+    }))
+  };
+}
+
 export function validateResearchPlan(plan, evidence) {
   if (!isPlainObject(plan)) fail('ANALYSIS_RESEARCH_INVALID', 'Research plan must be an object.');
   validateSourceResearchBinding(plan, evidence, 'research plan');

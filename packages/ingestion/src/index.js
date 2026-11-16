@@ -547,7 +547,8 @@ const GITHUB_RESEARCH_SOURCE_EXTENSIONS = new Set([
   '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx',
   '.py', '.go', '.rs', '.java', '.kt', '.kts',
   '.rb', '.php', '.cs', '.swift', '.sh', '.bash',
-  '.zsh', '.sql', '.graphql', '.gql', '.proto'
+  '.zsh', '.sql', '.graphql', '.gql', '.proto',
+  '.svelte', '.vue', '.cts', '.mts', '.ps1'
 ]);
 
 const GITHUB_RESEARCH_TEXT_EXTENSIONS = new Set([
@@ -625,6 +626,7 @@ function isResearchTextPath(pathValue) {
     || base === 'gemfile'
     || base === 'license'
     || base === 'copying'
+    || base === '_headers'
   ) return true;
   return GITHUB_RESEARCH_TEXT_EXTENSIONS.has(pathExtension(pathValue));
 }
@@ -1440,14 +1442,12 @@ export async function fetchGitHubResearchExpansion(
       limits: normalizeGitHubResearchLimits(roundLimits)
     }
   );
-  for (const candidate of selected) {
-    if (!candidateRequestedByPlan(candidate, validatedPlan)) {
-      fail(
-        'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED',
-        `GitHub research path is not requested by any needs_evidence question: ${candidate.path}.`
-      );
-    }
-  }
+  // selected_paths are an explicit Agent choice. A mismatched evidence kind
+  // is a diagnostic rather than a rejection: pinned revision, path safety,
+  // byte limits and final evidence binding are still enforced below.
+  const unmatchedSelectedPaths = selected
+    .filter((candidate) => !candidateRequestedByPlan(candidate, validatedPlan))
+    .map((candidate) => candidate.path);
 
   const roundBundle = await fetchGitHubResearchEvidenceForSelection(
     accepted,
@@ -1476,6 +1476,7 @@ export async function fetchGitHubResearchExpansion(
   return {
     round: continuation.next_round,
     selected_paths: selected.map((candidate) => candidate.path),
+    unmatched_selected_paths: unmatchedSelectedPaths,
     bundle: mergedBundle,
     progress: nextProgress
   };

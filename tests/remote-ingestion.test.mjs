@@ -151,14 +151,14 @@ test('remote ingestion handoff contract includes bounded GitHub research files a
   assert.match(script, /discoverGitHubResearchCandidates/);
   assert.match(script, /createGitHubResearchProgress/);
   assert.match(script, /bundle:\s*null/);
-  assert.match(script, /waiting_for:\s*'research-plan'/);
+  assert.match(script, /waiting_for:\s*'research-plan-or-analysis'/);
   assert.match(script, /createAnalysisHandoff/);
   assert.match(script, /reread_required:\s*true/);
   assert.match(script, /input_paths:\s*inputPaths/);
   assert.match(script, /output_path:\s*handoffPaths\.analysis/);
   assert.doesNotMatch(script, /selectGitHubInitialResearchPaths/);
   assert.match(script, /fetchGitHubResearchExpansion/);
-  assert.match(script, /analysisEvidenceBundle:\s*researchHandoff\.bundle/);
+  assert.match(script, /analysisEvidenceBundle:\s*requiresResearch\s*\?\s*researchHandoff\.bundle\s*:\s*null/);
   assert.match(script, /applied\.research_state_path/);
   assert.match(script, /handoffPaths\.research_plan/);
   assert.match(script, /handoffPaths\.research_evidence/);
@@ -167,5 +167,5 @@ test('remote ingestion handoff contract includes bounded GitHub research files a
   assert.match(script, /REMOTE_INGEST_INPUT_COMMIT_INVALID/);
   assert.match(script, /diff-tree/);
   assert.match(script, /41898282\+github-actions\[bot\]@users\.noreply\.github\.com/);
-  assert.match(script, /must directly follow the last runner-managed handoff commit/);
+  assert.match(script, /commits since the last runner handoff may change only/);
 });
