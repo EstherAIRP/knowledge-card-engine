@@ -69,7 +69,7 @@ knowledge-card-engine/
 | `apps/web` | 私人 Knowledge Card 網站介面 |
 | `apps/server` | 登入、授權、Workspace 讀取與私人 API |
 | `packages/core` | Knowledge Card、分類體系、所有權與核心驗證 |
-| `packages/ingestion` | GitHub／Threads 來源解析與已接受來源證據 |
+| `packages/ingestion` | GitHub、Threads 與公開 HTML 網頁的來源解析及已接受證據 |
 | `packages/analysis` | AI 分析、研究與證據資料契約 |
 | `packages/graph` | 搜尋、向量、語意關聯、Concept 與 Graph |
 | `packages/workspace` | Workspace 載入、Engine 版本鎖定與安全寫入 |
@@ -85,7 +85,7 @@ knowledge-card-engine/
 
 Knowledge Card Engine 提供整套 Knowledge Card 共用能力：
 
-- **來源收錄**：解析與正規化來源，建立可驗證的來源證據。目前正式支援 GitHub repository 與 Threads。
+- **來源收錄**：解析與正規化來源，建立可驗證的來源證據。目前正式支援 GitHub repository、Threads 與可公開安全擷取的 HTML 網頁。
 - **研究與分析**：在來源需要更多脈絡時進行受限研究，再將最終證據整理成結構化分析。
 - **Knowledge Card 建立與更新**：判定來源應建立新卡片或更新既有卡片，並保護穩定欄位、使用者覆寫與備註。
 - **Workspace 驗證**：驗證 Workspace 結構、Knowledge Card、分類體系、來源狀態與其他正式資料。

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { assertSafePublicWebUrl, extractPublicHtml, fetchPublicHtml, PUBLIC_WEB_LIMITS } from './web/public-html.js';
 import {
   ANALYSIS_RESEARCH_VERSION,
   RESEARCH_EVIDENCE_KINDS,
@@ -124,7 +125,7 @@ export function canonicalizeSource(rawUrl) {
     };
   }
 
-  if (parsed.hostname.startsWith('www.')) parsed.hostname = parsed.hostname.slice(4);
+  // Preserve www: it may be a different or the only serving hostname.
   cleanTrackingParams(parsed);
   if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, '');
   const canonicalUrl = parsed.toString();
@@ -138,6 +139,178 @@ export function canonicalizeSource(rawUrl) {
     identity,
     suggestedId: `${slugify(`${parsed.hostname}-${lastSegment}`) || 'source'}-${digest}`
   };
+}
+
+
+export function validateGenericWebIngestionRequest(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'Web ingestion request must be an object.');
+  }
+  const expected = ['provider', 'schema_version', 'source_url'];
+  const keys = Object.keys(value).sort();
+  if (keys.length !== expected.length || keys.some((key, i) => key !== expected[i])
+      || value.provider !== 'generic' || value.schema_version !== 1) {
+    fail('REMOTE_INGEST_REQUEST_INVALID', 'Web ingestion request has invalid or additional fields.');
+  }
+  const normalized = canonicalizeSource(value.source_url);
+  if (normalized.provider !== 'generic') fail('SOURCE_PROVIDER_UNSUPPORTED', 'This URL belongs to another source provider.');
+  assertSafePublicWebUrl(normalized.canonicalUrl);
+  return { schema_version: 1, provider: 'generic', source_url: normalized.canonicalUrl };
+}
+
+function genericEvidenceDigest(evidence) {
+  return sha256(JSON.stringify({
+    provider: 'generic',
+    requested_url: evidence.requested_url,
+    source_identity: evidence.source_identity,
+    canonical_url: evidence.canonical_url,
+    source_type: evidence.source_type,
+    captured_at: evidence.captured_at,
+    title: evidence.document.title,
+    text_sha256: evidence.document.text_sha256,
+    bytes: evidence.document.bytes
+  }));
+}
+
+export function validateGenericWebEvidence(evidence) {
+  if (!evidence || evidence.provider !== 'generic' || evidence.accepted !== true) {
+    fail('SOURCE_INCOMPLETE', 'Web evidence must be accepted by the generic provider.');
+  }
+  const requested = canonicalizeSource(evidence.requested_url);
+  const canonical = canonicalizeSource(evidence.canonical_url);
+  if (requested.provider !== 'generic' || canonical.provider !== 'generic'
+      || requested.canonicalUrl !== evidence.requested_url
+      || canonical.canonicalUrl !== evidence.canonical_url
+      || canonical.identity !== evidence.source_identity) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Web evidence identity or canonical URL is inconsistent.');
+  }
+  assertSafePublicWebUrl(evidence.requested_url);
+  assertSafePublicWebUrl(evidence.canonical_url);
+  if (evidence.source_type !== canonical.sourceType || evidence.suggested_id !== canonical.suggestedId) {
+    fail('SOURCE_INCOMPLETE', 'Web evidence source classification or suggested ID is inconsistent.');
+  }
+  if (typeof evidence.captured_at !== 'string' || Number.isNaN(Date.parse(evidence.captured_at))) {
+    fail('SOURCE_CAPTURE_TIME_INVALID', 'Web evidence capture time is invalid.');
+  }
+  const document = evidence.document;
+  if (!document || document.content_type !== 'text/html' || typeof document.title !== 'string'
+      || !document.title.trim() || typeof document.text !== 'string'
+      || document.text.length < PUBLIC_WEB_LIMITS.min_text_characters
+      || !Number.isInteger(document.bytes) || document.bytes > PUBLIC_WEB_LIMITS.max_text_bytes
+      || document.bytes !== Buffer.byteLength(document.text, 'utf8')
+      || document.text_sha256 !== sha256(document.text)
+      || evidence.evidence_digest !== genericEvidenceDigest(evidence)) {
+    fail('SOURCE_INCOMPLETE', 'Web evidence body, size, fingerprint or digest is inconsistent.');
+  }
+  return evidence;
+}
+
+export async function fetchGenericWebEvidence(rawUrl, {
+  fetchHtmlImpl = fetchPublicHtml,
+  capturedAt = new Date().toISOString()
+} = {}) {
+  const request = validateGenericWebIngestionRequest({
+    schema_version: 1, provider: 'generic', source_url: rawUrl
+  });
+  let fetched;
+  try {
+    fetched = await fetchHtmlImpl(request.source_url);
+  } catch (cause) {
+    if (cause?.code) throw cause;
+    const error = new IngestionError('INGESTION_EXECUTION_FAILED', 'Web document fetch could not execute.');
+    error.cause = cause;
+    throw error;
+  }
+  if (typeof fetched?.finalUrl !== 'string' || typeof fetched?.html !== 'string') {
+    fail('SOURCE_INCOMPLETE', 'Web document fetch returned invalid content.');
+  }
+  assertSafePublicWebUrl(fetched.finalUrl);
+  const canonical = canonicalizeSource(fetched.finalUrl);
+  if (canonical.provider !== 'generic') fail('SOURCE_IDENTITY_MISMATCH', 'Web redirect changed source provider.');
+  const body = extractPublicHtml(fetched.html);
+  const evidence = {
+    provider: 'generic',
+    accepted: true,
+    requested_url: request.source_url,
+    canonical_url: canonical.canonicalUrl,
+    source_identity: canonical.identity,
+    source_type: canonical.sourceType,
+    suggested_id: canonical.suggestedId,
+    captured_at: capturedAt,
+    document: {
+      title: body.title,
+      text: body.text,
+      bytes: Buffer.byteLength(body.text, 'utf8'),
+      text_sha256: sha256(body.text),
+      content_type: 'text/html'
+    }
+  };
+  return validateGenericWebEvidence({
+    ...evidence, evidence_digest: genericEvidenceDigest(evidence)
+  });
+}
+
+export function assertGenericWebEvidenceMatchesRequest(request, evidence) {
+  const normalized = validateGenericWebIngestionRequest({
+    schema_version: request?.schema_version,
+    provider: request?.provider,
+    source_url: request?.source_url
+  });
+  const accepted = validateGenericWebEvidence(evidence);
+  if (accepted.requested_url !== normalized.source_url) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Web evidence does not match requested URL.');
+  }
+  return accepted;
+}
+
+export function genericWebSourceStatePath(identity) {
+  if (typeof identity !== 'string' || !identity.startsWith('url:https://')
+      && !identity.startsWith('url:http://')) {
+    fail('SOURCE_IDENTITY_MISMATCH', 'Web source identity is invalid.');
+  }
+  return 'sources/web/' + sha256(identity) + '.json';
+}
+
+export function buildGenericWebSourceState(evidence, { cardId, cardPath }) {
+  validateGenericWebEvidence(evidence);
+  return {
+    schema_version: 1,
+    provider: 'generic',
+    source_identity: evidence.source_identity,
+    canonical_url: evidence.canonical_url,
+    captured_at: evidence.captured_at,
+    evidence_digest: evidence.evidence_digest,
+    document: {
+      title: evidence.document.title,
+      text_sha256: evidence.document.text_sha256,
+      bytes: evidence.document.bytes,
+      content_type: 'text/html'
+    },
+    card_id: cardId,
+    card_path: cardPath
+  };
+}
+
+export function validateGenericWebSourceState(state) {
+  if (!state || state.provider !== 'generic' || state.schema_version !== 1) {
+    fail('SOURCE_STATE_INVALID', 'Web source state schema/provider is invalid.');
+  }
+  const canonical = canonicalizeSource(state.canonical_url);
+  if (canonical.provider !== 'generic' || canonical.identity !== state.source_identity) {
+    fail('SOURCE_STATE_INVALID', 'Web source state identity is inconsistent.');
+  }
+  assertSafePublicWebUrl(state.canonical_url);
+  if (!state.canonical_url || Number.isNaN(Date.parse(state.captured_at || ''))
+      || !/^[0-9a-f]{64}$/.test(state.evidence_digest || '')
+      || !/^[0-9a-f]{64}$/.test(state.document?.text_sha256 || '')
+      || state.document?.content_type !== 'text/html'
+      || typeof state.document?.title !== 'string' || !state.document.title.trim()
+      || !Number.isInteger(state.document.bytes) || state.document.bytes < 1
+      || state.document.bytes > PUBLIC_WEB_LIMITS.max_text_bytes
+      || !state.card_id || !state.card_path) {
+    fail('SOURCE_STATE_INVALID', 'Web source state metadata is incomplete.');
+  }
+  return state;
 }
 
 function responseHeader(response, name) {
@@ -1880,12 +2053,14 @@ export function validateThreadsSourceState(state) {
 export function validateIngestionRequest(value) {
   if (value?.provider === 'github') return validateGitHubIngestionRequest(value);
   if (value?.provider === 'threads') return validateThreadsIngestionRequest(value);
+  if (value?.provider === 'generic') return validateGenericWebIngestionRequest(value);
   fail('SOURCE_PROVIDER_UNSUPPORTED', 'Remote ingestion provider is not supported.');
 }
 
 export function validateAcceptedEvidence(evidence) {
   if (evidence?.provider === 'github') return validateGitHubEvidence(evidence);
   if (evidence?.provider === 'threads') return validateThreadsEvidence(evidence);
+  if (evidence?.provider === 'generic') return validateGenericWebEvidence(evidence);
   fail('SOURCE_PROVIDER_UNSUPPORTED', 'Accepted evidence provider is not supported.');
 }
 
@@ -1896,7 +2071,8 @@ export function assertAcceptedEvidenceMatchesRequest(request, evidence) {
     source_url: request?.source_url
   });
   if (normalized.provider === 'github') return assertGitHubEvidenceMatchesRequest(normalized, evidence);
-  return assertThreadsEvidenceMatchesRequest(normalized, evidence);
+  if (normalized.provider === 'threads') return assertThreadsEvidenceMatchesRequest(normalized, evidence);
+  return assertGenericWebEvidenceMatchesRequest(normalized, evidence);
 }
 
 export async function fetchAcceptedEvidence(request, options = {}) {
@@ -1906,26 +2082,28 @@ export async function fetchAcceptedEvidence(request, options = {}) {
     source_url: request?.source_url
   });
   if (normalized.provider === 'github') return fetchGitHubEvidence(normalized.source_url, options);
-  return fetchThreadsEvidence(normalized.source_url, options);
+  if (normalized.provider === 'threads') return fetchThreadsEvidence(normalized.source_url, options);
+  return fetchGenericWebEvidence(normalized.source_url, options);
 }
 
 export function acceptedSourceStatePath(evidence) {
   const accepted = validateAcceptedEvidence(evidence);
-  return accepted.provider === 'github'
-    ? githubSourceStatePath(accepted.source_identity)
-    : threadsSourceStatePath(accepted.source_identity);
+  if (accepted.provider === 'github') return githubSourceStatePath(accepted.source_identity);
+  if (accepted.provider === 'threads') return threadsSourceStatePath(accepted.source_identity);
+  return genericWebSourceStatePath(accepted.source_identity);
 }
 
 export function buildAcceptedSourceState(evidence, target) {
   const accepted = validateAcceptedEvidence(evidence);
-  return accepted.provider === 'github'
-    ? buildGitHubSourceState(accepted, target)
-    : buildThreadsSourceState(accepted, target);
+  if (accepted.provider === 'github') return buildGitHubSourceState(accepted, target);
+  if (accepted.provider === 'threads') return buildThreadsSourceState(accepted, target);
+  return buildGenericWebSourceState(accepted, target);
 }
 
 export function validateAcceptedSourceState(state) {
   if (state?.provider === 'github') return validateGitHubSourceState(state);
   if (state?.provider === 'threads') return validateThreadsSourceState(state);
+  if (state?.provider === 'generic') return validateGenericWebSourceState(state);
   fail('SOURCE_STATE_INVALID', 'Accepted source state provider is not supported.');
 }
 

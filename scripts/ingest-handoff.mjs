@@ -592,7 +592,7 @@ try {
       }
     } else {
       if (hasResearchPlan || hasResearchEvidence) {
-        fail('REMOTE_INGEST_HANDOFF_INVALID', 'Research handoff files are not valid for Threads ingestion.');
+        fail('REMOTE_INGEST_HANDOFF_INVALID', 'Research handoff files are not valid for non-GitHub ingestion.');
       }
       if (!hasAnalysis) {
         result = {
