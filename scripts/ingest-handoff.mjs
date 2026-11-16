@@ -14,7 +14,7 @@ import {
   validateGitHubResearchProgress,
   validateIngestionRequest
 } from '../packages/ingestion/src/index.js';
-import { validateResearchPlan } from '../packages/analysis/src/index.js';
+import { normalizeResearchPlanEvidenceKinds, validateResearchPlan } from '../packages/analysis/src/index.js';
 import {
   THREADS_SEMANTIC_HANDOFF_KIND,
   THREADS_SEMANTIC_HANDOFF_PRODUCER,
@@ -193,16 +193,38 @@ async function assertSubmittedHandoffCommit(workspaceRoot, state) {
   }
 
   if (requiresRunnerParent) {
-    const [parentCommitter] = await gitLines(
+    // An Agent may revise the same input file in more than one commit. Protect
+    // runner-managed evidence by checking *every* intervening commit instead of
+    // demanding an immediate Bot parent.
+    const ancestors = await gitLines(
       workspaceRoot,
-      ['log', '-1', '--format=%ae', 'HEAD^'],
+      ['log', '--format=%H%x09%ae', 'HEAD^'],
       'REMOTE_INGEST_INPUT_COMMIT_INVALID'
     );
-    if (parentCommitter !== INGEST_BOT_EMAIL) {
-      fail(
-        'REMOTE_INGEST_INPUT_COMMIT_INVALID',
-        'Remote ingestion Agent input must directly follow the last runner-managed handoff commit.'
+    const runnerCommit = ancestors
+      .map((line) => line.split('\t'))
+      .find(([, email]) => email === INGEST_BOT_EMAIL)?.[0];
+    if (!runnerCommit) {
+      fail('REMOTE_INGEST_INPUT_COMMIT_INVALID', 'Remote ingestion has no prior runner-managed handoff commit.');
+    }
+
+    const intervening = await gitLines(
+      workspaceRoot,
+      ['rev-list', '--reverse', `${runnerCommit}..HEAD`],
+      'REMOTE_INGEST_INPUT_COMMIT_INVALID'
+    );
+    for (const commit of intervening) {
+      const changed = await gitLines(
+        workspaceRoot,
+        ['diff-tree', '--no-commit-id', '--name-only', '-r', commit],
+        'REMOTE_INGEST_INPUT_COMMIT_INVALID'
       );
+      if (changed.length !== 1 || changed[0] !== expectedPath) {
+        fail(
+          'REMOTE_INGEST_INPUT_COMMIT_INVALID',
+          'Remote ingestion commits since the last runner handoff may change only ' + expectedPath + '.'
+        );
+      }
     }
   }
 }
@@ -254,7 +276,7 @@ function validateResearchPlanHandoff(value, evidence) {
   if (value.schema_version !== 1 || value.provider !== 'github') {
     fail('REMOTE_INGEST_HANDOFF_INVALID', 'GitHub research plan handoff schema/provider is invalid.');
   }
-  const plan = validateResearchPlan(value.plan, evidence);
+  const plan = validateResearchPlan(normalizeResearchPlanEvidenceKinds(value.plan), evidence);
   if (
     !Array.isArray(value.selected_paths)
     || value.selected_paths.length === 0
@@ -301,13 +323,13 @@ function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
     stage: hasBundle ? 'waiting-for-analysis' : 'waiting-for-research',
     waiting_for: hasBundle
       ? (canExpand ? 'research-plan-or-analysis' : 'analysis')
-      : 'research-plan',
+      : 'research-plan-or-analysis',
     source_identity: evidence.source_identity,
     evidence_digest: evidence.evidence_digest,
     repository_revision: researchHandoff.discovery.repository_revision,
     analysis_evidence_digest: researchHandoff.bundle?.analysis_evidence_digest || null,
     research_progress: researchHandoff.progress,
-    ...(hasBundle ? { analysis_handoff: createAnalysisHandoff(evidence, handoffPaths, researchHandoff) } : {}),
+    analysis_handoff: createAnalysisHandoff(evidence, handoffPaths, researchHandoff),
     handoff_paths: handoffPaths,
     allowed_changed_paths: []
   };
@@ -457,7 +479,8 @@ try {
           result = {
             status: 'ok',
             stage: 'research-prepared',
-            waiting_for: 'research-plan',
+            waiting_for: 'research-plan-or-analysis',
+            analysis_handoff: createAnalysisHandoff(evidence, handoffPaths),
             source_identity: evidence.source_identity,
             evidence_digest: evidence.evidence_digest,
             repository_revision: discovery.repository_revision,
@@ -509,15 +532,16 @@ try {
       );
 
       if (hasAnalysis) {
-        if (!researchHandoff.bundle || researchHandoff.progress.completed_rounds < 1) {
-          fail('REMOTE_INGEST_RESEARCH_REQUIRED', 'GitHub analysis requires at least one validated research expansion round.');
-        }
         const analysis = await readJson(analysisPath, 'REMOTE_INGEST_ANALYSIS_MISSING');
+        const requiresResearch = analysis?.analysis_version === 2;
+        if (requiresResearch && (!researchHandoff.bundle || researchHandoff.progress.completed_rounds < 1)) {
+          fail('REMOTE_INGEST_RESEARCH_REQUIRED', 'Research-bound GitHub analysis requires at least one validated research expansion round.');
+        }
         const applied = await applyAcceptedSourceAnalysis(
           workspace.root,
           evidence,
           analysis,
-          { analysisEvidenceBundle: researchHandoff.bundle }
+          { analysisEvidenceBundle: requiresResearch ? researchHandoff.bundle : null }
         );
         await Promise.all([
           fs.rm(requestPath, { force: true }),
