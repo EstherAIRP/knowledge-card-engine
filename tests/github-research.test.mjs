@@ -388,7 +388,7 @@ test('GitHub bounded research expansion accumulates evidence across at most two 
   assert.equal(stopped.remaining.rounds, 0);
 });
 
-test('GitHub research retry rejects stale plans, repeated paths, and evidence unrelated to needs_evidence questions', async () => {
+test('GitHub research retry rejects stale plans and repeated paths but reports safe selection mismatches', async () => {
   const fetchImpl = githubResearchFetch();
   const evidence = await acceptedEvidence(fetchImpl);
   const discovery = await discoverGitHubResearchCandidates(evidence, { fetchImpl });
@@ -432,17 +432,17 @@ test('GitHub research retry rejects stale plans, repeated paths, and evidence un
       }
     }
   }), evidence);
-  await assert.rejects(
-    fetchGitHubResearchExpansion(
-      evidence,
-      discovery,
-      unrelatedPlan,
-      first.progress,
-      ['src/auth.js'],
-      { previousBundle: first.bundle, fetchImpl }
-    ),
-    (error) => error.code === 'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED'
+  const unmatched = await fetchGitHubResearchExpansion(
+    evidence,
+    discovery,
+    unrelatedPlan,
+    first.progress,
+    ['src/auth.js'],
+    { previousBundle: first.bundle, fetchImpl }
   );
+  assert.deepEqual(unmatched.unmatched_selected_paths, ['src/auth.js']);
+  assert.ok(unmatched.bundle.items.some((item) => item.path === 'src/auth.js'));
+  assert.equal(validateAnalysisEvidenceBundle(unmatched.bundle, evidence), unmatched.bundle);
 
   const repeatPlan = bindPlan(researchPlan({
     priorAnalysisEvidenceDigest: first.bundle.analysis_evidence_digest,
