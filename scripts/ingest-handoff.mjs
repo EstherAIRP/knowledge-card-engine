@@ -320,7 +320,7 @@ function githubWaitingResult(evidence, researchHandoff, handoffPaths) {
   const canExpand = researchBudgetAvailable(researchHandoff);
   return {
     status: 'ok',
-    stage: hasBundle ? 'waiting-for-analysis' : 'waiting-for-research',
+    stage: hasBundle ? 'waiting-for-analysis' : 'waiting-for-analysis-or-research',
     waiting_for: hasBundle
       ? (canExpand ? 'research-plan-or-analysis' : 'analysis')
       : 'research-plan-or-analysis',
