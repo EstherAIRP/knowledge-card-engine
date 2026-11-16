@@ -602,6 +602,7 @@ try {
           evidence_digest: evidence.evidence_digest,
           repository_revision: researchHandoff.discovery.repository_revision,
           research_round: expansion.round,
+          unmatched_selected_paths: expansion.unmatched_selected_paths,
           analysis_evidence_digest: expansion.bundle.analysis_evidence_digest,
           research_progress: expansion.progress,
           analysis_handoff: createAnalysisHandoff(evidence, handoffPaths, researchHandoff),
