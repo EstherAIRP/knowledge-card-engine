@@ -109,10 +109,11 @@ test('GitHub repository URL variants and subpaths collapse to one identity', () 
   }
 });
 
-test('generic canonicalization removes tracking and fragment but keeps meaningful query', () => {
+test('generic canonicalization preserves serving hostname while removing tracking and fragment', () => {
   const item = canonicalizeSource('https://www.example.com/article/?id=42&utm_source=threads&fbclid=abc#part');
-  assert.equal(item.canonicalUrl, 'https://example.com/article?id=42');
-  assert.equal(item.identity, 'url:https://example.com/article?id=42');
+  assert.equal(item.canonicalUrl, 'https://www.example.com/article?id=42');
+  assert.equal(item.identity, 'url:https://www.example.com/article?id=42');
+  assert.notEqual(item.identity, canonicalizeSource('https://example.com/article?id=42').identity);
 });
 
 test('GitHub provider accepts metadata + non-empty README and binds a digest', async () => {
