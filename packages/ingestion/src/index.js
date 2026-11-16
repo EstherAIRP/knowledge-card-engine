@@ -1442,14 +1442,12 @@ export async function fetchGitHubResearchExpansion(
       limits: normalizeGitHubResearchLimits(roundLimits)
     }
   );
-  for (const candidate of selected) {
-    if (!candidateRequestedByPlan(candidate, validatedPlan)) {
-      fail(
-        'GITHUB_RESEARCH_SELECTION_NOT_REQUESTED',
-        `GitHub research path is not requested by any needs_evidence question: ${candidate.path}.`
-      );
-    }
-  }
+  // selected_paths are an explicit Agent choice. A mismatched evidence kind
+  // is a diagnostic rather than a rejection: pinned revision, path safety,
+  // byte limits and final evidence binding are still enforced below.
+  const unmatchedSelectedPaths = selected
+    .filter((candidate) => !candidateRequestedByPlan(candidate, validatedPlan))
+    .map((candidate) => candidate.path);
 
   const roundBundle = await fetchGitHubResearchEvidenceForSelection(
     accepted,
@@ -1478,6 +1476,7 @@ export async function fetchGitHubResearchExpansion(
   return {
     round: continuation.next_round,
     selected_paths: selected.map((candidate) => candidate.path),
+    unmatched_selected_paths: unmatchedSelectedPaths,
     bundle: mergedBundle,
     progress: nextProgress
   };
