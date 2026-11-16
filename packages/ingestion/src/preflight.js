@@ -1,4 +1,5 @@
 import { canonicalizeSource, resolveIngestionTarget } from './index.js';
+import { assertSafePublicWebUrl } from './web/public-html.js';
 
 export function resolveIngestionPreflightTarget(cards, rawUrl) {
   const canonical = canonicalizeSource(rawUrl);
@@ -8,6 +9,8 @@ export function resolveIngestionPreflightTarget(cards, rawUrl) {
     error.code = 'SOURCE_PROVIDER_UNSUPPORTED';
     throw error;
   }
+
+  if (canonical.provider === 'generic') assertSafePublicWebUrl(canonical.canonicalUrl);
 
   if (!canonical.identity) {
     return {

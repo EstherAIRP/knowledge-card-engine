@@ -125,7 +125,7 @@ export function canonicalizeSource(rawUrl) {
     };
   }
 
-  if (parsed.hostname.startsWith('www.')) parsed.hostname = parsed.hostname.slice(4);
+  // Preserve www: it may be a different or the only serving hostname.
   cleanTrackingParams(parsed);
   if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, '');
   const canonicalUrl = parsed.toString();

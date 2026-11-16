@@ -50,11 +50,13 @@ export function isPublicWebAddress(address, family) {
   }
   if (family === 6 && isIP(address) === 6) {
     const value = address.toLowerCase();
-    const first = Number.parseInt(value.split(':')[0], 16);
+    const [firstPart, secondPart] = value.split(':');
+    const first = Number.parseInt(firstPart, 16);
+    const second = Number.parseInt(secondPart, 16) || 0;
     // Only native global-unicast IPv6. Reject transition, documentation and local ranges.
     return first >= 0x2000 && first < 0x4000
-      && !/^2001:(?:0:|db8:|10:|20:)/.test(value)
-      && !/^2002:/.test(value);
+      && !(first === 0x2001 && [0, 0xdb8, 0x10, 0x20].includes(second))
+      && first !== 0x2002;
   }
   return false;
 }
@@ -79,6 +81,7 @@ async function requestOnce(url, address) {
     const req = requester(url, {
       method: 'GET',
       agent: false,
+      signal: AbortSignal.timeout(PUBLIC_WEB_LIMITS.timeout_ms),
       family: address.family,
       lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
       headers: {
@@ -107,6 +110,11 @@ async function requestOnce(url, address) {
       if (status === 429 || status >= 500) {
         res.resume();
         reject(webError('INGESTION_EXECUTION_FAILED', 'Public web server is temporarily unavailable.'));
+        return;
+      }
+      if (status === 206) {
+        res.resume();
+        reject(webError('SOURCE_INCOMPLETE', 'Partial HTML responses are not accepted.'));
         return;
       }
       if (status < 200 || status >= 300) {

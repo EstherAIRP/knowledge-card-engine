@@ -73,6 +73,8 @@ test('generic request is normalized and refuses private endpoints or provider im
   assert.equal(validateIngestionRequest(request(url)).source_url, url);
   assert.equal(canonicalizeSource(url).sourceType, 'article');
   assert.equal(canonicalizeSource('https://docs.example.org/docs/api').sourceType, 'documentation');
+  assert.equal(canonicalizeSource('https://www.example.org/guide').canonicalUrl, 'https://www.example.org/guide');
+  assert.throws(() => resolveIngestionPreflightTarget([], 'http://localhost/secrets'), (e) => e.code === 'SOURCE_URL_INVALID');
   assert.throws(() => validateIngestionRequest(request('http://127.0.0.1/admin')), (e) => e.code === 'SOURCE_URL_INVALID');
   assert.throws(() => validateIngestionRequest(request('http://localhost/secrets')), (e) => e.code === 'SOURCE_URL_INVALID');
   assert.throws(() => validateIngestionRequest(request('https://user:pass@example.org/')), (e) => e.code === 'SOURCE_URL_INVALID');
@@ -86,6 +88,7 @@ test('DNS guard rejects mixed public/private answers and transition addresses', 
   assert.equal(isPublicWebAddress('169.254.169.254', 4), false);
   assert.equal(isPublicWebAddress('10.1.2.3', 4), false);
   assert.equal(isPublicWebAddress('::ffff:127.0.0.1', 6), false);
+  assert.equal(isPublicWebAddress('2001:0db8::1', 6), false);
   await assert.rejects(
     resolvePublicWebAddress('public.example.org', async () => [
       { address: '8.8.8.8', family: 4 },

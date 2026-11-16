@@ -82,7 +82,7 @@ knowledge-card-engine/
 | --- | --- |
 | [Knowledge Card Workspace 契約](./specs/workspace.md) | Workspace 結構、標準路徑、背景政策、Engine 版本鎖定與相容性驗證 |
 | [Knowledge Card 契約](./specs/card.md) | Card 前置中繼資料、分類體系、AI／使用者所有權、正文、唯一性與穩定路徑 |
-| [來源收錄契約](./specs/ingestion.md) | URL 正規化、來源識別、GitHub／Threads 已接受證據、固定版本來源擷取、新建／更新與來源狀態 |
+| [來源收錄契約](./specs/ingestion.md) | URL 正規化、來源識別、GitHub／Threads／公開 HTML 已接受證據、安全擷取、新建／更新與來源狀態 |
 | [分析與研究契約](./specs/analysis.md) | 研究計畫、分析證據包、分析版本、品質門檻、證據綁定與研究追溯 |
 | [生成資料、搜尋與圖譜契約](./specs/generated-data.md) | 搜尋、向量、Card↔Card 關聯、人工關聯、Concept、Graph 與生成資料驗證 |
 | [一致發布契約](./specs/release.md) | E／S／P、資訊清單、發布指標、過期防護、發布快照與回復 |

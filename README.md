@@ -69,7 +69,7 @@ knowledge-card-engine/
 | `apps/web` | 私人 Knowledge Card 網站介面 |
 | `apps/server` | 登入、授權、Workspace 讀取與私人 API |
 | `packages/core` | Knowledge Card、分類體系、所有權與核心驗證 |
-| `packages/ingestion` | GitHub／Threads 來源解析與已接受來源證據 |
+| `packages/ingestion` | GitHub、Threads 與公開 HTML 網頁的來源解析及已接受證據 |
 | `packages/analysis` | AI 分析、研究與證據資料契約 |
 | `packages/graph` | 搜尋、向量、語意關聯、Concept 與 Graph |
 | `packages/workspace` | Workspace 載入、Engine 版本鎖定與安全寫入 |
