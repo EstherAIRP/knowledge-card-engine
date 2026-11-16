@@ -547,7 +547,8 @@ const GITHUB_RESEARCH_SOURCE_EXTENSIONS = new Set([
   '.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx',
   '.py', '.go', '.rs', '.java', '.kt', '.kts',
   '.rb', '.php', '.cs', '.swift', '.sh', '.bash',
-  '.zsh', '.sql', '.graphql', '.gql', '.proto'
+  '.zsh', '.sql', '.graphql', '.gql', '.proto',
+  '.svelte', '.vue', '.cts', '.mts', '.ps1'
 ]);
 
 const GITHUB_RESEARCH_TEXT_EXTENSIONS = new Set([
@@ -625,6 +626,7 @@ function isResearchTextPath(pathValue) {
     || base === 'gemfile'
     || base === 'license'
     || base === 'copying'
+    || base === '_headers'
   ) return true;
   return GITHUB_RESEARCH_TEXT_EXTENSIONS.has(pathExtension(pathValue));
 }
