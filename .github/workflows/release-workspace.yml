@@ -60,7 +60,7 @@ jobs:
 
       - name: Install engine dependencies
         working-directory: engine
-        run: npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund --onnxruntime-node-install-cuda=skip
 
       - name: Capture release source
         id: source
